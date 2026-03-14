@@ -30,6 +30,9 @@ window.handleCredentialResponse = function (response) {
         // [수정 포인트] 로그인 성공 시 이메일 전역 변수에 저장
         currentUserEmail = userEmail;
 
+        // 👇 [수정] 헤더 대신, 설정 탭의 프로필 영역에 이메일을 표시합니다.
+        document.getElementById('settings-user-email').innerText = currentUserEmail;
+
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
 
@@ -53,8 +56,6 @@ window.handleCredentialResponse = function (response) {
 // ==========================================
 // 하단 네비게이션 탭 전환 함수
 window.switchTab = function (tabId, title, btnElement) {
-    document.getElementById('header-title').innerText = title;
-
     document.querySelectorAll('.tab-content').forEach((el) => el.classList.remove('active'));
     document.getElementById('view-' + tabId).classList.add('active');
 
@@ -116,7 +117,9 @@ window.openEditModal = function (id) {
 
     document.getElementById('input-date').value = targetItem.Date.substring(0, 10);
     document.getElementById('input-category').value = targetItem.Category;
-    document.getElementById('input-amount').value = targetItem.Amount;
+    document.getElementById('input-amount').value = Number(targetItem.Amount).toLocaleString(
+        'ko-KR'
+    );
     document.getElementById('input-memo').value = targetItem.Memo || '';
 
     // UI 변경 (저장 -> 수정하기, 삭제 버튼 노출)
@@ -150,7 +153,7 @@ window.deleteRecord = async function () {
         const result = await response.json();
 
         if (result.status === 'success') {
-            alert('삭제되었습니다.');
+            // alert('삭제되었습니다.');
             closeAddModal();
             loadDailyRecords(); // 삭제 후 화면 갱신
         } else {
@@ -196,13 +199,20 @@ window.openWeeklyModal = function (clickedDateStr) {
         container.innerHTML =
             '<p class="text-center text-gray-500 py-10 text-sm">해당 주간에 내역이 없습니다.</p>';
     } else {
+        // 기존 openWeeklyModal 내부 수정
         weeklyData.forEach((item) => {
             const isExpense = item.Type === 'expense';
             const amountColor = isExpense ? 'text-red-500' : 'text-blue-500';
             const sign = isExpense ? '-' : '+';
             const iconBg = isExpense ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
 
-            // 일간 탭과 동일하게 클릭 시 수정 창이 뜨도록 onclick 유지
+            // 👇 [추가된 부분] 영문 Value를 한글 Label로 변환
+            let catLabel = '미분류';
+            if (item.Category) {
+                const foundCat = globalCategories.find((c) => c.Value === item.Category);
+                catLabel = foundCat ? foundCat.Label : item.Category;
+            }
+
             const listItem = `
                 <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 p-3 rounded-lg shadow-sm mb-3 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
                     <div class="flex items-center gap-3">
@@ -211,7 +221,7 @@ window.openWeeklyModal = function (clickedDateStr) {
                         </div>
                         <div>
                             <p class="text-sm font-bold">${item.Memo || '내역 없음'}</p>
-                            <p class="text-xs text-gray-400">${item.Category || '미분류'} • ${item.Date.substring(0, 10)}</p>
+                            <p class="text-xs text-gray-400">${catLabel} • ${item.Date.substring(0, 10)}</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -263,7 +273,9 @@ window.saveRecord = async function () {
     const type = document.querySelector('input[name="type"]:checked').value;
     const date = document.getElementById('input-date').value;
     const category = document.getElementById('input-category').value;
-    const amount = document.getElementById('input-amount').value;
+    const rawAmount = document.getElementById('input-amount').value;
+    const amount = rawAmount.replace(/,/g, '');
+
     const memo = document.getElementById('input-memo').value;
 
     if (!date || !amount) {
@@ -300,7 +312,7 @@ window.saveRecord = async function () {
         const result = await response.json();
 
         if (result.status === 'success') {
-            alert('가계부 내역이 저장되었습니다.');
+            // alert('가계부 내역이 저장되었습니다.');
             closeAddModal(); // 입력 창 닫기
             document.getElementById('add-form').reset(); // 폼 초기화
 
@@ -331,19 +343,22 @@ window.loadDailyRecords = async function () {
 
         if (result.status === 'success') {
             globalData = result.data;
-            renderDailyList(globalData);
 
-            if (calendar) {
-                renderCalendarEvents();
-            }
-
-            // [수정된 부분] 전역 변수에 저장 후, 현재 선택된 타입(expense)에 맞게 렌더링
+            // 👇 1. [순서 변경] 카테고리 데이터를 제일 먼저 전역 변수에 저장합니다!
             if (result.categories && result.categories.length > 0) {
                 globalCategories = result.categories;
 
-                // 현재 체크된 라디오 버튼의 값('expense' 또는 'income') 가져오기
+                // 설정된 탭(지출/수입)에 맞게 드롭다운도 미리 업데이트
                 const currentType = document.querySelector('input[name="type"]:checked').value;
                 renderCategoryDropdown(currentType);
+            }
+
+            // 👇 2. 카테고리가 준비된 상태에서 리스트를 그립니다. (이제 한글 변환이 정상 작동합니다)
+            renderDailyList(globalData);
+
+            // 👇 3. 달력 업데이트
+            if (calendar) {
+                renderCalendarEvents();
             }
         } else {
             listContainer.innerHTML = `<p class="text-center text-red-500 py-10 text-sm">오류: ${result.message}</p>`;
@@ -371,26 +386,30 @@ function renderDailyList(data) {
 
     let totalExpense = 0;
 
-    // 각 데이터 항목을 HTML로 변환
+    // 기존 renderDailyList 내부 수정
     data.forEach((item) => {
-        // 지출인 경우 총액 합산
         if (item.Type === 'expense') {
             totalExpense += Number(item.Amount);
         }
 
-        // 아이콘 및 색상 설정
         const isExpense = item.Type === 'expense';
         const amountColor = isExpense ? 'text-red-500' : 'text-blue-500';
         const sign = isExpense ? '-' : '+';
         const iconBg = isExpense ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
 
-        // 간단한 카테고리 아이콘 매핑
+        // 👇 [추가된 부분] 영문 Value를 한글 Label로 변환
+        let catLabel = '미분류';
+        if (item.Category) {
+            const foundCat = globalCategories.find((c) => c.Value === item.Category);
+            catLabel = foundCat ? foundCat.Label : item.Category;
+        }
+
         let iconName = 'payments';
+        // 아이콘 매핑 로직 유지 (기본 아이콘 사용)
         if (item.Category === 'food') iconName = 'restaurant';
         if (item.Category === 'living') iconName = 'shopping_cart';
         if (item.Category === 'transport') iconName = 'directions_bus';
 
-        // app.js 의 renderDailyList 함수 내부 수정
         const listItem = `
             <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 p-3 rounded-lg shadow-sm mb-3 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
                 <div class="flex items-center gap-3">
@@ -399,7 +418,7 @@ function renderDailyList(data) {
                     </div>
                     <div>
                         <p class="text-sm font-bold">${item.Memo || '내역 없음'}</p>
-                        <p class="text-xs text-gray-400">${item.Category || '미분류'} • ${item.Date}</p>
+                        <p class="text-xs text-gray-400">${catLabel} • ${item.Date}</p>
                     </div>
                 </div>
                 <div class="text-right">
@@ -431,10 +450,13 @@ window.initCalendar = function () {
         height: 'auto',
         displayEventTime: false,
         events: [],
-
-        // 👇 [새로 추가된 부분] 날짜를 클릭했을 때 실행할 동작
         dateClick: function (info) {
-            openWeeklyModal(info.dateStr); // 클릭한 날짜 정보(YYYY-MM-DD)를 넘겨줌
+            openWeeklyModal(info.dateStr);
+        },
+        // 👇 [추가된 부분] 달력의 '월'이 바뀔 때마다 실행 (예: < > 버튼 클릭 시)
+        datesSet: function (info) {
+            // info.view.currentStart는 현재 달력 화면의 해당 월 1일 날짜 객체를 반환합니다.
+            updateMonthlyTotals(info.view.currentStart);
         },
     });
     calendar.render();
@@ -482,6 +504,9 @@ function renderCalendarEvents() {
 
     calendar.removeAllEvents();
     calendar.addEventSource(events);
+
+    // 👇 [추가된 부분] 데이터가 새로 렌더링될 때 하단 월간 합계도 함께 업데이트
+    updateMonthlyTotals(calendar.view.currentStart);
 }
 
 // ==========================================
@@ -511,16 +536,12 @@ window.renderChart = function () {
     let totalSum = 0;
 
     expenses.forEach((item) => {
-        const cat = item.Category || '기타';
-        // 영어 카테고리명을 한글로 매핑 (필요시 확장)
-        const catName =
-            cat === 'food'
-                ? '식비'
-                : cat === 'living'
-                  ? '생활용품'
-                  : cat === 'transport'
-                    ? '교통비'
-                    : cat;
+        // 👇 [수정된 부분] 하드코딩 매핑 제거하고 globalCategories에서 라벨 찾기
+        let catName = '기타';
+        if (item.Category) {
+            const foundCat = globalCategories.find((c) => c.Value === item.Category);
+            catName = foundCat ? foundCat.Label : item.Category;
+        }
 
         const amount = Number(item.Amount);
         categoryTotals[catName] = (categoryTotals[catName] || 0) + amount;
@@ -562,8 +583,23 @@ window.renderChart = function () {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
-                    position: 'bottom', // 범례를 아래로
+                    position: 'bottom',
                     labels: { font: { family: "'Pretendard', sans-serif", size: 12 } },
+                },
+                // 👇 [새로 추가] 차트 조각을 터치했을 때 뜨는 툴팁에 콤마 적용
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed !== null) {
+                                label += context.parsed.toLocaleString('ko-KR') + '원';
+                            }
+                            return label;
+                        },
+                    },
                 },
             },
         },
@@ -599,3 +635,181 @@ document.querySelectorAll('input[name="type"]').forEach((radio) => {
         renderCategoryDropdown(this.value);
     });
 });
+
+// [새로운 함수] 특정 월의 수입/지출 합계를 계산하여 UI에 표기하는 함수
+window.updateMonthlyTotals = function (dateObj) {
+    let incomeTotal = 0;
+    let expenseTotal = 0;
+
+    if (globalData && globalData.length > 0) {
+        // 날짜 객체에서 연도와 월 추출 (예: 2024, 03)
+        const year = dateObj.getFullYear();
+        // getMonth()는 0부터 시작하므로 1을 더해주고, 두 자리로 포맷팅(padStart)
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const targetMonthPrefix = `${year}-${month}`; // "2024-03" 형태의 문자열 생성
+
+        // 전역 데이터에서 해당 월의 데이터만 합산
+        globalData.forEach((item) => {
+            if (!item.Date) return;
+
+            // 데이터의 날짜 문자열 앞 7자리("YYYY-MM") 추출하여 비교
+            const itemDatePrefix = item.Date.substring(0, 7);
+
+            if (itemDatePrefix === targetMonthPrefix) {
+                if (item.Type === 'income') {
+                    incomeTotal += Number(item.Amount);
+                } else if (item.Type === 'expense') {
+                    expenseTotal += Number(item.Amount);
+                }
+            }
+        });
+    }
+
+    // HTML 요소에 결과값 텍스트 업데이트
+    document.getElementById('monthly-income-total').innerText =
+        `+${incomeTotal.toLocaleString()}원`;
+    document.getElementById('monthly-expense-total').innerText =
+        `-${expenseTotal.toLocaleString()}원`;
+};
+
+// ==========================================
+// 11. 금액 입력 시 천 단위 콤마 자동 적용
+// ==========================================
+document.getElementById('input-amount').addEventListener('input', function (e) {
+    // 1. 숫자가 아닌 모든 문자(콤마 포함)를 제거
+    let value = e.target.value.replace(/[^0-9]/g, '');
+
+    // 2. 숫자가 비어있지 않다면 천 단위 콤마를 찍어서 다시 입력창에 넣음
+    if (value !== '') {
+        e.target.value = Number(value).toLocaleString('ko-KR');
+    } else {
+        e.target.value = '';
+    }
+});
+
+// ==========================================
+// 12. 카테고리 관리 모달 제어 및 API 통신
+// ==========================================
+window.openCategoryModal = function () {
+    renderCategoryList(); // 모달 열기 전에 리스트 새로 그리기
+    const modal = document.getElementById('category-modal');
+    const content = document.getElementById('category-modal-content');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+    }, 10);
+};
+
+window.closeCategoryModal = function () {
+    const modal = document.getElementById('category-modal');
+    const content = document.getElementById('category-modal-content');
+    modal.classList.add('opacity-0');
+    content.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+};
+
+// 카테고리 리스트를 모달 안에 그리는 함수
+function renderCategoryList() {
+    const container = document.getElementById('category-list-container');
+    container.innerHTML = '';
+
+    if (!globalCategories || globalCategories.length === 0) {
+        container.innerHTML =
+            '<li class="py-4 text-center text-gray-500 text-sm">등록된 카테고리가 없습니다.</li>';
+        return;
+    }
+
+    globalCategories.forEach((cat) => {
+        // 지출/수입 구분 태그
+        const typeBadge =
+            cat.Type === 'expense'
+                ? '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold mr-2">지출</span>'
+                : '<span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold mr-2">수입</span>';
+
+        const li = `
+            <li class="py-3 flex justify-between items-center">
+                <div class="flex items-center">
+                    ${typeBadge}
+                    <span class="text-sm text-gray-800">${cat.Label}</span>
+                </div>
+                <button onclick="deleteCategory('${cat.Value}')" class="text-gray-400 hover:text-red-500 p-1 transition">
+                    <span class="material-symbols-outlined text-sm">delete</span>
+                </button>
+            </li>
+        `;
+        container.insertAdjacentHTML('beforeend', li);
+    });
+}
+
+// 카테고리 추가 함수 (수정본)
+window.addCategory = async function () {
+    const type = document.getElementById('new-cat-type').value;
+    const label = document.getElementById('new-cat-label').value.trim();
+
+    if (!label) {
+        alert('카테고리 이름을 입력해주세요.');
+        return;
+    }
+
+    // 추가 버튼 요소 찾기
+    const btn = document.querySelector('#category-modal-content button.bg-indigo-600');
+    if (btn) {
+        btn.innerText = '...';
+        btn.disabled = true;
+    }
+
+    try {
+        const response = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'add_category', catType: type, catLabel: label }),
+        });
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            document.getElementById('new-cat-label').value = ''; // 입력창 초기화
+            await loadDailyRecords(); // 데이터 갱신
+            renderCategoryList(); // 리스트 갱신
+
+            const currentMainType = document.querySelector('input[name="type"]:checked').value;
+            renderCategoryDropdown(currentMainType);
+        } else {
+            // 👇 백엔드 에러 시 원인을 파악할 수 있도록 알림창 추가
+            alert('서버 거절: ' + result.message);
+        }
+    } catch (e) {
+        alert('통신 에러: 네트워크 상태를 확인해주세요.');
+    } finally {
+        if (btn) {
+            btn.innerText = '추가';
+            btn.disabled = false;
+        }
+    }
+};
+
+// 카테고리 삭제 함수
+window.deleteCategory = async function (catValue) {
+    if (!confirm('이 카테고리를 삭제하시겠습니까? (기존 내역의 카테고리는 유지됩니다)')) return;
+
+    try {
+        const response = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'delete_category', catValue: catValue }),
+        });
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            await loadDailyRecords();
+            renderCategoryList();
+
+            const currentMainType = document.querySelector('input[name="type"]:checked').value;
+            renderCategoryDropdown(currentMainType);
+        }
+    } catch (e) {
+        alert('카테고리 삭제에 실패했습니다.');
+    }
+};

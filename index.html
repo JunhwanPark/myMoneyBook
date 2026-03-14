@@ -16,8 +16,13 @@
         <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
 
         <style>
+            /* 기존 스크롤바 숨김 및 탭 전환 설정 */
             ::-webkit-scrollbar {
                 display: none;
+            }
+            .no-scrollbar {
+                -ms-overflow-style: none; /* IE and Edge */
+                scrollbar-width: none; /* Firefox */
             }
             .tab-content {
                 display: none;
@@ -25,12 +30,30 @@
             .tab-content.active {
                 display: block;
             }
+
+            /* 👇 추가된 부분: 모바일 폰트 충돌 방지 및 아이콘 강제 적용 */
+            .material-symbols-outlined {
+                font-family: 'Material Symbols Outlined' !important;
+                font-weight: normal;
+                font-style: normal;
+                font-size: 24px;
+                line-height: 1;
+                letter-spacing: normal;
+                text-transform: none;
+                display: inline-block;
+                white-space: nowrap;
+                word-wrap: normal;
+                direction: ltr;
+                font-feature-settings: 'liga';
+                -webkit-font-feature-settings: 'liga';
+                -webkit-font-smoothing: antialiased;
+            }
         </style>
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans">
         <div
             id="login-screen"
-            class="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center bg-white p-6 shadow-lg"
+            class="h-[100dvh] max-w-md mx-auto flex flex-col items-center justify-center bg-white p-6 shadow-lg"
         >
             <div class="bg-indigo-100 text-indigo-600 p-4 rounded-full mb-4">
                 <span class="material-symbols-outlined text-5xl">account_balance_wallet</span>
@@ -65,21 +88,9 @@
 
         <div
             id="main-app"
-            class="hidden max-w-md mx-auto bg-white min-h-screen relative shadow-lg flex flex-col overflow-hidden"
+            class="hidden h-[100dvh] max-w-md mx-auto bg-white relative shadow-lg flex flex-col overflow-hidden"
         >
-            <header
-                class="bg-indigo-600 text-white p-4 flex justify-between items-center shadow-md z-10"
-            >
-                <h1 class="text-xl font-bold" id="header-title">일간 내역</h1>
-                <button
-                    id="login-btn"
-                    class="text-xs font-semibold bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 rounded transition"
-                >
-                    구글 로그인
-                </button>
-            </header>
-
-            <main class="flex-1 overflow-y-auto p-4 pb-24">
+            <main class="flex-1 overflow-y-auto p-4 pb-24 no-scrollbar">
                 <section id="view-daily" class="tab-content active">
                     <div class="flex justify-between items-end mb-4">
                         <h2 class="text-lg font-semibold">전체 내역</h2>
@@ -95,10 +106,28 @@
 
                 <section id="view-monthly" class="tab-content">
                     <h2 class="text-lg font-semibold mb-4">월간 달력</h2>
+
                     <div
                         id="calendar"
-                        class="bg-white p-2 rounded-lg shadow-sm border border-gray-100 text-[10px] sm:text-xs"
+                        class="bg-white p-2 rounded-lg shadow-sm border border-gray-100 text-[10px] sm:text-xs mb-4"
                     ></div>
+
+                    <div
+                        class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center"
+                    >
+                        <div class="text-center w-1/2 border-r border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">월 총 수입</p>
+                            <p id="monthly-income-total" class="text-blue-500 font-bold text-lg">
+                                +0원
+                            </p>
+                        </div>
+                        <div class="text-center w-1/2">
+                            <p class="text-xs text-gray-500 mb-1">월 총 지출</p>
+                            <p id="monthly-expense-total" class="text-red-500 font-bold text-lg">
+                                -0원
+                            </p>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="view-stats" class="tab-content">
@@ -119,9 +148,25 @@
                 </section>
 
                 <section id="view-settings" class="tab-content">
-                    <h2 class="text-lg font-semibold mb-4">설정</h2>
-                    <ul class="divide-y divide-gray-200 border-t border-b border-gray-200">
+                    <h2 class="text-lg font-semibold mb-6">설정</h2>
+
+                    <div
+                        class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-4 border border-gray-100"
+                    >
+                        <div
+                            class="bg-indigo-100 text-indigo-600 p-3 rounded-full flex items-center justify-center"
+                        >
+                            <span class="material-symbols-outlined text-2xl">person</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 mb-0.5">현재 로그인된 계정</p>
+                            <p id="settings-user-email" class="font-bold text-gray-800 text-sm"></p>
+                        </div>
+                    </div>
+
+                    <ul class="divide-y divide-gray-100">
                         <li
+                            onclick="openCategoryModal()"
                             class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                         >
                             <div class="flex items-center gap-3">
@@ -134,47 +179,61 @@
                                 >chevron_right</span
                             >
                         </li>
+                        <li
+                            class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
+                        >
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-gray-500">info</span>
+                                <span>앱 정보</span>
+                            </div>
+                            <span class="text-xs text-gray-400">v1.0.0</span>
+                        </li>
                     </ul>
                 </section>
             </main>
 
-            <button
-                onclick="openAddModal()"
-                class="absolute bottom-20 right-4 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 transition transform hover:scale-105 z-20 flex items-center justify-center"
-            >
-                <span class="material-symbols-outlined">add</span>
-            </button>
-
             <nav
-                class="bg-white border-t flex justify-around items-center p-2 pb-safe absolute bottom-0 w-full z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]"
+                class="bg-white border-t border-gray-200 flex justify-between items-center pb-2 pt-2 z-10"
             >
                 <button
                     onclick="switchTab('daily', '일간 내역', this)"
-                    class="nav-btn flex flex-col items-center p-2 text-indigo-600 w-1/4 transition"
+                    class="nav-btn text-indigo-600 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined">list_alt</span>
-                    <span class="text-[10px] mt-1 font-medium">일간</span>
+                    <span class="material-symbols-outlined mb-1 text-[24px]">list_alt</span>
+                    <span class="text-[10px]">일간</span>
                 </button>
+
                 <button
                     onclick="switchTab('monthly', '월간 달력', this)"
-                    class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-indigo-400 w-1/4 transition"
+                    class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined">calendar_month</span>
-                    <span class="text-[10px] mt-1 font-medium">월간</span>
+                    <span class="material-symbols-outlined mb-1 text-[24px]">calendar_month</span>
+                    <span class="text-[10px]">월간</span>
                 </button>
+
+                <div class="flex-1 flex justify-center">
+                    <button
+                        onclick="openAddModal()"
+                        class="bg-indigo-600 text-white w-12 h-12 flex items-center justify-center rounded-xl shadow-sm hover:bg-indigo-700 active:scale-95 transition-transform duration-150"
+                    >
+                        <span class="material-symbols-outlined text-3xl">add</span>
+                    </button>
+                </div>
+
                 <button
-                    onclick="switchTab('stats', '월별 통계', this)"
-                    class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-indigo-400 w-1/4 transition"
+                    onclick="switchTab('stats', '지출 통계', this)"
+                    class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined">donut_large</span>
-                    <span class="text-[10px] mt-1 font-medium">통계</span>
+                    <span class="material-symbols-outlined mb-1 text-[24px]">pie_chart</span>
+                    <span class="text-[10px]">통계</span>
                 </button>
+
                 <button
                     onclick="switchTab('settings', '설정', this)"
-                    class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-indigo-400 w-1/4 transition"
+                    class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined">settings</span>
-                    <span class="text-[10px] mt-1 font-medium">설정</span>
+                    <span class="material-symbols-outlined mb-1 text-[24px]">settings</span>
+                    <span class="text-[10px]">설정</span>
                 </button>
             </nav>
 
@@ -244,7 +303,8 @@
                         </select>
 
                         <input
-                            type="number"
+                            type="text"
+                            inputmode="numeric"
                             id="input-amount"
                             placeholder="금액 (원)"
                             class="w-full border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -307,6 +367,52 @@
                     </button>
                 </div>
                 <div id="weekly-list-container" class="flex-1 overflow-y-auto pb-8"></div>
+            </div>
+        </div>
+
+        <div
+            id="category-modal"
+            class="hidden absolute inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center transition-opacity duration-300 opacity-0 p-4"
+        >
+            <div
+                id="category-modal-content"
+                class="bg-white w-full max-w-sm rounded-2xl p-6 transform transition-transform duration-300 scale-95 shadow-2xl flex flex-col max-h-[80vh]"
+            >
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold">카테고리 관리</h3>
+                    <button
+                        onclick="closeCategoryModal()"
+                        class="text-gray-400 hover:text-gray-700 p-1"
+                    >
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <div class="flex gap-2 mb-4">
+                    <select
+                        id="new-cat-type"
+                        class="border border-gray-300 rounded-lg p-2 text-sm w-1/3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    >
+                        <option value="expense">지출</option>
+                        <option value="income">수입</option>
+                    </select>
+                    <input
+                        type="text"
+                        id="new-cat-label"
+                        placeholder="새 카테고리명"
+                        class="border border-gray-300 rounded-lg p-2 text-sm flex-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <button
+                        onclick="addCategory()"
+                        class="bg-indigo-600 text-white rounded-lg px-4 text-sm font-bold hover:bg-indigo-700 transition"
+                    >
+                        추가
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto">
+                    <ul id="category-list-container" class="divide-y divide-gray-100"></ul>
+                </div>
             </div>
         </div>
     </body>
