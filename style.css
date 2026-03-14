@@ -1,0 +1,159 @@
+/* ==========================================
+   1. 글로벌 변수 및 테마 설정
+   ========================================== */
+:root {
+    --theme-color: #4f46e5; /* 기본 테마: Indigo (한국) */
+    --theme-hover: #4338ca;
+    --theme-light: #e0e7ff;
+    --bg-gray: #f9fafb;
+    --text-main: #111827;
+    --text-muted: #6b7280;
+}
+
+/* 중국 테마 (Red/Rose) */
+body.theme-cn {
+    --theme-color: #e11d48; /* 중국 테마: Rose (중국) */
+    --theme-hover: #be123c;
+    --theme-light: #ffe4e6;
+}
+
+/* ==========================================
+   2. 기본 레이아웃 및 유틸리티
+   ========================================== */
+body {
+    background-color: var(--bg-gray);
+    color: var(--text-main);
+    -webkit-tap-highlight-color: transparent; /* 모바일 터치 하이라이트 제거 */
+}
+
+/* 스크롤바 숨기기 (모든 브라우저 대응) */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* 탭 컨텐츠 제어 */
+.tab-content {
+    display: none;
+}
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ==========================================
+   3. 공통 컴포넌트 스타일 (Primary Theme)
+   ========================================== */
+.bg-primary {
+    background-color: var(--theme-color) !important;
+}
+.bg-primary-hover:hover {
+    background-color: var(--theme-hover) !important;
+}
+.text-primary {
+    color: var(--theme-color) !important;
+}
+.bg-primary-light {
+    background-color: var(--theme-light) !important;
+}
+
+/* ==========================================
+   4. 하단 네비게이션 및 헤더
+   ========================================== */
+nav {
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.nav-btn.text-primary {
+    font-weight: 700;
+}
+
+/* ==========================================
+   5. 달력 커스텀 (FullCalendar Overrides)
+   ========================================== */
+#calendar {
+    border: none !important;
+}
+
+/* 요일 헤더 */
+.fc-col-header-cell {
+    padding: 12px 0 !important;
+    font-weight: 600 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase;
+    font-size: 10px;
+    border: none !important;
+}
+
+/* 날짜 칸 및 테두리 제거 */
+.fc-theme-standard td,
+.fc-theme-standard th {
+    border: none !important;
+}
+
+.fc-daygrid-day-number {
+    font-weight: 500;
+    color: var(--text-main);
+    padding: 8px !important;
+    font-size: 12px;
+}
+
+/* 오늘 날짜 표시 강조 */
+.fc-day-today {
+    background-color: transparent !important;
+}
+.fc-day-today .fc-daygrid-day-number {
+    background-color: var(--theme-color);
+    color: white !important;
+    border-radius: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 4px;
+}
+
+/* 달력 내 금액(이벤트) 텍스트 */
+.fc-event {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 2px !important;
+    cursor: default;
+}
+
+.fc-event-title {
+    font-weight: 700 !important;
+    font-size: 9px !important;
+    letter-spacing: -0.5px;
+}
+
+/* ==========================================
+   6. 모달 및 입력창 스타일
+   ========================================== */
+.modal-content {
+    border-top-left-radius: 1.5rem;
+    border-top-right-radius: 1.5rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--theme-color);
+    box-shadow: 0 0 0 2px var(--theme-light);
+}

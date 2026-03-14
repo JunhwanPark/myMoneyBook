@@ -15,64 +15,7 @@
         <script src="https://accounts.google.com/gsi/client" async defer></script>
         <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
 
-        <style>
-            /* 기존 스크롤바 숨김 및 탭 전환 설정 */
-            ::-webkit-scrollbar {
-                display: none;
-            }
-            .no-scrollbar {
-                -ms-overflow-style: none; /* IE and Edge */
-                scrollbar-width: none; /* Firefox */
-            }
-            .tab-content {
-                display: none;
-            }
-            .tab-content.active {
-                display: block;
-            }
-
-            /* 👇 추가된 부분: 모바일 폰트 충돌 방지 및 아이콘 강제 적용 */
-            .material-symbols-outlined {
-                font-family: 'Material Symbols Outlined' !important;
-                font-weight: normal;
-                font-style: normal;
-                font-size: 24px;
-                line-height: 1;
-                letter-spacing: normal;
-                text-transform: none;
-                display: inline-block;
-                white-space: nowrap;
-                word-wrap: normal;
-                direction: ltr;
-                font-feature-settings: 'liga';
-                -webkit-font-feature-settings: 'liga';
-                -webkit-font-smoothing: antialiased;
-            }
-            /* 테마 변수 설정 (기본 한국: 파랑 / 중국: 빨강) */
-            :root {
-                --theme-color: #4f46e5;
-                --theme-hover: #4338ca;
-                --theme-light: #e0e7ff;
-            }
-            body.theme-cn {
-                --theme-color: #e11d48; /* 중국풍 붉은색 */
-                --theme-hover: #be123c;
-                --theme-light: #ffe4e6;
-            }
-
-            .bg-primary {
-                background-color: var(--theme-color) !important;
-            }
-            .bg-primary-hover:hover {
-                background-color: var(--theme-hover) !important;
-            }
-            .text-primary {
-                color: var(--theme-color) !important;
-            }
-            .bg-primary-light {
-                background-color: var(--theme-light) !important;
-            }
-        </style>
+        <link rel="stylesheet" href="style.css" />
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans">
         <div
@@ -146,26 +89,55 @@
                 </section>
 
                 <section id="view-monthly" class="tab-content">
-                    <h2 class="text-lg font-semibold mb-4">월간 달력</h2>
+                    <div class="mb-6 flex justify-between items-center px-1">
+                        <h2 class="text-xl font-extrabold tracking-tight text-gray-900">
+                            월간 레포트
+                        </h2>
+                    </div>
 
                     <div
                         id="calendar"
-                        class="bg-white p-2 rounded-lg shadow-sm border border-gray-100 text-[10px] sm:text-xs mb-4"
+                        class="bg-white rounded-3xl p-2 mb-6 text-[10px] sm:text-xs"
                     ></div>
 
-                    <div
-                        class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center"
-                    >
-                        <div class="text-center w-1/2 border-r border-gray-200">
-                            <p class="text-xs text-gray-500 mb-1">월 총 수입</p>
-                            <p id="monthly-income-total" class="text-blue-500 font-bold text-lg">
-                                +0원
+                    <div class="grid grid-cols-2 gap-4">
+                        <div
+                            class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm relative overflow-hidden"
+                        >
+                            <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                            <p
+                                class="text-[11px] font-medium text-gray-400 mb-1 flex items-center gap-1"
+                            >
+                                <span class="material-symbols-outlined text-[14px]"
+                                    >trending_up</span
+                                >
+                                월 수입
+                            </p>
+                            <p
+                                id="monthly-income-total"
+                                class="text-lg font-bold text-gray-900 truncate"
+                            >
+                                ¥0
                             </p>
                         </div>
-                        <div class="text-center w-1/2">
-                            <p class="text-xs text-gray-500 mb-1">월 총 지출</p>
-                            <p id="monthly-expense-total" class="text-red-500 font-bold text-lg">
-                                -0원
+
+                        <div
+                            class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm relative overflow-hidden"
+                        >
+                            <div class="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                            <p
+                                class="text-[11px] font-medium text-gray-400 mb-1 flex items-center gap-1"
+                            >
+                                <span class="material-symbols-outlined text-[14px]"
+                                    >trending_down</span
+                                >
+                                월 지출
+                            </p>
+                            <p
+                                id="monthly-expense-total"
+                                class="text-lg font-bold text-gray-900 truncate"
+                            >
+                                ¥0
                             </p>
                         </div>
                     </div>

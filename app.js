@@ -514,13 +514,14 @@ window.renderCalendarEvents = function () {
     // 4. 달력에 넣을 이벤트 배열 생성 (포맷팅 적용)
     const events = [];
     for (const [date, totals] of Object.entries(dailyTotals)) {
+        // renderCalendarEvents 함수 내 이벤트 생성 루프 부분 수정
         if (totals.income > 0) {
             events.push({
                 title: `+${formatMoney(totals.income)}`,
                 start: date,
                 allDay: true,
-                color: '#eff6ff',
-                textColor: '#3b82f6',
+                backgroundColor: 'transparent', // 배경 제거
+                textColor: '#10b981', // 진한 초록색 (수입)
             });
         }
         if (totals.expense > 0) {
@@ -528,8 +529,8 @@ window.renderCalendarEvents = function () {
                 title: `-${formatMoney(totals.expense)}`,
                 start: date,
                 allDay: true,
-                color: '#fef2f2',
-                textColor: '#ef4444',
+                backgroundColor: 'transparent', // 배경 제거
+                textColor: '#ef4444', // 진한 빨간색 (지출)
             });
         }
     }
@@ -676,36 +677,31 @@ document.querySelectorAll('input[name="type"]').forEach((radio) => {
 
 // [새로운 함수] 특정 월의 수입/지출 합계를 계산하여 UI에 표기하는 함수
 window.updateMonthlyTotals = function (dateObj) {
+    const incomeEl = document.getElementById('monthly-income-total');
+    const expenseEl = document.getElementById('monthly-expense-total');
+
+    // 요소가 없으면 에러 방지를 위해 리턴
+    if (!incomeEl || !expenseEl) return;
+
     let incomeTotal = 0;
     let expenseTotal = 0;
 
     if (globalData && globalData.length > 0) {
-        // 날짜 객체에서 연도와 월 추출 (예: 2024, 03)
         const year = dateObj.getFullYear();
-        // getMonth()는 0부터 시작하므로 1을 더해주고, 두 자리로 포맷팅(padStart)
         const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const targetMonthPrefix = `${year}-${month}`; // "2024-03" 형태의 문자열 생성
+        const targetMonthPrefix = `${year}-${month}`;
 
-        // 전역 데이터에서 해당 월의 데이터만 합산
         globalData.forEach((item) => {
             if (!item.Date) return;
-
-            // 데이터의 날짜 문자열 앞 7자리("YYYY-MM") 추출하여 비교
-            const itemDatePrefix = item.Date.substring(0, 7);
-
-            if (itemDatePrefix === targetMonthPrefix) {
-                if (item.Type === 'income') {
-                    incomeTotal += Number(item.Amount);
-                } else if (item.Type === 'expense') {
-                    expenseTotal += Number(item.Amount);
-                }
+            if (item.Date.substring(0, 7) === targetMonthPrefix) {
+                if (item.Type === 'income') incomeTotal += Number(item.Amount);
+                else if (item.Type === 'expense') expenseTotal += Number(item.Amount);
             }
         });
     }
 
-    // HTML 요소에 결과값 텍스트 업데이트
-    document.getElementById('monthly-income-total').innerText = '+' + formatMoney(incomeTotal);
-    document.getElementById('monthly-expense-total').innerText = '-' + formatMoney(expenseTotal);
+    incomeEl.innerText = formatMoney(incomeTotal);
+    expenseEl.innerText = formatMoney(expenseTotal);
 };
 
 // ==========================================
@@ -873,12 +869,15 @@ window.deleteCategory = async function (catValue) {
 // ==========================================
 // 13. 국가별 금액 표기 포맷팅 함수
 // ==========================================
+// app.js 맨 아래에 반드시 있어야 합니다.
 window.formatMoney = function (amount) {
     const num = Number(amount);
+    if (isNaN(num)) return currentCountry === 'KR' ? '0원' : '¥0';
+
     if (currentCountry === 'KR') {
         return num.toLocaleString('ko-KR') + '원';
     } else {
-        // 👇 [수정] 중국: 기호(¥)를 앞에 붙이고 2글자 '위안' 삭제
+        // 중국: 위안화 기호 ¥ 사용 및 소수점 처리
         return (
             '¥' +
             num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
