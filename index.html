@@ -2,16 +2,18 @@
 <html lang="ko">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
         <title>변민삼박 가계부</title>
         <meta name="apple-mobile-web-app-title" content="가계부" />
         <meta name="application-name" content="가계부" />
-
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
-
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="theme-color" content="#4f46e5" />
+
         <link
             rel="icon"
             href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💳</text></svg>"
@@ -31,19 +33,18 @@
 
         <script src="https://accounts.google.com/gsi/client" async defer></script>
         <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
-
         <link rel="stylesheet" href="style.css" />
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans theme-transition">
         <div
             id="global-loader"
-            class="hidden fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm transition-opacity duration-300"
+            class="hidden fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white/70 backdrop-blur-sm"
         >
             <div
                 class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200 mb-4"
                 style="border-top-color: var(--theme-color)"
             ></div>
-            <p class="text-sm font-bold text-gray-600 animate-pulse">데이터를 동기화하는 중...</p>
+            <p class="text-sm font-bold text-gray-600">데이터 동기화 중...</p>
         </div>
 
         <div
@@ -55,9 +56,8 @@
             </div>
             <h1 class="text-2xl font-bold mb-2">변민삼박 가계부</h1>
             <p class="text-gray-500 mb-8 text-center text-sm">
-                허용된 사용자만 접근할 수 있습니다.<br />구글 계정으로 로그인해 주세요.
+                허용된 구글 계정으로 로그인해 주세요.
             </p>
-
             <div
                 id="g_id_onload"
                 data-client_id="423926198751-jor3vh0h0rn1d4l8jg2astfp253ktfqu.apps.googleusercontent.com"
@@ -73,10 +73,9 @@
                 data-theme="outline"
                 data-text="signin_with"
                 data-size="large"
-                data-logo_alignment="left"
             ></div>
             <p id="login-error" class="text-red-500 text-sm mt-4 hidden">
-                등록되지 않은 계정입니다. 관리자에게 문의하세요.
+                등록되지 않은 계정입니다.
             </p>
         </div>
 
@@ -92,14 +91,14 @@
                     <button
                         id="btn-kr"
                         onclick="switchCountry('KR')"
-                        class="px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all"
+                        class="px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow"
                     >
                         KR 🇰🇷
                     </button>
                     <button
                         id="btn-cn"
                         onclick="switchCountry('CN')"
-                        class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 hover:opacity-100 transition-all"
+                        class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70"
                     >
                         CN 🇨🇳
                     </button>
@@ -117,27 +116,29 @@
                     >
                         <button
                             onclick="changeGlobalMonth(-1)"
-                            class="p-2 text-gray-400 hover:text-primary transition-colors"
+                            class="p-2 text-gray-400 hover:text-primary"
                         >
                             <span class="material-symbols-outlined">chevron_left</span>
                         </button>
-                        <h2 id="daily-month-title" class="text-lg font-extrabold text-gray-900">
-                            2026년 3월
-                        </h2>
+                        <h2
+                            id="daily-month-title"
+                            class="text-lg font-extrabold text-gray-900"
+                        ></h2>
                         <button
                             onclick="changeGlobalMonth(1)"
-                            class="p-2 text-gray-400 hover:text-primary transition-colors"
+                            class="p-2 text-gray-400 hover:text-primary"
                         >
                             <span class="material-symbols-outlined">chevron_right</span>
                         </button>
                     </div>
-                    <div id="daily-list-container" class="no-scrollbar"></div>
+                    <div id="daily-list-container"></div>
                 </section>
 
                 <section id="view-monthly" class="tab-content">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-md font-semibold text-gray-700">월간 레포트</h2>
                     </div>
+
                     <div
                         class="flex justify-between items-center mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100"
                     >
@@ -157,10 +158,12 @@
                             <span class="material-symbols-outlined">chevron_right</span>
                         </button>
                     </div>
+
                     <div
                         id="calendar"
                         class="bg-white rounded-3xl p-2 mb-6 text-[10px] sm:text-xs shadow-sm border border-gray-100"
                     ></div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div
                             class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm relative overflow-hidden"
@@ -178,9 +181,10 @@
                                 id="monthly-income-total"
                                 class="text-lg font-bold text-gray-900 truncate"
                             >
-                                ¥0
+                                0원
                             </p>
                         </div>
+
                         <div
                             class="bg-white border border-gray-100 p-4 rounded-2xl shadow-sm relative overflow-hidden"
                         >
@@ -197,7 +201,7 @@
                                 id="monthly-expense-total"
                                 class="text-lg font-bold text-gray-900 truncate"
                             >
-                                ¥0
+                                0원
                             </p>
                         </div>
                     </div>
@@ -215,37 +219,36 @@
                     >
                         <button
                             onclick="changeGlobalMonth(-1)"
-                            class="p-2 text-gray-400 hover:text-primary transition-colors"
+                            class="p-2 text-gray-400 hover:text-primary"
                         >
                             <span class="material-symbols-outlined">chevron_left</span>
                         </button>
-                        <h2 id="stats-month-title" class="text-lg font-extrabold text-gray-900">
-                            2026년 3월
-                        </h2>
+                        <h2
+                            id="stats-month-title"
+                            class="text-lg font-extrabold text-gray-900"
+                        ></h2>
                         <button
                             onclick="changeGlobalMonth(1)"
-                            class="p-2 text-gray-400 hover:text-primary transition-colors"
+                            class="p-2 text-gray-400 hover:text-primary"
                         >
                             <span class="material-symbols-outlined">chevron_right</span>
                         </button>
                     </div>
                     <div
-                        class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-center"
+                        class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-6 flex justify-center"
                     >
                         <div class="relative w-full max-w-[250px] aspect-square">
                             <canvas id="expenseChart"></canvas>
                         </div>
                     </div>
-                    <div id="card-stats-container" class="mt-6 space-y-3"></div>
                     <p id="no-chart-data" class="text-center text-gray-500 mt-4 text-sm hidden">
                         지출 내역이 없습니다.
                     </p>
+                    <div id="card-stats-container" class="space-y-3"></div>
                 </section>
 
                 <section id="view-settings" class="tab-content">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-md font-semibold text-gray-700">설정</h2>
-                    </div>
+                    <h2 class="text-md font-semibold text-gray-700 mb-4">설정</h2>
                     <div
                         class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-4 border border-gray-100"
                     >
@@ -255,20 +258,19 @@
                             <span class="material-symbols-outlined text-2xl">person</span>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 mb-0.5">현재 로그인된 계정</p>
+                            <p class="text-xs text-gray-500 mb-0.5">현재 계정</p>
                             <p id="settings-user-email" class="font-bold text-gray-800 text-sm"></p>
                         </div>
                     </div>
                     <ul class="divide-y divide-gray-100">
                         <li
                             onclick="openCardModal()"
-                            class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
+                            class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                         >
                             <div class="flex items-center gap-3">
                                 <span class="material-symbols-outlined text-indigo-500"
                                     >credit_card</span
-                                >
-                                <span class="font-medium text-gray-800">신용카드 관리</span>
+                                ><span>신용카드 관리</span>
                             </div>
                             <span class="material-symbols-outlined text-gray-400"
                                 >chevron_right</span
@@ -276,26 +278,15 @@
                         </li>
                         <li
                             onclick="openCategoryModal()"
-                            class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
+                            class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
                         >
                             <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-gray-500"
-                                    >category</span
-                                >
-                                <span class="text-gray-800">카테고리 관리</span>
+                                <span class="material-symbols-outlined text-gray-500">category</span
+                                ><span>카테고리 관리</span>
                             </div>
                             <span class="material-symbols-outlined text-gray-400"
                                 >chevron_right</span
                             >
-                        </li>
-                        <li
-                            class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition"
-                        >
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-gray-500">info</span>
-                                <span class="text-gray-800">앱 정보</span>
-                            </div>
-                            <span class="text-xs text-gray-400">v1.1.0</span>
                         </li>
                     </ul>
                 </section>
@@ -305,133 +296,124 @@
                 class="bg-white border-t border-gray-200 flex justify-between items-center pb-2 pt-2 z-10"
             >
                 <button
-                    onclick="switchTab('daily', '일간 내역', this)"
+                    onclick="switchTab('daily', '일간', this)"
                     class="nav-btn text-primary flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined mb-1 text-[24px]">list_alt</span
+                    <span class="material-symbols-outlined mb-1">list_alt</span
                     ><span class="text-[10px]">일간</span>
                 </button>
                 <button
-                    onclick="switchTab('monthly', '월간 달력', this)"
+                    onclick="switchTab('monthly', '월간', this)"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined mb-1 text-[24px]">calendar_month</span
+                    <span class="material-symbols-outlined mb-1">calendar_month</span
                     ><span class="text-[10px]">월간</span>
                 </button>
                 <div class="flex-1 flex justify-center">
                     <button
                         onclick="openAddModal()"
-                        class="bg-primary text-white w-12 h-12 flex items-center justify-center rounded-xl shadow-sm bg-primary-hover active:scale-95 transition-transform duration-150"
+                        class="bg-primary text-white w-12 h-12 flex items-center justify-center rounded-xl shadow-lg active:scale-95 transition-all"
                     >
                         <span class="material-symbols-outlined text-3xl">add</span>
                     </button>
                 </div>
                 <button
-                    onclick="switchTab('stats', '지출 통계', this)"
+                    onclick="switchTab('stats', '통계', this)"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined mb-1 text-[24px]">pie_chart</span
+                    <span class="material-symbols-outlined mb-1">pie_chart</span
                     ><span class="text-[10px]">통계</span>
                 </button>
                 <button
                     onclick="switchTab('settings', '설정', this)"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1"
                 >
-                    <span class="material-symbols-outlined mb-1 text-[24px]">settings</span
+                    <span class="material-symbols-outlined mb-1">settings</span
                     ><span class="text-[10px]">설정</span>
                 </button>
             </nav>
+        </div>
 
+        <div
+            id="add-modal"
+            class="hidden fixed inset-0 bg-black/40 z-50 flex items-end justify-center transition-opacity opacity-0"
+        >
             <div
-                id="add-modal"
-                class="hidden absolute inset-0 bg-black bg-opacity-40 z-50 flex items-end justify-center transition-opacity duration-300 opacity-0"
+                id="modal-content"
+                class="bg-white w-full rounded-t-3xl p-6 transform translate-y-full transition-transform shadow-2xl"
             >
-                <div
-                    id="modal-content"
-                    class="bg-white w-full rounded-t-3xl p-6 transform transition-transform duration-300 translate-y-full shadow-2xl"
-                >
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 id="modal-title" class="text-lg font-bold mb-4">새 내역 추가</h2>
-                        <button
-                            onclick="closeAddModal()"
-                            class="text-gray-400 hover:text-gray-700 p-1"
-                        >
-                            <span class="material-symbols-outlined">close</span>
-                        </button>
-                    </div>
-                    <form id="add-form" class="space-y-4">
-                        <div class="flex bg-gray-100 rounded-lg p-1">
-                            <label class="flex-1 text-center cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="type"
-                                    value="expense"
-                                    class="peer hidden"
-                                    checked
-                                />
-                                <div
-                                    class="peer-checked:bg-white peer-checked:shadow peer-checked:text-red-500 py-2 rounded-md text-sm font-semibold text-gray-500 transition"
-                                >
-                                    지출
-                                </div>
-                            </label>
-                            <label class="flex-1 text-center cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="type"
-                                    value="income"
-                                    class="peer hidden"
-                                />
-                                <div
-                                    class="peer-checked:bg-white peer-checked:shadow peer-checked:text-blue-500 py-2 rounded-md text-sm font-semibold text-gray-500 transition"
-                                >
-                                    수입
-                                </div>
-                            </label>
-                        </div>
-
-                        <input
-                            type="text"
-                            id="input-item-name"
-                            placeholder="항목 이름 (예: 스타벅스, 장보기)"
-                            class="w-full border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                            required
-                        />
-
-                        <div class="flex gap-2">
-                            <input
-                                type="date"
-                                id="input-date"
-                                class="w-1/2 border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                required
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="modal-title" class="text-lg font-bold">새 내역 추가</h2>
+                    <button onclick="closeAddModal()" class="text-gray-400">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form id="add-form" class="space-y-4">
+                    <div class="flex bg-gray-100 rounded-lg p-1">
+                        <label class="flex-1 text-center cursor-pointer"
+                            ><input
+                                type="radio"
+                                name="type"
+                                value="expense"
+                                class="peer hidden"
+                                checked
                             />
-                            <select
-                                id="input-category"
-                                class="w-1/2 border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            <div
+                                class="peer-checked:bg-white peer-checked:text-red-500 py-2 rounded-md text-sm font-semibold text-gray-500"
                             >
-                                <option value="">카테고리 선택</option>
-                            </select>
-                        </div>
-
+                                지출
+                            </div></label
+                        >
+                        <label class="flex-1 text-center cursor-pointer"
+                            ><input type="radio" name="type" value="income" class="peer hidden" />
+                            <div
+                                class="peer-checked:bg-white peer-checked:text-blue-500 py-2 rounded-md text-sm font-semibold text-gray-500"
+                            >
+                                수입
+                            </div></label
+                        >
+                    </div>
+                    <input
+                        type="text"
+                        id="input-item-name"
+                        placeholder="항목 이름"
+                        class="w-full border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        required
+                    />
+                    <div class="flex gap-2">
                         <input
-                            type="text"
-                            inputmode="decimal"
-                            id="input-amount"
-                            placeholder="금액 입력"
-                            class="w-full border border-gray-300 p-3 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            type="date"
+                            id="input-date"
+                            class="w-1/2 border border-gray-300 p-3 rounded-lg text-sm outline-none"
                             required
                         />
-
-                        <div
-                            id="payment-section"
-                            class="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200"
+                        <select
+                            id="input-category"
+                            class="w-1/2 border border-gray-300 p-3 rounded-lg text-sm outline-none"
                         >
+                            <option value="">카테고리 선택</option>
+                        </select>
+                    </div>
+                    <input
+                        type="text"
+                        id="input-amount"
+                        inputmode="decimal"
+                        placeholder="금액"
+                        class="w-full border border-gray-300 p-3 rounded-lg text-sm font-bold outline-none"
+                        required
+                    />
+
+                    <div
+                        id="payment-section"
+                        class="flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200"
+                    >
+                        <div class="flex gap-2 items-center">
                             <label class="text-xs font-bold text-gray-500 w-12 text-center"
                                 >결제</label
                             >
                             <div class="flex-1 flex bg-gray-200 rounded-md p-1">
-                                <label class="flex-1 text-center cursor-pointer">
-                                    <input
+                                <label class="flex-1 text-center cursor-pointer"
+                                    ><input
                                         type="radio"
                                         name="pay_type"
                                         value="cash"
@@ -440,13 +422,13 @@
                                         onchange="toggleCardSelect()"
                                     />
                                     <div
-                                        class="peer-checked:bg-white peer-checked:shadow peer-checked:text-indigo-600 py-1.5 rounded text-xs font-semibold text-gray-500 transition"
+                                        class="peer-checked:bg-white peer-checked:text-indigo-600 py-1.5 rounded text-xs font-semibold text-gray-500"
                                     >
                                         현금
-                                    </div>
-                                </label>
-                                <label class="flex-1 text-center cursor-pointer">
-                                    <input
+                                    </div></label
+                                >
+                                <label class="flex-1 text-center cursor-pointer"
+                                    ><input
                                         type="radio"
                                         name="pay_type"
                                         value="card"
@@ -454,137 +436,133 @@
                                         onchange="toggleCardSelect()"
                                     />
                                     <div
-                                        class="peer-checked:bg-white peer-checked:shadow peer-checked:text-indigo-600 py-1.5 rounded text-xs font-semibold text-gray-500 transition"
+                                        class="peer-checked:bg-white peer-checked:text-indigo-600 py-1.5 rounded text-xs font-semibold text-gray-500"
                                     >
                                         카드
-                                    </div>
-                                </label>
+                                    </div></label
+                                >
                             </div>
                             <select
                                 id="input-card-select"
-                                class="hidden flex-1 border border-gray-300 p-2 rounded-md text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
-                            >
-                                <option value="">카드 선택</option>
-                            </select>
+                                class="hidden flex-1 border border-gray-300 p-2 rounded-md text-xs bg-white"
+                            ></select>
                         </div>
-
-                        <textarea
-                            id="input-memo-detail"
-                            rows="2"
-                            placeholder="보충 상세 메모 (선택사항)"
-                            class="w-full border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
-                        ></textarea>
-
-                        <input type="hidden" id="input-id" value="" />
-                        <input type="hidden" id="input-action" value="create" />
-
-                        <div class="flex gap-2 mt-2">
-                            <button
-                                type="button"
-                                id="delete-btn"
-                                onclick="deleteRecord()"
-                                class="hidden w-1/3 bg-red-100 text-red-600 p-3 rounded-lg font-bold shadow-sm hover:bg-red-200 transition"
+                        <div
+                            id="discount-area"
+                            class="hidden flex gap-2 items-center border-t pt-2 border-gray-200"
+                        >
+                            <label class="text-xs font-bold text-gray-500 w-12 text-center"
+                                >할인</label
                             >
-                                삭제
-                            </button>
-                            <button
-                                type="button"
-                                id="save-btn"
-                                onclick="saveRecord()"
-                                class="w-full bg-primary text-white p-3 rounded-lg font-bold shadow-md bg-primary-hover transition"
-                            >
-                                저장하기
-                            </button>
+                            <input
+                                type="text"
+                                id="input-discount"
+                                inputmode="decimal"
+                                placeholder="할인 금액"
+                                class="flex-1 border border-gray-300 p-2 rounded-md text-xs outline-none"
+                            />
                         </div>
-                    </form>
-                </div>
+                    </div>
+
+                    <textarea
+                        id="input-memo-detail"
+                        rows="2"
+                        placeholder="상세 메모 (선택)"
+                        class="w-full border border-gray-300 p-3 rounded-lg text-sm outline-none resize-none"
+                    ></textarea>
+                    <input type="hidden" id="input-id" /><input
+                        type="hidden"
+                        id="input-action"
+                        value="create"
+                    />
+                    <div class="flex gap-2">
+                        <button
+                            type="button"
+                            id="delete-btn"
+                            onclick="deleteRecord()"
+                            class="hidden w-1/3 bg-red-100 text-red-600 p-3 rounded-lg font-bold"
+                        >
+                            삭제
+                        </button>
+                        <button
+                            type="button"
+                            id="save-btn"
+                            onclick="saveRecord()"
+                            class="w-full bg-primary text-white p-3 rounded-lg font-bold"
+                        >
+                            저장하기
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
-        <script src="app.js"></script>
-
         <div
             id="weekly-modal"
-            class="hidden absolute inset-0 bg-black bg-opacity-40 z-40 flex items-end justify-center transition-opacity duration-300 opacity-0"
+            class="hidden fixed inset-0 bg-black/40 z-50 flex items-end justify-center transition-opacity opacity-0"
         >
             <div
                 id="weekly-modal-content"
-                class="bg-white w-full h-[75vh] rounded-t-3xl p-6 transform transition-transform duration-300 translate-y-full shadow-2xl flex flex-col"
+                class="bg-white w-full h-[75vh] rounded-t-3xl p-6 transform translate-y-full transition-transform flex flex-col"
             >
                 <div class="flex justify-between items-center mb-4">
                     <div>
                         <h3 class="text-lg font-bold" id="weekly-title">주간 내역</h3>
                         <p class="text-xs text-gray-500" id="weekly-date-range"></p>
                     </div>
-                    <button
-                        onclick="closeWeeklyModal()"
-                        class="text-gray-400 hover:text-gray-700 p-1"
-                    >
+                    <button onclick="closeWeeklyModal()">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
-                <div id="weekly-list-container" class="flex-1 overflow-y-auto pb-8"></div>
+                <div id="weekly-list-container" class="flex-1 overflow-y-auto"></div>
             </div>
         </div>
-
         <div
             id="category-modal"
-            class="hidden absolute inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center transition-opacity duration-300 opacity-0 p-4"
+            class="hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center transition-opacity opacity-0 p-4"
         >
             <div
                 id="category-modal-content"
-                class="bg-white w-full max-w-sm rounded-2xl p-6 transform transition-transform duration-300 scale-95 shadow-2xl flex flex-col max-h-[80vh]"
+                class="bg-white w-full max-w-sm rounded-2xl p-6 transform scale-95 transition-transform flex flex-col max-h-[80vh]"
             >
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold">카테고리 관리</h3>
-                    <button
-                        onclick="closeCategoryModal()"
-                        class="text-gray-400 hover:text-gray-700 p-1"
-                    >
+                    <button onclick="closeCategoryModal()">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
                 <div class="flex gap-2 mb-4">
-                    <select
-                        id="new-cat-type"
-                        class="border border-gray-300 rounded-lg p-2 text-sm w-1/3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    >
+                    <select id="new-cat-type" class="border p-2 rounded-lg text-sm">
                         <option value="expense">지출</option>
-                        <option value="income">수입</option>
-                    </select>
-                    <input
+                        <option value="income">수입</option></select
+                    ><input
                         type="text"
                         id="new-cat-label"
-                        placeholder="새 카테고리명"
-                        class="border border-gray-300 rounded-lg p-2 text-sm flex-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                    <button
+                        placeholder="이름"
+                        class="border p-2 rounded-lg text-sm flex-1"
+                    /><button
                         onclick="addCategory()"
-                        class="bg-primary text-white rounded-lg px-4 text-sm font-bold bg-primary-hover transition"
+                        class="bg-primary text-white px-4 rounded-lg font-bold"
                     >
                         추가
                     </button>
                 </div>
-                <div class="flex-1 overflow-y-auto">
-                    <ul id="category-list-container" class="divide-y divide-gray-100"></ul>
+                <div class="overflow-y-auto">
+                    <ul id="category-list-container" class="divide-y"></ul>
                 </div>
             </div>
         </div>
-
         <div
             id="card-modal"
-            class="hidden absolute inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center transition-opacity duration-300 opacity-0 p-4"
+            class="hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center transition-opacity opacity-0 p-4"
         >
             <div
                 id="card-modal-content"
-                class="bg-white w-full max-w-sm rounded-2xl p-6 transform transition-transform duration-300 scale-95 shadow-2xl flex flex-col max-h-[80vh]"
+                class="bg-white w-full max-w-sm rounded-2xl p-6 transform scale-95 transition-transform flex flex-col max-h-[80vh]"
             >
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-bold">신용카드 관리</h3>
-                    <button
-                        onclick="closeCardModal()"
-                        class="text-gray-400 hover:text-gray-700 p-1"
-                    >
+                    <button onclick="closeCardModal()">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -593,27 +571,25 @@
                         type="text"
                         id="new-card-label"
                         placeholder="카드명"
-                        class="border border-gray-300 rounded-lg p-2 text-sm flex-1 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                    <input
+                        class="border p-2 rounded-lg text-sm flex-1"
+                    /><input
                         type="number"
                         id="new-card-day"
                         placeholder="기준일"
-                        min="1"
-                        max="31"
-                        class="border border-gray-300 rounded-lg p-2 text-sm w-16 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                    />
-                    <button
+                        class="border p-2 rounded-lg text-sm w-16"
+                    /><button
                         onclick="addCard()"
-                        class="bg-primary text-white rounded-lg px-4 text-sm font-bold bg-primary-hover transition"
+                        class="bg-primary text-white px-4 rounded-lg font-bold"
                     >
                         추가
                     </button>
                 </div>
-                <div class="flex-1 overflow-y-auto">
-                    <ul id="card-list-container" class="divide-y divide-gray-100"></ul>
+                <div class="overflow-y-auto">
+                    <ul id="card-list-container" class="divide-y"></ul>
                 </div>
             </div>
         </div>
+
+        <script src="app.js"></script>
     </body>
 </html>
