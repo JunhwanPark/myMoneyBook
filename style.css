@@ -131,7 +131,7 @@ nav {
 
 /* 3. 개별 날짜 카드 간격 (이 여백이 카드를 분리해줍니다) */
 .fc-daygrid-day {
-    padding: 3px !important;
+    padding: 1.5px !important;
 }
 
 /* 4. 날짜 카드 본체 디자인 (높이 강제 고정) */
@@ -140,19 +140,19 @@ nav {
     border: 1px solid #f3f4f6 !important;
     border-radius: 12px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-    height: 75px !important; /* min-height 대신 height로 고정! */
+    height: 65px !important; /* min-height 대신 height로 고정! */
     overflow: hidden !important; /* 내용이 많아도 카드가 커지지 않게 잘라냄 */
     display: flex;
     flex-direction: column;
 }
 
-/* [추가] 카드 안쪽 이벤트들이 차지하는 공간 정렬 */
+/* [수정] 카드 안쪽 이벤트(금액)들이 차지하는 공간 정렬 */
 .fc-daygrid-day-events {
     margin: 0 !important;
-    padding: 0 2px !important;
+    padding: 0 0.5px !important; /* 좌우 여백을 줄여서 왼쪽으로 당김 */
     display: flex;
     flex-direction: column;
-    gap: 1px; /* 수입/지출 글자 사이 간격 약간 */
+    gap: 1px !important;
 }
 
 /* 5. 날짜 숫자 위치 이동 (우측 -> 좌측 상단) */
@@ -160,7 +160,7 @@ nav {
     display: flex;
     justify-content: flex-start !important; /* 좌측 정렬 */
     flex-direction: row !important; /* 기본 방향(row-reverse 무효화) */
-    padding: 6px 8px 2px 8px !important;
+    padding: 4px 4px 0px 4px !important; /* 기존보다 상하좌우 여백을 대폭 줄여서 바짝 붙임 */
 }
 
 .fc-daygrid-day-number {
@@ -170,34 +170,36 @@ nav {
     padding: 0 !important;
 }
 
-/* 6. 오늘 날짜 카드 전체 강조 */
+/* 6. 오늘 날짜 강조 (카드 배경색 제거, 날짜 숫자만 포인트) */
 .fc-day-today .fc-daygrid-day-frame {
-    background-color: var(--theme-light) !important;
-    border-color: var(--theme-color) !important;
+    /* 기존에 있던 배경색과 테두리 강조 속성을 지우고 기본값으로 돌립니다 */
+    background-color: #ffffff !important;
+    border-color: #f3f4f6 !important;
 }
 
 .fc-day-today .fc-daygrid-day-number {
+    /* 날짜 숫자에만 색상 유지 */
     background-color: var(--theme-color) !important;
     color: #ffffff !important;
-    border-radius: 6px;
-    padding: 2px 6px !important;
-    margin-top: -2px !important;
-    margin-left: -4px !important;
+    border-radius: 4px;
+    padding: 1px 4px !important;
+    margin-top: 0 !important;
+    margin-left: 0 !important;
 }
 
 /* 7. 달력 내 금액 텍스트 디자인 */
 .fc-event {
     border: none !important;
     background: transparent !important;
-    padding: 1px 4px !important;
-    margin-bottom: 2px !important;
-
+    padding: 0 2px !important; /* 내부 패딩을 최소화하여 글씨를 왼쪽으로 밀착 */
+    margin-bottom: 0 !important; /* 줄 간격을 넓히던 하단 마진 완벽 제거 (절반 이하로 줄어듦) */
     pointer-events: none !important;
 }
 .fc-event-title {
     font-weight: 800 !important;
     font-size: 9px !important;
     letter-spacing: -0.5px;
+    line-height: 1.1 !important; /* 텍스트 자체의 줄 높이도 타이트하게 압축 */
 }
 
 /* ==========================================
