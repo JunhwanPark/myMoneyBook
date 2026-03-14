@@ -18,6 +18,57 @@ let calendar = null; // FullCalendar 인스턴스
 let expenseChart = null; // [새로 추가된 변수] 차트 인스턴스
 let globalCategories = []; // [새로 추가] 카테고리 데이터를 담아둘 변수
 let currentCountry = 'KR'; // 기본 국가
+let currentDisplayDate = new Date(); // 👇 [새로 추가] 현재 보고 있는 기준 월
+
+// ==========================================
+// 로딩 화면 제어 함수
+// ==========================================
+window.showLoader = function () {
+    const loader = document.getElementById('global-loader');
+    if (loader) loader.classList.remove('hidden');
+};
+
+window.hideLoader = function () {
+    const loader = document.getElementById('global-loader');
+    if (loader) loader.classList.add('hidden');
+};
+
+// ==========================================
+// 공통 월 이동 로직 (일간, 통계, 달력 동기화)
+// ==========================================
+window.updateMonthTitles = function () {
+    const year = currentDisplayDate.getFullYear();
+    const month = currentDisplayDate.getMonth() + 1;
+    const titleStr = `${year}년 ${month}월`;
+
+    // 일간 탭
+    const dailyTitle = document.getElementById('daily-month-title');
+    if (dailyTitle) dailyTitle.innerText = titleStr;
+
+    // 통계 탭
+    const statsTitle = document.getElementById('stats-month-title');
+    if (statsTitle) statsTitle.innerText = titleStr;
+
+    // 👇 [추가] 월간(달력) 탭
+    const monthlyTitle = document.getElementById('monthly-month-title');
+    if (monthlyTitle) monthlyTitle.innerText = titleStr;
+};
+
+window.changeGlobalMonth = function (offset) {
+    currentDisplayDate.setMonth(currentDisplayDate.getMonth() + offset);
+    updateMonthTitles();
+
+    // 월이 바뀌었으니 화면 리스트 및 차트 다시 그리기
+    renderDailyList(globalData);
+    if (document.getElementById('view-stats').classList.contains('active')) {
+        renderChart();
+    }
+
+    // 달력 객체가 있다면 달력 화면도 연동해서 넘겨줌
+    if (calendar) {
+        calendar.gotoDate(currentDisplayDate);
+    }
+};
 
 // ==========================================
 // 2. 구글 로그인 및 인증 로직
@@ -63,37 +114,46 @@ window.switchTab = function (tabId, title, btnElement) {
 
     // 2. 하단 네비게이션 버튼 색상 초기화 (모두 회색으로)
     document.querySelectorAll('.nav-btn').forEach((btn) => {
-        // 기존에 남아있을 수 있는 파란색/테마색 모두 제거
         btn.classList.remove('text-indigo-600', 'text-primary');
         btn.classList.add('text-gray-400');
     });
 
-    // 3. 클릭한 버튼만 활성화 (현재 테마의 포인트 색상 적용)
+    // 3. 클릭한 버튼만 활성화
     if (btnElement) {
         btnElement.classList.remove('text-gray-400');
         btnElement.classList.add('text-primary');
     }
 
-    // 4. 월간 달력 렌더링
-    if (tabId === 'monthly') {
+    // 👇 [추가 및 수정] 각 탭으로 이동할 때마다 현재 이동해 있는 '월' 기준으로 데이터 새로고침!
+    if (tabId === 'daily') {
+        renderDailyList(globalData);
+    } else if (tabId === 'monthly') {
         if (!calendar) {
             initCalendar();
         } else {
             setTimeout(() => calendar.render(), 10);
         }
-    }
-
-    // 5. 통계 차트 렌더링
-    if (tabId === 'stats') {
+    } else if (tabId === 'stats') {
         renderChart();
     }
 };
 
 // 바텀 시트 모달 (항목 추가) 열기
 window.openAddModal = function () {
+    // 👇 모달을 열 때 타이틀을 '새 내역 추가'로 변경
+    const titleEl = document.getElementById('modal-title');
+    if (titleEl) titleEl.innerText = '새 내역 추가';
+
     document.getElementById('add-form').reset();
     document.getElementById('input-id').value = '';
     document.getElementById('input-action').value = 'create';
+
+    // 👇 [새로 추가된 부분] 날짜 입력칸의 기본값을 '오늘'로 자동 설정합니다.
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    document.getElementById('input-date').value = `${year}-${month}-${day}`;
 
     // UI 초기화 (저장 버튼 텍스트 원복, 삭제 버튼 숨김)
     document.getElementById('save-btn').innerText = '저장하기';
@@ -123,11 +183,19 @@ window.openEditModal = function (id) {
     renderCategoryDropdown(targetItem.Type);
 
     document.getElementById('input-date').value = targetItem.Date.substring(0, 10);
+    const titleEl = document.getElementById('modal-title');
+    if (titleEl) titleEl.innerText = '내역 수정';
+
     document.getElementById('input-category').value = targetItem.Category;
     document.getElementById('input-amount').value = Number(targetItem.Amount).toLocaleString(
         'ko-KR'
     );
-    document.getElementById('input-memo').value = targetItem.Memo || '';
+
+    // 👇 줄바꿈을 기준으로 항목 이름과 상세 메모를 쪼개서 넣습니다.
+    const fullMemo = targetItem.Memo || '';
+    const lines = fullMemo.split('\n');
+    document.getElementById('input-item-name').value = lines[0] || '';
+    document.getElementById('input-memo-detail').value = lines.slice(1).join('\n');
 
     // UI 변경 (저장 -> 수정하기, 삭제 버튼 노출)
     document.getElementById('save-btn').innerText = '수정하기';
@@ -207,28 +275,32 @@ window.openWeeklyModal = function (clickedDateStr) {
         container.innerHTML =
             '<p class="text-center text-gray-500 py-10 text-sm">해당 주간에 내역이 없습니다.</p>';
     } else {
-        // 기존 openWeeklyModal 내부 수정
+        // 👇 이 부분을 찾아주세요 (openWeeklyModal 함수 내부)
         weeklyData.forEach((item) => {
             const isExpense = item.Type === 'expense';
             const amountColor = isExpense ? 'text-red-500' : 'text-blue-500';
             const sign = isExpense ? '-' : '+';
             const iconBg = isExpense ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
 
-            // 👇 [추가된 부분] 영문 Value를 한글 Label로 변환
             let catLabel = '미분류';
             if (item.Category) {
                 const foundCat = globalCategories.find((c) => c.Value === item.Category);
                 catLabel = foundCat ? foundCat.Label : item.Category;
             }
 
+            // 👇 [추가] 주간 리스트에서도 첫 줄(항목 이름)만 빼냅니다.
+            const lines = (item.Memo || '').split('\n');
+            const itemName = lines[0] || '내역 없음';
+
+            // 👇 여기서부터 listItem 생성 끝까지 통째로 덮어쓰세요!
             const listItem = `
                 <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 p-3 rounded-lg shadow-sm mb-3 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
                     <div class="flex items-center gap-3">
                         <div class="${iconBg} p-2 rounded-full flex items-center justify-center">
-                            <span class="material-symbols-outlined text-sm">${item.Category === 'food' ? 'restaurant' : 'payments'}</span>
+                            <span class="material-symbols-outlined text-sm">${getCategoryIcon(catLabel)}</span>
                         </div>
                         <div>
-                            <p class="text-sm font-bold">${item.Memo || '내역 없음'}</p>
+                            <p class="text-sm font-bold">${itemName}</p>
                             <p class="text-xs text-gray-400">${catLabel} • ${item.Date.substring(0, 10)}</p>
                         </div>
                     </div>
@@ -284,10 +356,14 @@ window.saveRecord = async function () {
     const rawAmount = document.getElementById('input-amount').value;
     const amount = rawAmount.replace(/,/g, '');
 
-    const memo = document.getElementById('input-memo').value;
+    // 👇 항목 이름과 상세 메모를 줄바꿈(\n)으로 합칩니다.
+    const itemName = document.getElementById('input-item-name').value;
+    const memoDetail = document.getElementById('input-memo-detail').value;
+    const memo = memoDetail ? itemName + '\n' + memoDetail : itemName;
 
-    if (!date || !amount) {
-        alert('날짜와 금액을 입력해주세요.');
+    // 항목 이름도 필수 입력값으로 체크합니다.
+    if (!date || !amount || !itemName) {
+        alert('항목 이름, 날짜, 금액을 모두 입력해주세요.');
         return;
     }
 
@@ -343,64 +419,70 @@ window.saveRecord = async function () {
 // ==========================================
 // 5. 데이터 불러오기 및 화면 렌더링 (새로 추가)
 // ==========================================
+// [수정] 서버에서 가계부 데이터를 불러오는 함수 (로딩 애니메이션 추가)
 window.loadDailyRecords = async function () {
-    const listContainer = document.getElementById('daily-list-container');
+    showLoader(); // 🚀 통신 시작 전 로딩 화면 ON!
 
     try {
         const response = await fetch(GAS_URL + '?country=' + currentCountry);
         const result = await response.json();
 
         if (result.status === 'success') {
-            globalData = result.data;
+            globalData = result.data || [];
+            globalCategories = result.categories || [];
 
-            // 👇 1. [순서 변경] 카테고리 데이터를 제일 먼저 전역 변수에 저장합니다!
-            if (result.categories && result.categories.length > 0) {
-                globalCategories = result.categories;
-
-                // 설정된 탭(지출/수입)에 맞게 드롭다운도 미리 업데이트
-                const currentType = document.querySelector('input[name="type"]:checked').value;
-                renderCategoryDropdown(currentType);
-            }
-
-            // 👇 2. 카테고리가 준비된 상태에서 리스트를 그립니다. (이제 한글 변환이 정상 작동합니다)
+            // 데이터가 준비되면 각 화면(일간, 달력, 카테고리 등) 업데이트
             renderDailyList(globalData);
+            if (calendar) renderCalendarEvents();
+            renderCategoryList(); // 카테고리 설정 화면 업데이트
 
-            // 👇 3. 달력 업데이트
-            if (calendar) {
-                renderCalendarEvents();
+            // 👇 [버그 수정] 현재 보고 있는 화면이 '통계' 탭이라면 차트도 즉시 다시 그리도록 명령!
+            if (document.getElementById('view-stats').classList.contains('active')) {
+                renderChart();
             }
         } else {
-            listContainer.innerHTML = `<p class="text-center text-red-500 py-10 text-sm">오류: ${result.message}</p>`;
+            console.error('서버 에러:', result.message);
         }
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        listContainer.innerHTML =
-            '<p class="text-center text-red-500 py-10 text-sm">데이터를 불러오지 못했습니다.</p>';
+    } catch (e) {
+        console.error('데이터 로드 실패:', e);
+        alert('데이터를 불러오는 데 실패했습니다. 인터넷 연결을 확인해 주세요.');
+    } finally {
+        hideLoader(); // 🏁 성공이든 실패든 통신이 끝나면 무조건 로딩 화면 OFF!
     }
 };
 
 // 가져온 JSON 데이터를 HTML로 만들어 컨테이너에 넣는 함수
 // [함수] 일간 내역 리스트를 화면에 그리는 함수
-function renderDailyList(data) {
+window.renderDailyList = function (data) {
     const listContainer = document.getElementById('daily-list-container');
     const totalExpenseText = document.getElementById('daily-total-expense');
 
-    // 요소가 없으면 실행 중단 방지
     if (!listContainer) return;
-
     listContainer.innerHTML = '';
     let totalExpense = 0;
 
-    // 2. 데이터가 없을 때 처리
-    if (!data || data.length === 0) {
+    // 👇 [추가] 제목 연월 업데이트 및 현재 달 데이터만 필터링
+    updateMonthTitles();
+
+    const targetYear = currentDisplayDate.getFullYear();
+    const targetMonth = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
+    const targetPrefix = `${targetYear}-${targetMonth}`;
+
+    // 현재 선택된 달(targetPrefix)에 해당하는 데이터만 걸러냄
+    const filteredData = (data || []).filter(
+        (item) => item.Date && item.Date.substring(0, 7) === targetPrefix
+    );
+
+    // 2. 데이터가 없을 때 처리 (필터링된 데이터 기준)
+    if (!filteredData || filteredData.length === 0) {
         listContainer.innerHTML =
-            '<p class="text-center text-gray-500 py-10 text-sm">내역이 없습니다.</p>';
-        totalExpenseText.innerText = formatMoney(0); // 0원 또는 ¥0 표기
+            '<p class="text-center text-gray-500 py-10 text-sm">해당 월의 내역이 없습니다.</p>';
+        if (totalExpenseText) totalExpenseText.innerText = formatMoney(0);
         return;
     }
 
-    // 3. 데이터를 하나씩 돌면서 리스트 아이템 생성
-    data.forEach((item) => {
+    // 3. 필터링된 데이터를 돌면서 리스트 아이템 생성
+    filteredData.forEach((item) => {
         // 지출 합계 계산 (지출일 때만 더함)
         if (item.Type === 'expense') {
             totalExpense += Number(item.Amount);
@@ -418,13 +500,14 @@ function renderDailyList(data) {
             catLabel = foundCat ? foundCat.Label : item.Category;
         }
 
-        // 아이콘 결정 (기본값 payments)
-        let iconName = 'payments';
-        if (item.Category === 'food') iconName = 'restaurant';
-        if (item.Category === 'living') iconName = 'shopping_cart';
-        if (item.Category === 'transport') iconName = 'directions_bus';
+        // 카테고리 한글명(catLabel)을 분석하여 스마트하게 아이콘 결정
+        const iconName = getCategoryIcon(catLabel);
 
-        // HTML 리스트 아이템 생성 (formatMoney 함수 사용)
+        // 👇 [추가] 저장된 전체 메모에서 첫 줄(항목 이름)만 빼냅니다.
+        const lines = (item.Memo || '').split('\n');
+        const itemName = lines[0] || '내역 없음';
+
+        // 👇 여기서부터 listItem 생성 끝까지 통째로 덮어쓰세요!
         const listItem = `
             <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 p-3 rounded-xl shadow-sm mb-3 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 active:scale-[0.98] transition-all">
                 <div class="flex items-center gap-3">
@@ -432,15 +515,15 @@ function renderDailyList(data) {
                         <span class="material-symbols-outlined text-sm">${iconName}</span>
                     </div>
                     <div>
-                        <p class="text-sm font-bold text-gray-800">${item.Memo || '내역 없음'}</p>
-                        <p class="text-[11px] text-gray-400">${catLabel} • ${item.Date}</p>
+                        <p class="text-sm font-bold text-gray-800">${itemName}</p>
+                        <p class="text-[11px] text-gray-400">${catLabel} • ${item.Date.substring(0, 10)}</p>
                     </div>
                 </div>
                 <div class="text-right">
                     <p class="${amountColor} font-bold text-sm">
                         ${sign}${formatMoney(item.Amount)}
                     </p>
-                    <p class="text-[10px] text-gray-300">${item.User.split('@')[0]}</p>
+                    <p class="text-[10px] text-gray-300">${item.User ? item.User.split('@')[0] : ''}</p>
                 </div>
             </div>
         `;
@@ -451,7 +534,7 @@ function renderDailyList(data) {
     if (totalExpenseText) {
         totalExpenseText.innerText = formatMoney(totalExpense);
     }
-}
+};
 
 // ==========================================
 // 6. 달력(월간 뷰) 렌더링
@@ -461,21 +544,31 @@ window.initCalendar = function () {
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'ko',
-        headerToolbar: {
-            left: 'prev',
-            center: 'title',
-            right: 'next',
-        },
+        headerToolbar: false, // 커스텀 네비게이션을 쓰기 위해 기본 헤더 숨김
         height: 'auto',
         displayEventTime: false,
         events: [],
+        // 👇 이 부분을 추가해 주세요! (날짜 칸 안의 내용물을 직접 조작)
+        dayCellContent: function (info) {
+            // '1일', '2일' 같은 텍스트에서 '일' 글자를 빈칸으로 지워버립니다.
+            return info.dayNumberText.replace('일', '');
+        },
         dateClick: function (info) {
             openWeeklyModal(info.dateStr);
         },
-        // 👇 [추가된 부분] 달력의 '월'이 바뀔 때마다 실행 (예: < > 버튼 클릭 시)
+        // 👇 [추가/수정] 달력의 '월'이 바뀔 때마다 실행
         datesSet: function (info) {
-            // info.view.currentStart는 현재 달력 화면의 해당 월 1일 날짜 객체를 반환합니다.
             updateMonthlyTotals(info.view.currentStart);
+
+            // 달력에서 달을 넘길 때, 전체 기준 월을 변경하고 타이틀 업데이트
+            currentDisplayDate = new Date(info.view.currentStart);
+            updateMonthTitles();
+
+            // 👇 [핵심 버그 수정] 달이 바뀌었으니 백그라운드에 있는 일간 리스트와 차트도 새 달력에 맞춰 업데이트!
+            renderDailyList(globalData);
+            if (document.getElementById('view-stats').classList.contains('active')) {
+                renderChart();
+            }
         },
     });
     calendar.render();
@@ -546,8 +639,17 @@ window.renderCalendarEvents = function () {
 // 7. 통계(차트) 렌더링
 // ==========================================
 window.renderChart = function () {
-    // 1. 지출 데이터만 필터링
-    const expenses = globalData.filter((item) => item.Type === 'expense');
+    // 👇 [추가] 제목 연월 업데이트 및 현재 달의 지출 데이터만 필터링
+    updateMonthTitles();
+
+    const targetYear = currentDisplayDate.getFullYear();
+    const targetMonth = String(currentDisplayDate.getMonth() + 1).padStart(2, '0');
+    const targetPrefix = `${targetYear}-${targetMonth}`;
+
+    // 해당 월의 '지출(expense)' 데이터만 필터링
+    const expenses = globalData.filter(
+        (item) => item.Type === 'expense' && item.Date && item.Date.substring(0, 7) === targetPrefix
+    );
 
     const canvasContainer = document.getElementById('expenseChart');
     const noDataMsg = document.getElementById('no-chart-data');
@@ -670,8 +772,17 @@ window.renderCategoryDropdown = function (selectedType) {
 // 수입/지출 라디오 버튼을 클릭(변경)할 때마다 카테고리 다시 그리기
 document.querySelectorAll('input[name="type"]').forEach((radio) => {
     radio.addEventListener('change', function () {
-        // this.value는 선택된 라디오 버튼의 값 ('expense' 또는 'income')
         renderCategoryDropdown(this.value);
+
+        // 👇 [버그 수정] 내역 수정 모드일 때, 실수로 눌렀다가 원래 타입으로 돌아오면 기존 카테고리 복구
+        const currentId = document.getElementById('input-id').value;
+        if (currentId) {
+            const item = globalData.find((d) => d.ID === currentId);
+            // 선택한 타입(수입/지출)이 원래 내역의 타입과 같다면 카테고리 값을 살려냄
+            if (item && item.Type === this.value) {
+                document.getElementById('input-category').value = item.Category;
+            }
+        }
     });
 });
 
@@ -913,4 +1024,105 @@ window.switchCountry = function (country) {
 
     // 국가를 바꾼 뒤 해당 국가의 데이터를 새로 불러와서 화면에 그림
     loadDailyRecords();
+};
+
+// ==========================================
+// 15. 카테고리 이름(한글) 기반 스마트 아이콘 매핑
+// ==========================================
+window.getCategoryIcon = function (label) {
+    if (!label) return 'payments';
+
+    // 띄어쓰기를 무시하고 단어 포함 여부 검사
+    const text = label.replace(/\s+/g, '');
+
+    // 🍔 식비 관련
+    if (
+        text.includes('식비') ||
+        text.includes('외식') ||
+        text.includes('식재료') ||
+        text.includes('마트')
+    )
+        return 'restaurant';
+    if (
+        text.includes('카페') ||
+        text.includes('커피') ||
+        text.includes('간식') ||
+        text.includes('디저트')
+    )
+        return 'local_cafe';
+
+    // 🚌 교통/차량 관련
+    if (
+        text.includes('교통') ||
+        text.includes('주유') ||
+        text.includes('택시') ||
+        text.includes('버스') ||
+        text.includes('자동차')
+    )
+        return 'commute';
+
+    // 🛍️ 쇼핑/생활 관련
+    if (
+        text.includes('쇼핑') ||
+        text.includes('의류') ||
+        text.includes('생활') ||
+        text.includes('물건') ||
+        text.includes('미용')
+    )
+        return 'shopping_cart';
+
+    // 🏠 주거/통신 관련
+    if (
+        text.includes('주거') ||
+        text.includes('관리비') ||
+        text.includes('공과금') ||
+        text.includes('통신') ||
+        text.includes('인터넷')
+    )
+        return 'home';
+
+    // 🏥 의료/건강 관련
+    if (
+        text.includes('병원') ||
+        text.includes('의료') ||
+        text.includes('약국') ||
+        text.includes('건강') ||
+        text.includes('운동')
+    )
+        return 'medical_services';
+
+    // 📚 교육/문화/여가 관련
+    if (
+        text.includes('교육') ||
+        text.includes('학원') ||
+        text.includes('책') ||
+        text.includes('도서')
+    )
+        return 'school';
+    if (
+        text.includes('문화') ||
+        text.includes('여가') ||
+        text.includes('취미') ||
+        text.includes('여행') ||
+        text.includes('영화')
+    )
+        return 'flight';
+
+    // 🎁 경조사/육아 관련
+    if (text.includes('경조사') || text.includes('선물') || text.includes('용돈')) return 'redeem';
+    if (text.includes('육아') || text.includes('아이') || text.includes('장난감'))
+        return 'child_care';
+
+    // 💰 수입/저축 관련
+    if (
+        text.includes('월급') ||
+        text.includes('급여') ||
+        text.includes('수입') ||
+        text.includes('부수입')
+    )
+        return 'account_balance';
+    if (text.includes('저축') || text.includes('투자')) return 'savings';
+
+    // 매칭되는 단어가 없으면 기본 결제 아이콘
+    return 'payments';
 };

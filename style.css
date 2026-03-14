@@ -83,61 +83,119 @@ nav {
 }
 
 /* ==========================================
-   5. 달력 커스텀 (FullCalendar Overrides)
+   5. 달력 커스텀 (카드형 디자인)
    ========================================== */
-#calendar {
+/* [추가] 달력 상단 헤더 버튼 (이전달, 다음달, 오늘) 배경 투명화 */
+.fc-toolbar .fc-button {
+    background-color: transparent !important;
     border: none !important;
+    color: var(--text-muted) !important; /* 연한 회색 */
+    box-shadow: none !important;
+    padding: 4px 8px !important;
 }
 
-/* 요일 헤더 */
-.fc-col-header-cell {
-    padding: 12px 0 !important;
-    font-weight: 600 !important;
-    color: var(--text-muted) !important;
-    text-transform: uppercase;
-    font-size: 10px;
-    border: none !important;
+/* 버튼을 눌렀을 때나 마우스 올렸을 때 살짝 포인트 색상만 나타나게 */
+.fc-toolbar .fc-button:hover,
+.fc-toolbar .fc-button:active,
+.fc-toolbar .fc-button:focus {
+    background-color: var(--bg-gray) !important;
+    color: var(--theme-color) !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
-/* 날짜 칸 및 테두리 제거 */
+/* 년/월 타이틀 폰트 세련되게 */
+.fc-toolbar-title {
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    color: var(--text-main) !important;
+}
+
+/* 1. 달력 전체 뼈대 및 기본 실선 완벽 제거 */
+#calendar,
+.fc-theme-standard .fc-scrollgrid {
+    border: none !important;
+}
 .fc-theme-standard td,
 .fc-theme-standard th {
     border: none !important;
 }
 
-.fc-daygrid-day-number {
-    font-weight: 500;
-    color: var(--text-main);
-    padding: 8px !important;
-    font-size: 12px;
+/* 2. 요일 헤더 (일, 월, 화...) */
+.fc-col-header-cell {
+    padding: 10px 0 !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    font-size: 11px;
 }
 
-/* 오늘 날짜 표시 강조 */
-.fc-day-today {
-    background-color: transparent !important;
+/* 3. 개별 날짜 카드 간격 (이 여백이 카드를 분리해줍니다) */
+.fc-daygrid-day {
+    padding: 3px !important;
 }
-.fc-day-today .fc-daygrid-day-number {
-    background-color: var(--theme-color);
-    color: white !important;
-    border-radius: 8px;
-    width: 24px;
-    height: 24px;
+
+/* 4. 날짜 카드 본체 디자인 (높이 강제 고정) */
+.fc-daygrid-day-frame {
+    background-color: #ffffff;
+    border: 1px solid #f3f4f6 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    height: 75px !important; /* min-height 대신 height로 고정! */
+    overflow: hidden !important; /* 내용이 많아도 카드가 커지지 않게 잘라냄 */
     display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 4px;
+    flex-direction: column;
 }
 
-/* 달력 내 금액(이벤트) 텍스트 */
+/* [추가] 카드 안쪽 이벤트들이 차지하는 공간 정렬 */
+.fc-daygrid-day-events {
+    margin: 0 !important;
+    padding: 0 2px !important;
+    display: flex;
+    flex-direction: column;
+    gap: 1px; /* 수입/지출 글자 사이 간격 약간 */
+}
+
+/* 5. 날짜 숫자 위치 이동 (우측 -> 좌측 상단) */
+.fc-daygrid-day-top {
+    display: flex;
+    justify-content: flex-start !important; /* 좌측 정렬 */
+    flex-direction: row !important; /* 기본 방향(row-reverse 무효화) */
+    padding: 6px 8px 2px 8px !important;
+}
+
+.fc-daygrid-day-number {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    color: #9ca3af !important;
+    padding: 0 !important;
+}
+
+/* 6. 오늘 날짜 카드 전체 강조 */
+.fc-day-today .fc-daygrid-day-frame {
+    background-color: var(--theme-light) !important;
+    border-color: var(--theme-color) !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+    background-color: var(--theme-color) !important;
+    color: #ffffff !important;
+    border-radius: 6px;
+    padding: 2px 6px !important;
+    margin-top: -2px !important;
+    margin-left: -4px !important;
+}
+
+/* 7. 달력 내 금액 텍스트 디자인 */
 .fc-event {
     border: none !important;
     background: transparent !important;
-    padding: 0 2px !important;
-    cursor: default;
-}
+    padding: 1px 4px !important;
+    margin-bottom: 2px !important;
 
+    pointer-events: none !important;
+}
 .fc-event-title {
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     font-size: 9px !important;
     letter-spacing: -0.5px;
 }
