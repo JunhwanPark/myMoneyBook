@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>부부 가계부</title>
+        <title>변민삼박 가계부</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -48,6 +48,30 @@
                 -webkit-font-feature-settings: 'liga';
                 -webkit-font-smoothing: antialiased;
             }
+            /* 테마 변수 설정 (기본 한국: 파랑 / 중국: 빨강) */
+            :root {
+                --theme-color: #4f46e5;
+                --theme-hover: #4338ca;
+                --theme-light: #e0e7ff;
+            }
+            body.theme-cn {
+                --theme-color: #e11d48; /* 중국풍 붉은색 */
+                --theme-hover: #be123c;
+                --theme-light: #ffe4e6;
+            }
+
+            .bg-primary {
+                background-color: var(--theme-color) !important;
+            }
+            .bg-primary-hover:hover {
+                background-color: var(--theme-hover) !important;
+            }
+            .text-primary {
+                color: var(--theme-color) !important;
+            }
+            .bg-primary-light {
+                background-color: var(--theme-light) !important;
+            }
         </style>
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans">
@@ -55,10 +79,10 @@
             id="login-screen"
             class="h-[100dvh] max-w-md mx-auto flex flex-col items-center justify-center bg-white p-6 shadow-lg"
         >
-            <div class="bg-indigo-100 text-indigo-600 p-4 rounded-full mb-4">
+            <div class="bg-primary-light text-primary p-4 rounded-full mb-4">
                 <span class="material-symbols-outlined text-5xl">account_balance_wallet</span>
             </div>
-            <h1 class="text-2xl font-bold mb-2">부부 가계부</h1>
+            <h1 class="text-2xl font-bold mb-2">변민삼박 가계부</h1>
             <p class="text-gray-500 mb-8 text-center text-sm">
                 허용된 사용자만 접근할 수 있습니다.<br />구글 계정으로 로그인해 주세요.
             </p>
@@ -90,18 +114,35 @@
             id="main-app"
             class="hidden h-[100dvh] max-w-md mx-auto bg-white relative shadow-lg flex flex-col overflow-hidden"
         >
+            <div
+                class="bg-primary text-white px-4 py-2 flex justify-between items-center z-20 relative transition-colors duration-300"
+            >
+                <span class="font-bold text-sm">내 가계부</span>
+                <div class="flex bg-white/20 rounded-lg p-1">
+                    <button
+                        id="btn-kr"
+                        onclick="switchCountry('KR')"
+                        class="px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all"
+                    >
+                        KR 🇰🇷
+                    </button>
+                    <button
+                        id="btn-cn"
+                        onclick="switchCountry('CN')"
+                        class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 hover:opacity-100 transition-all"
+                    >
+                        CN 🇨🇳
+                    </button>
+                </div>
+            </div>
             <main class="flex-1 overflow-y-auto p-4 pb-24 no-scrollbar">
                 <section id="view-daily" class="tab-content active">
-                    <div class="flex justify-between items-end mb-4">
-                        <h2 class="text-lg font-semibold">전체 내역</h2>
-                        <span id="total-summary" class="text-sm text-gray-500">불러오는 중...</span>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">일간 내역</h2>
+                        <div id="daily-total-expense" class="text-primary font-bold text-lg"></div>
                     </div>
 
-                    <div id="daily-list-container">
-                        <p class="text-center text-gray-500 py-10 text-sm">
-                            데이터를 불러오는 중입니다...
-                        </p>
-                    </div>
+                    <div id="daily-list-container" class="no-scrollbar"></div>
                 </section>
 
                 <section id="view-monthly" class="tab-content">
@@ -154,7 +195,7 @@
                         class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-4 border border-gray-100"
                     >
                         <div
-                            class="bg-indigo-100 text-indigo-600 p-3 rounded-full flex items-center justify-center"
+                            class="bg-primary-light text-primary p-3 rounded-full flex items-center justify-center"
                         >
                             <span class="material-symbols-outlined text-2xl">person</span>
                         </div>
@@ -197,7 +238,7 @@
             >
                 <button
                     onclick="switchTab('daily', '일간 내역', this)"
-                    class="nav-btn text-indigo-600 flex flex-col items-center flex-1 py-1"
+                    class="nav-btn text-primary flex flex-col items-center flex-1 py-1"
                 >
                     <span class="material-symbols-outlined mb-1 text-[24px]">list_alt</span>
                     <span class="text-[10px]">일간</span>
@@ -214,7 +255,7 @@
                 <div class="flex-1 flex justify-center">
                     <button
                         onclick="openAddModal()"
-                        class="bg-indigo-600 text-white w-12 h-12 flex items-center justify-center rounded-xl shadow-sm hover:bg-indigo-700 active:scale-95 transition-transform duration-150"
+                        class="bg-primary text-white w-12 h-12 flex items-center justify-center rounded-xl shadow-sm bg-primary-hover active:scale-95 transition-transform duration-150"
                     >
                         <span class="material-symbols-outlined text-3xl">add</span>
                     </button>
@@ -304,7 +345,7 @@
 
                         <input
                             type="text"
-                            inputmode="numeric"
+                            inputmode="decimal"
                             id="input-amount"
                             placeholder="금액 (원)"
                             class="w-full border border-gray-300 p-3 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
@@ -334,7 +375,7 @@
                                 type="button"
                                 id="save-btn"
                                 onclick="saveRecord()"
-                                class="w-full bg-indigo-600 text-white p-3 rounded-lg font-bold shadow-md hover:bg-indigo-700 transition"
+                                class="w-full bg-primary text-white p-3 rounded-lg font-bold shadow-md bg-primary-hover transition"
                             >
                                 저장하기
                             </button>
@@ -404,7 +445,7 @@
                     />
                     <button
                         onclick="addCategory()"
-                        class="bg-indigo-600 text-white rounded-lg px-4 text-sm font-bold hover:bg-indigo-700 transition"
+                        class="bg-primary text-white rounded-lg px-4 text-sm font-bold bg-primary-hover transition"
                     >
                         추가
                     </button>
