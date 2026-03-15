@@ -217,3 +217,127 @@ textarea:focus {
     border-color: var(--theme-color);
     box-shadow: 0 0 0 2px var(--theme-light);
 }
+
+/* ==========================================
+   🌙 다크 모드 (Dark Mode) 글로벌 덮어쓰기
+   ========================================== */
+/* 1. 전체 배경 및 텍스트 반전 */
+html.dark body {
+    background-color: #111827 !important; /* 어두운 남색 배경 */
+    color: #f3f4f6 !important;
+}
+
+/* 2. 카드, 버튼 등 배경색 반전 */
+html.dark .bg-white {
+    background-color: #1f2937 !important;
+}
+html.dark .bg-gray-50 {
+    background-color: #374151 !important;
+}
+html.dark .bg-gray-100,
+html.dark .bg-gray-200 {
+    background-color: #4b5563 !important;
+}
+
+/* 3. 테두리 색상 반전 */
+html.dark .border-gray-100,
+html.dark .border-gray-200 {
+    border-color: #374151 !important;
+}
+
+/* 4. 텍스트 색상 반전 (어두운 글씨를 밝게) */
+html.dark .text-gray-900,
+html.dark .text-gray-800 {
+    color: #f9fafb !important;
+}
+html.dark .text-gray-700 {
+    color: #e5e7eb !important;
+}
+html.dark .text-gray-500 {
+    color: #9ca3af !important;
+}
+html.dark .text-gray-400,
+html.dark .text-gray-300 {
+    color: #6b7280 !important;
+}
+
+/* 5. 입력창(Input) 반전 */
+html.dark input,
+html.dark select,
+html.dark textarea {
+    background-color: #1f2937 !important;
+    color: #f3f4f6 !important;
+    border-color: #4b5563 !important;
+}
+
+/* 6. 달력(FullCalendar) 선 및 글씨 반전 */
+html.dark .fc-theme-standard td,
+html.dark .fc-theme-standard th {
+    border-color: #374151 !important;
+}
+html.dark .fc-daygrid-day-number,
+html.dark .fc-col-header-cell-cushion {
+    color: #f3f4f6 !important;
+}
+html.dark .fc-day-today .fc-daygrid-day-frame {
+    background-color: #1f2937 !important;
+}
+
+/* ==========================================
+   📅 FullCalendar 다크 모드 완벽 적용 (최종)
+   ========================================== */
+/* 0. FullCalendar 자체 테두리 변수 교체 (가장 바깥쪽 흰 선 제거의 핵심) */
+html.dark {
+    --fc-border-color: #374151 !important;
+}
+
+/* 1. 달력 전체 배경색 강제 어둡게 (요일 헤더 박스 포함) */
+html.dark .fc-view-harness,
+html.dark .fc-scrollgrid,
+html.dark .fc-scrollgrid-sync-inner,
+html.dark .fc-daygrid-day-frame,
+html.dark .fc-daygrid-day,
+html.dark .fc-col-header-cell {
+    background-color: #1f2937 !important;
+}
+
+/* 2. 모든 격자선 및 요일 위아래, 오른쪽 끝 하얀 실선 완벽 제거 */
+html.dark .fc-theme-standard td,
+html.dark .fc-theme-standard th,
+html.dark .fc-theme-standard .fc-scrollgrid,
+html.dark .fc table,
+html.dark .fc td,
+html.dark .fc th,
+html.dark .fc-scrollgrid-section > *,
+html.dark .fc-scrollgrid-section-header > * {
+    border-color: #374151 !important;
+}
+
+/* 3. 달력 안에 표시되는 수입/지출 내역(이벤트 카드) 배경 어둡게 */
+html.dark .fc .bg-white {
+    background-color: #374151 !important;
+    border-color: #4b5563 !important;
+}
+html.dark .fc .bg-gray-50 {
+    background-color: #4b5563 !important;
+    border-color: #4b5563 !important;
+}
+html.dark .fc .bg-gray-100 {
+    background-color: #4b5563 !important;
+}
+html.dark .fc .text-gray-800,
+html.dark .fc .text-gray-700 {
+    color: #f3f4f6 !important;
+}
+
+/* 4. 오늘 날짜 칸 배경색만 살짝 구분 */
+html.dark .fc-day-today .fc-daygrid-day-frame {
+    background-color: #374151 !important;
+}
+
+/* 5. 요일, 날짜 숫자, 상단 월 제목 글씨 밝게 */
+html.dark .fc-col-header-cell-cushion,
+html.dark .fc-daygrid-day-number,
+html.dark .fc-toolbar-title {
+    color: #e5e7eb !important;
+}

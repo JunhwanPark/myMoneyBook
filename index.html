@@ -87,7 +87,17 @@
             <div
                 class="bg-primary text-white px-4 py-2 flex justify-between items-center z-20 relative transition-colors duration-300"
             >
-                <span class="font-bold text-sm shrink-0">변민삼박 가계부</span>
+                <div class="flex items-center gap-1 shrink-0">
+                    <span class="font-bold text-sm">변민삼박 가계부</span>
+                    <button
+                        onclick="toggleDarkMode()"
+                        class="p-1 rounded-full hover:bg-white/20 transition flex items-center justify-center"
+                    >
+                        <span id="dark-mode-icon" class="material-symbols-outlined text-[18px]"
+                            >dark_mode</span
+                        >
+                    </button>
+                </div>
 
                 <div class="flex items-center gap-2">
                     <div

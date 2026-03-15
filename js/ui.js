@@ -1038,3 +1038,37 @@ window.openMonthlyModal = function (type) {
         document.getElementById('weekly-modal-content').classList.remove('translate-y-full');
     }, 10);
 };
+
+// ==========================================
+// 🌙 다크 모드 제어 및 상태 저장 로직
+// ==========================================
+window.toggleDarkMode = () => {
+    const html = document.documentElement;
+    // <html> 태그에 'dark' 클래스를 넣었다 뺐다 합니다.
+    html.classList.toggle('dark');
+    const isDark = html.classList.contains('dark');
+
+    // 사용자가 선택한 테마를 브라우저에 저장 (새로고침해도 유지됨)
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+
+    // 버튼 아이콘 모양을 해/달로 변경
+    const icon = document.getElementById('dark-mode-icon');
+    if (icon) {
+        icon.innerText = isDark ? 'light_mode' : 'dark_mode';
+    }
+};
+
+// 앱이 처음 켜질 때, 이전에 저장해둔 테마가 있는지 확인하고 적용하는 함수
+window.initTheme = () => {
+    const savedTheme = localStorage.getItem('theme');
+    const wantsDark = savedTheme === 'dark';
+
+    if (wantsDark) {
+        document.documentElement.classList.add('dark');
+        const icon = document.getElementById('dark-mode-icon');
+        if (icon) icon.innerText = 'light_mode';
+    }
+};
+
+// 화면 로딩이 끝나면 바로 테마 초기화 함수를 실행합니다.
+document.addEventListener('DOMContentLoaded', window.initTheme);
