@@ -20,6 +20,18 @@ window.changeGlobalMonth = (offset) => {
 };
 
 window.switchTab = (tabId, title, btnElement) => {
+    const searchInput = document.getElementById('search-input');
+    const clearBtn = document.getElementById('search-clear-btn');
+
+    // 검색창에 글씨가 남아있으면 비우고 리스트 원상복구
+    if (searchInput && searchInput.value !== '') {
+        searchInput.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        if (typeof renderDailyList === 'function' && typeof globalData !== 'undefined') {
+            renderDailyList(globalData);
+        }
+    }
+
     document.querySelectorAll('.tab-content').forEach((el) => el.classList.remove('active'));
     document.getElementById('view-' + tabId).classList.add('active');
     document.querySelectorAll('.nav-btn').forEach((btn) => {
@@ -56,19 +68,70 @@ window.switchCountry = function (country) {
     loadDailyRecords();
 };
 
-// 1. 내역 리스트 렌더링 함수 교체
-window.renderDailyList = (data) => {
+// ==========================================
+// 💡 검색창 제어 함수 추가
+// ==========================================
+window.handleSearch = () => {
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('search-clear-btn');
+    const keyword = input.value;
+
+    if (keyword.length > 0) {
+        clearBtn.classList.remove('hidden'); // X 버튼 표시
+    } else {
+        clearBtn.classList.add('hidden'); // X 버튼 숨김
+    }
+
+    renderDailyList(globalData, keyword);
+};
+
+window.clearSearch = () => {
+    const input = document.getElementById('search-input');
+    input.value = '';
+    document.getElementById('search-clear-btn').classList.add('hidden');
+    renderDailyList(globalData);
+};
+
+// ==========================================
+// 기존 일간 내역 렌더링 함수 교체 (전체 기간 검색 기능 호환)
+// ==========================================
+window.renderDailyList = (data, searchKeyword = '') => {
     const container = document.getElementById('daily-list-container');
     if (!container) return;
 
     updateMonthTitles();
     const prefix = `${currentDisplayDate.getFullYear()}-${String(currentDisplayDate.getMonth() + 1).padStart(2, '0')}`;
 
-    // 현재 월에 해당하는 데이터만 필터링
-    const filtered = data.filter((d) => d.Date?.startsWith(prefix));
+    let filtered = [];
+    const isSearching = searchKeyword.trim().length > 0;
+
+    // 💡 검색어가 있으면 "전체 기간"에서 찾고, 없으면 "이번 달" 데이터만 필터링합니다.
+    if (isSearching) {
+        const kw = searchKeyword.trim().toLowerCase();
+        filtered = data.filter((d) => {
+            const parsed = parseMemo(d.Memo);
+            const catLabel = globalCategories.find((c) => c.Value === d.Category)?.Label || '';
+            // 항목명, 카테고리명, 메모 전체에서 검색
+            return (
+                parsed.itemName.toLowerCase().includes(kw) ||
+                catLabel.toLowerCase().includes(kw) ||
+                d.Memo.toLowerCase().includes(kw)
+            );
+        });
+        // 검색 중일 때는 월 이동 버튼을 숨깁니다.
+        const navEl = document.getElementById('daily-month-navigation');
+        if (navEl) navEl.classList.add('hidden');
+    } else {
+        filtered = data.filter((d) => d.Date?.startsWith(prefix));
+        const navEl = document.getElementById('daily-month-navigation');
+        if (navEl) navEl.classList.remove('hidden');
+    }
+
     container.innerHTML = filtered.length
         ? ''
-        : '<p class="text-center text-gray-500 py-10">내역이 없습니다.</p>';
+        : isSearching
+          ? '<p class="text-center text-gray-500 py-10">검색 결과가 없습니다.</p>'
+          : '<p class="text-center text-gray-500 py-10">내역이 없습니다.</p>';
 
     if (filtered.length === 0) {
         document.getElementById('daily-total-expense').innerText = '0';
@@ -78,29 +141,26 @@ window.renderDailyList = (data) => {
     let total = 0;
     const groupedByDate = {};
 
-    // 1. 데이터를 날짜별로 분류하고 총 지출 합계 계산
     filtered.forEach((item) => {
         if (item.Type === 'expense') total += Number(item.Amount);
 
-        const dateStr = item.Date.substring(0, 10); // "YYYY-MM-DD" 형태
-        if (!groupedByDate[dateStr]) {
-            groupedByDate[dateStr] = [];
-        }
+        const dateStr = item.Date.substring(0, 10);
+        if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
         groupedByDate[dateStr].push(item);
     });
 
-    document.getElementById('daily-total-expense').innerText = formatMoney(total);
+    // 💡 검색 중일 때는 상단에 '검색 합계액'을 표시해 줍니다.
+    document.getElementById('daily-total-expense').innerText = isSearching
+        ? `검색 합계: ${formatMoney(total)}`
+        : formatMoney(total);
 
-    // 2. 날짜를 최신순(내림차순)으로 정렬
     const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
 
-    // 3. 정렬된 날짜 순서대로 화면에 렌더링
     sortedDates.forEach((dateStr) => {
         const d = new Date(dateStr);
         const days = ['일', '월', '화', '수', '목', '금', '토'];
         const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
 
-        // 👇 날짜 헤더 추가
         container.insertAdjacentHTML(
             'beforeend',
             `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
@@ -109,7 +169,6 @@ window.renderDailyList = (data) => {
             </div>`
         );
 
-        // 👇 해당 날짜에 속한 내역들 렌더링
         groupedByDate[dateStr].forEach((item) => {
             const parsed = parseMemo(item.Memo);
             const isExp = item.Type === 'expense';

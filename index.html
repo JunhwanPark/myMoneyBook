@@ -126,7 +126,9 @@
                         <h2 class="text-md font-semibold text-gray-700">월 내역</h2>
                         <div id="daily-total-expense" class="text-primary font-bold text-lg"></div>
                     </div>
+
                     <div
+                        id="daily-month-navigation"
                         class="flex justify-between items-center mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100"
                     >
                         <button
@@ -146,6 +148,28 @@
                             <span class="material-symbols-outlined">chevron_right</span>
                         </button>
                     </div>
+
+                    <div class="relative mb-4">
+                        <span
+                            class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-[18px]"
+                            >search</span
+                        >
+                        <input
+                            type="text"
+                            id="search-input"
+                            oninput="handleSearch()"
+                            placeholder="과거 내역 검색 (사과, 마트...)"
+                            class="w-full bg-white border border-gray-100 shadow-sm pl-9 pr-9 py-2.5 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                        <button
+                            id="search-clear-btn"
+                            onclick="clearSearch()"
+                            class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 flex items-center justify-center"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+
                     <div id="daily-list-container"></div>
                 </section>
 
