@@ -87,22 +87,36 @@
             <div
                 class="bg-primary text-white px-4 py-2 flex justify-between items-center z-20 relative transition-colors duration-300"
             >
-                <span class="font-bold text-sm">변민삼박 가계부</span>
-                <div class="flex bg-white/20 rounded-lg p-1">
-                    <button
-                        id="btn-kr"
-                        onclick="switchCountry('KR')"
-                        class="px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow"
+                <span class="font-bold text-sm shrink-0">변민삼박 가계부</span>
+
+                <div class="flex items-center gap-2">
+                    <div
+                        id="exchange-rate-badge"
+                        class="hidden bg-white/20 rounded-md px-2 py-1 flex items-center gap-1 text-[10px] whitespace-nowrap transition-opacity"
                     >
-                        KR 🇰🇷
-                    </button>
-                    <button
-                        id="btn-cn"
-                        onclick="switchCountry('CN')"
-                        class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70"
-                    >
-                        CN 🇨🇳
-                    </button>
+                        <span class="opacity-80">1 CNY =</span>
+                        <span id="cny-rate-value" class="font-bold text-white tracking-wide"
+                            >...</span
+                        >
+                        <span class="opacity-80">KRW</span>
+                    </div>
+
+                    <div class="flex bg-white/20 rounded-lg p-1 shrink-0">
+                        <button
+                            id="btn-kr"
+                            onclick="switchCountry('KR')"
+                            class="px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow"
+                        >
+                            KR 🇰🇷
+                        </button>
+                        <button
+                            id="btn-cn"
+                            onclick="switchCountry('CN')"
+                            class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70"
+                        >
+                            CN 🇨🇳
+                        </button>
+                    </div>
                 </div>
             </div>
 

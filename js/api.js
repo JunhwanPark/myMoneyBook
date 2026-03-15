@@ -11,30 +11,99 @@ window.handleCredentialResponse = (response) => {
     }
 };
 
+// 👇 이전 국가 상태를 기억하기 위한 변수 추가
+window._lastRateFetchedCountry = null;
+
+// ==========================================
+// 무료 API를 이용한 실시간 환율 호출 함수 (국가 전환 시에만 호출되도록 최적화)
+// ==========================================
+window.fetchExchangeRate = async () => {
+    try {
+        const badge = document.getElementById('exchange-rate-badge');
+        const rateValue = document.getElementById('cny-rate-value');
+
+        if (!badge || !rateValue) return;
+
+        // 1. 한국 모드일 때: 뱃지를 숨기고, 기억해둔 상태를 'KR'로 변경
+        // (이렇게 해야 다음에 중국으로 넘어갈 때 다시 환율을 받아옵니다)
+        if (currentCountry !== 'CN') {
+            badge.classList.add('hidden');
+            window._lastRateFetchedCountry = 'KR';
+            return;
+        }
+
+        // 2. 중국 모드인데 이미 이번 턴에 환율을 정상적으로 받아온 적이 있다면?
+        // 💡 API를 호출하지 않고 여기서 함수를 즉시 종료합니다! (캐싱 효과)
+        if (
+            window._lastRateFetchedCountry === 'CN' &&
+            rateValue.innerText !== '...' &&
+            rateValue.innerText !== '오류'
+        ) {
+            badge.classList.remove('hidden');
+            return;
+        }
+
+        // 3. 한국 -> 중국으로 막 넘어왔거나, 이전 통신이 실패했던 경우에만 API 실제 호출
+        window._lastRateFetchedCountry = 'CN';
+        rateValue.innerText = '...'; // 로딩 중 표시
+
+        const res = await fetch('https://open.er-api.com/v6/latest/CNY');
+        const data = await res.json();
+
+        if (data && data.rates && data.rates.KRW) {
+            rateValue.innerText = data.rates.KRW.toLocaleString('ko-KR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+            badge.classList.remove('hidden');
+        }
+    } catch (e) {
+        console.error('환율 정보를 가져오는데 실패했습니다.', e);
+        const badge = document.getElementById('exchange-rate-badge');
+        const rateValue = document.getElementById('cny-rate-value');
+        if (badge && rateValue) {
+            rateValue.innerText = '오류';
+            badge.classList.remove('hidden');
+        }
+    }
+};
+
+// ==========================================
+// 기존 데이터 로드 함수 (무한 로딩 방지 로직 적용)
+// ==========================================
 window.loadDailyRecords = async () => {
     showLoader();
     try {
+        // 💡 환율 가져오다 에러가 나도 메인 데이터 로딩이 멈추지 않도록 안전망(.catch) 추가
+        fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
+
         const res = await fetch(`${GAS_URL}?country=${currentCountry}`);
         const result = await res.json();
+
         if (result.status === 'success') {
             globalData = result.data || [];
             globalCategories = (result.categories || []).filter((c) => c.Type !== 'card');
 
-            // 👇 카드 데이터를 가져오자마자 카드명(가나다) 순으로 정렬합니다.
             globalCards = (result.categories || [])
                 .filter((c) => c.Type === 'card')
                 .sort((a, b) => {
                     const nameA = a.Label.split('|')[0];
                     const nameB = b.Label.split('|')[0];
-                    return nameA.localeCompare(nameB); // 가나다순 정렬 핵심
+                    return nameA.localeCompare(nameB);
                 });
 
             renderDailyList(globalData);
-            if (calendar) renderCalendarEvents();
+            if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
             updateMonthlyTotals();
-            if (document.getElementById('view-stats').classList.contains('active')) renderChart();
+
+            const statsTab = document.getElementById('view-stats');
+            if (statsTab && statsTab.classList.contains('active')) renderChart();
         }
+    } catch (error) {
+        console.error('데이터 로드 중 에러 발생:', error);
+        alert('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
     } finally {
+        // 💡 어떤 에러가 발생하더라도 무조건 로딩 스피너를 닫아줍니다!
         hideLoader();
     }
 };
