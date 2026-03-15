@@ -309,7 +309,6 @@ window.renderChart = function () {
 
     if (expenseChart) expenseChart.destroy();
 
-    // 👇 차트에 그릴 수 있는(0보다 큰) 데이터만 필터링
     const chartLabels = [];
     const chartData = [];
     for (const [cat, val] of Object.entries(catTotals)) {
@@ -323,10 +322,10 @@ window.renderChart = function () {
         type: 'doughnut',
         plugins: [ChartDataLabels],
         data: {
-            labels: chartLabels, // 필터링된 라벨
+            labels: chartLabels,
             datasets: [
                 {
-                    data: chartData, // 필터링된 데이터
+                    data: chartData,
                     backgroundColor: [
                         '#ef4444',
                         '#3b82f6',
@@ -342,17 +341,19 @@ window.renderChart = function () {
                 },
             ],
         },
+        // 👇 이 options 부분만 덮어씌워 주세요!
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 15, bottom: 15, left: 15, right: 15 } },
+            // 차트 위아래 여백을 살짝 줄여서 범례가 들어갈 세로 공간을 더 확보합니다 (15 -> 10)
+            layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
             plugins: {
                 legend: {
                     position: 'right',
                     labels: {
-                        boxWidth: 12,
-                        padding: 15,
-                        font: { size: 11, family: "'Pretendard', sans-serif" },
+                        boxWidth: 10, // 컬러 네모 박스 크기 살짝 축소 (12 -> 10)
+                        padding: 8, // 💡 핵심: 항목 사이의 줄 간격을 대폭 축소 (15 -> 8)
+                        font: { size: 10, family: "'Pretendard', sans-serif" }, // 글씨 크기 미세 조정 (11 -> 10)
                     },
                 },
                 datalabels: {
@@ -382,6 +383,9 @@ window.renderChart = function () {
         },
     });
 
+    // ==========================================
+    // 여기서부터가 수정된 부분입니다!
+    // ==========================================
     const container = document.getElementById('card-stats-container');
     container.innerHTML =
         '<h3 class="text-xs font-bold text-gray-500 mb-2 mt-6">카드별 정산 (기준일 반영)</h3>';
@@ -413,6 +417,9 @@ window.renderChart = function () {
         }
     });
 
+    // 💡 화면에 바로 그리지 않고 정렬을 위해 배열(cardStatsList)에 먼저 담습니다.
+    const cardStatsList = [];
+
     globalCards.forEach((card) => {
         const [name, dayStr] = card.Label.split('|');
         const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
@@ -428,24 +435,55 @@ window.renderChart = function () {
         }
 
         const displayDay = isEnd ? '말일' : `${dayStr}일`;
+        const amount = cardSums[name] || 0;
 
+        // 결제 금액이 0원보다 큰 카드만 배열에 추가합니다 (0원 숨김 반영)
+        if (amount > 0) {
+            cardStatsList.push({
+                name: name,
+                displayDay: displayDay,
+                start: start,
+                end: end,
+                amount: amount,
+            });
+        }
+    });
+
+    // 💡 1순위: 금액 내림차순 정렬 / 2순위: 같으면 이름 가나다순 정렬
+    cardStatsList.sort((a, b) => {
+        if (b.amount !== a.amount) {
+            return b.amount - a.amount;
+        }
+        return a.name.localeCompare(b.name);
+    });
+
+    // 💡 정렬이 끝난 배열을 순서대로 화면에 그려줍니다.
+    cardStatsList.forEach((stat) => {
         container.insertAdjacentHTML(
             'beforeend',
-            `<div onclick="openCardDetailModal('${name}', '${prefix}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
+            `<div onclick="openCardDetailModal('${stat.name}', '${prefix}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
                 <div class="flex justify-between items-center mb-0.5">
                     <div>
-                        <span class="text-sm font-extrabold text-gray-800 leading-none">${name}</span>
-                        <span class="text-[10px] text-indigo-500 font-bold ml-1">기준: ${displayDay}</span>
+                        <span class="text-sm font-extrabold text-gray-800 leading-none">${stat.name}</span>
+                        <span class="text-[10px] text-indigo-500 font-bold ml-1">기준: ${stat.displayDay}</span>
                     </div>
-                    <span class="text-sm font-black text-gray-900 leading-none">${formatMoney(cardSums[name] || 0)}</span>
+                    <span class="text-sm font-black text-gray-900 leading-none">${formatMoney(stat.amount)}</span>
                 </div>
                 <div class="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
                     <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-                    ${start.toLocaleDateString()} ~ ${end.toLocaleDateString()}
+                    ${stat.start.toLocaleDateString()} ~ ${stat.end.toLocaleDateString()}
                 </div>
             </div>`
         );
     });
+
+    // 결제된 카드가 하나도 없을 경우의 안내 문구
+    if (cardStatsList.length === 0) {
+        container.insertAdjacentHTML(
+            'beforeend',
+            '<p class="text-center text-gray-400 text-sm py-4 font-medium">이번 달 정산될 카드 내역이 없습니다.</p>'
+        );
+    }
 };
 
 window.updateMonthlyTotals = function (dateObj) {
