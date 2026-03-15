@@ -60,48 +60,87 @@ window.switchCountry = function (country) {
 window.renderDailyList = (data) => {
     const container = document.getElementById('daily-list-container');
     if (!container) return;
+
     updateMonthTitles();
     const prefix = `${currentDisplayDate.getFullYear()}-${String(currentDisplayDate.getMonth() + 1).padStart(2, '0')}`;
+
+    // 현재 월에 해당하는 데이터만 필터링
     const filtered = data.filter((d) => d.Date?.startsWith(prefix));
     container.innerHTML = filtered.length
         ? ''
         : '<p class="text-center text-gray-500 py-10">내역이 없습니다.</p>';
 
+    if (filtered.length === 0) {
+        document.getElementById('daily-total-expense').innerText = '0';
+        return;
+    }
+
     let total = 0;
+    const groupedByDate = {};
+
+    // 1. 데이터를 날짜별로 분류하고 총 지출 합계 계산
     filtered.forEach((item) => {
         if (item.Type === 'expense') total += Number(item.Amount);
 
-        const parsed = parseMemo(item.Memo);
-        const isExp = item.Type === 'expense';
-        const catLabel = globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
+        const dateStr = item.Date.substring(0, 10); // "YYYY-MM-DD" 형태
+        if (!groupedByDate[dateStr]) {
+            groupedByDate[dateStr] = [];
+        }
+        groupedByDate[dateStr].push(item);
+    });
 
-        const amountNum = Number(item.Amount);
-        const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
-        const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+    document.getElementById('daily-total-expense').innerText = formatMoney(total);
 
-        // 👇 수입/지출 상관없이 음수일 때만 '-'를 붙이고, 양수면 아무것도 붙이지 않음
-        const displaySign = amountNum < 0 ? '-' : '';
+    // 2. 날짜를 최신순(내림차순)으로 정렬
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
 
+    // 3. 정렬된 날짜 순서대로 화면에 렌더링
+    sortedDates.forEach((dateStr) => {
+        const d = new Date(dateStr);
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+
+        // 👇 날짜 헤더 추가
         container.insertAdjacentHTML(
             'beforeend',
-            `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
-                <div class="flex items-center gap-2.5">
-                    <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-sm">${getCategoryIcon(catLabel)}</span>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
-                        <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod} • ${item.Date.substring(0, 10)}</p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
-                    <p class="text-[9px] text-gray-300 mt-1">${item.User?.split('@')[0]}</p>
-                </div>
+            `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
+                <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                ${displayDate}
             </div>`
         );
+
+        // 👇 해당 날짜에 속한 내역들 렌더링
+        groupedByDate[dateStr].forEach((item) => {
+            const parsed = parseMemo(item.Memo);
+            const isExp = item.Type === 'expense';
+            const catLabel =
+                globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
+
+            const amountNum = Number(item.Amount);
+            const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
+            const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+            const displaySign = amountNum < 0 ? '-' : '';
+
+            container.insertAdjacentHTML(
+                'beforeend',
+                `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
+                    <div class="flex items-center gap-2.5">
+                        <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-sm">${getCategoryIcon(catLabel)}</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
+                            <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                        <p class="text-[9px] text-gray-300 mt-1">${item.User?.split('@')[0]}</p>
+                    </div>
+                </div>`
+            );
+        });
     });
-    document.getElementById('daily-total-expense').innerText = formatMoney(total);
 };
 
 window.initCalendar = () => {
@@ -806,30 +845,23 @@ window.closeCardDetailModal = function () {
 };
 
 // ==========================================
-// 월간 수입/지출 클릭 시 상세 내역 모달 띄우기
+// 월간 수입/지출 클릭 시 상세 내역 모달 띄우기 (날짜별 그룹핑 적용)
 // ==========================================
 window.openMonthlyModal = function (type) {
-    // 1. 현재 보고 있는 달 구하기
     const year = currentDisplayDate.getFullYear();
     const month = currentDisplayDate.getMonth() + 1;
     const prefix = `${year}-${String(month).padStart(2, '0')}`;
 
-    // 2. 모달 제목 및 날짜 세팅
     const typeName = type === 'income' ? '수입' : '지출';
-    const modal = document.getElementById('weekly-modal'); // 일간 모달의 UI 뼈대를 완벽 재활용
+    const modal = document.getElementById('weekly-modal');
     const titleEl = modal.querySelector('h3');
     if (titleEl) titleEl.innerText = `${month}월 ${typeName} 상세 내역`;
     document.getElementById('weekly-date-range').innerText = `${year}년 ${month}월 전체`;
 
-    // 3. 데이터 필터링 (현재 달 & 수입/지출 타입 일치하는 것만)
     const monthlyData = globalData.filter((item) => {
         return item.Date.startsWith(prefix) && item.Type === type;
     });
 
-    // 최신 날짜순으로 한 번 정렬
-    monthlyData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-
-    // 4. 리스트 렌더링
     const container = document.getElementById('weekly-list-container');
     container.innerHTML = '';
 
@@ -840,44 +872,69 @@ window.openMonthlyModal = function (type) {
                 <p class="text-center text-gray-400 text-sm font-medium">이번 달 ${typeName} 내역이 없습니다.</p>
             </div>`;
     } else {
+        // 1. 데이터를 날짜별로 그룹핑
+        const groupedByDate = {};
         monthlyData.forEach((item) => {
-            const isExp = item.Type === 'expense';
-            let catLabel = '미분류';
-            if (item.Category) {
-                const foundCat = globalCategories.find((c) => c.Value === item.Category);
-                catLabel = foundCat ? foundCat.Label : item.Category;
-            }
-            const parsed = parseMemo(item.Memo);
-            const iconName = getCategoryIcon(catLabel);
+            const dateStr = item.Date.substring(0, 10);
+            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
+            groupedByDate[dateStr].push(item);
+        });
 
-            // 부호 및 색상 로직 (앞서 통일한 규칙 적용)
-            const amountNum = Number(item.Amount);
-            const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
-            const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
-            const displaySign = amountNum < 0 ? '-' : '';
+        // 2. 날짜를 최신순(내림차순)으로 정렬
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
 
+        // 3. 그룹핑된 날짜 순서대로 렌더링
+        sortedDates.forEach((dateStr) => {
+            const d = new Date(dateStr);
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+
+            // 👇 날짜 헤더 추가
             container.insertAdjacentHTML(
                 'beforeend',
-                // 👇 동일하게 항목 클릭 시 openEditModal 함수가 호출되어 즉시 수정 가능
-                `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                    <div class="flex items-center gap-2.5">
-                        <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-sm">${iconName}</span>
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
-                            <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod} • ${item.Date.substring(0, 10)}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
-                    </div>
+                `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
+                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                    ${displayDate}
                 </div>`
             );
+
+            // 👇 해당 날짜에 속한 항목 렌더링
+            groupedByDate[dateStr].forEach((item) => {
+                const isExp = item.Type === 'expense';
+                let catLabel = '미분류';
+                if (item.Category) {
+                    const foundCat = globalCategories.find((c) => c.Value === item.Category);
+                    catLabel = foundCat ? foundCat.Label : item.Category;
+                }
+                const parsed = parseMemo(item.Memo);
+                const iconName = getCategoryIcon(catLabel);
+
+                const amountNum = Number(item.Amount);
+                const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
+                const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+                const displaySign = amountNum < 0 ? '-' : '';
+
+                container.insertAdjacentHTML(
+                    'beforeend',
+                    `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
+                        <div class="flex items-center gap-2.5">
+                            <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-sm">${iconName}</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
+                                <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                        </div>
+                    </div>`
+                );
+            });
         });
     }
 
-    // 5. 모달 애니메이션으로 띄우기
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.remove('opacity-0');

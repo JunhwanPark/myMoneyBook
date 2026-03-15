@@ -69,12 +69,11 @@ window.fetchExchangeRate = async () => {
 };
 
 // ==========================================
-// 기존 데이터 로드 함수 (무한 로딩 방지 로직 적용)
+// 기존 데이터 로드 함수 (국가별 신용카드 분리 로직 적용)
 // ==========================================
 window.loadDailyRecords = async () => {
     showLoader();
     try {
-        // 💡 환율 가져오다 에러가 나도 메인 데이터 로딩이 멈추지 않도록 안전망(.catch) 추가
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
         const res = await fetch(`${GAS_URL}?country=${currentCountry}`);
@@ -82,10 +81,17 @@ window.loadDailyRecords = async () => {
 
         if (result.status === 'success') {
             globalData = result.data || [];
-            globalCategories = (result.categories || []).filter((c) => c.Type !== 'card');
 
+            // 👇 일반 카테고리에서는 'card', 'card_KR', 'card_CN'을 모두 제외합니다.
+            globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
+
+            // 👇 국가별 신용카드 분리 (한국은 기존 'card' 호환 유지, 중국은 'card_CN'만)
             globalCards = (result.categories || [])
-                .filter((c) => c.Type === 'card')
+                .filter((c) => {
+                    if (currentCountry === 'KR') return c.Type === 'card' || c.Type === 'card_KR';
+                    if (currentCountry === 'CN') return c.Type === 'card_CN';
+                    return false;
+                })
                 .sort((a, b) => {
                     const nameA = a.Label.split('|')[0];
                     const nameB = b.Label.split('|')[0];
@@ -103,7 +109,6 @@ window.loadDailyRecords = async () => {
         console.error('데이터 로드 중 에러 발생:', error);
         alert('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
     } finally {
-        // 💡 어떤 에러가 발생하더라도 무조건 로딩 스피너를 닫아줍니다!
         hideLoader();
     }
 };
@@ -191,27 +196,31 @@ window.deleteRecord = async () => {
     }
 };
 
+// ==========================================
+// 💡 신용카드 추가/수정 로직 (국가별 분리 저장)
+// ==========================================
 window.addCard = async () => {
     const label = document.getElementById('new-card-label').value.trim();
-    const day = document.getElementById('new-card-day').value;
+    const day = document.getElementById('new-card-day').value.trim();
     if (!label || !day) return alert('정보를 정확히 입력하세요.');
+
+    showLoader();
     try {
-        const res = await fetch(GAS_URL, {
+        // 👇 현재 국가 코드(KR 또는 CN)를 붙여서 Type을 생성합니다.
+        await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({
                 action: 'add_category',
-                catType: 'card',
+                catType: `card_${currentCountry}`,
                 catLabel: `${label}|${day}`,
             }),
         });
-        if ((await res.json()).status === 'success') {
-            document.getElementById('new-card-label').value = '';
-            document.getElementById('new-card-day').value = '';
-            await loadDailyRecords();
-            openCardModal();
-        }
+
+        await loadDailyRecords();
+        openCardModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
     } catch (e) {
-        alert('에러');
+        alert('카드 추가 중 에러가 발생했습니다.');
+        hideLoader();
     }
 };
 
@@ -302,23 +311,23 @@ window.submitEditCard = async (oldValue) => {
 
     showLoader();
     try {
-        // 1. 기존 데이터 삭제
         await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({ action: 'delete_category', catValue: oldValue }),
         });
-        // 2. 수정된 데이터 추가
+
+        // 👇 수정 시에도 현재 국가 코드를 붙여서 새 데이터로 갈아끼웁니다.
         await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({
                 action: 'add_category',
-                catType: 'card',
+                catType: `card_${currentCountry}`,
                 catLabel: `${label}|${day}`,
             }),
         });
 
         await loadDailyRecords();
-        openCardModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
+        openCardModal();
     } catch (e) {
         alert('수정 중 에러가 발생했습니다.');
         hideLoader();
