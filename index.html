@@ -89,16 +89,38 @@
             >
                 <span class="font-bold text-sm shrink-0">변민삼박 가계부</span>
 
-                <div class="flex items-center gap-2">
-                    <div
+                <div class="flex items-center gap-2 relative">
+                    <button
                         id="exchange-rate-badge"
-                        class="hidden bg-white/20 rounded-md px-2 py-1 flex items-center gap-1 text-[10px] whitespace-nowrap transition-opacity"
+                        onclick="toggleExchangeRateChart()"
+                        class="hidden bg-white/20 hover:bg-white/30 rounded-md px-2 py-1 flex items-center gap-1 text-[10px] whitespace-nowrap transition-all cursor-pointer"
                     >
                         <span class="opacity-80">1 CNY =</span>
                         <span id="cny-rate-value" class="font-bold text-white tracking-wide"
                             >...</span
                         >
                         <span class="opacity-80">KRW</span>
+                        <span class="material-symbols-outlined text-[13px] ml-0.5 opacity-90"
+                            >monitoring</span
+                        >
+                    </button>
+
+                    <div
+                        id="exchange-chart-popup"
+                        class="hidden absolute top-[120%] right-10 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-[100] w-52 transition-opacity origin-top-right"
+                    >
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-xs font-extrabold text-gray-800"
+                                >최근 7일 환율 흐름</span
+                            >
+                            <span
+                                class="text-[9px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md"
+                                >CNY/KRW</span
+                            >
+                        </div>
+                        <div class="h-20 w-full relative">
+                            <canvas id="exchangeMiniChart"></canvas>
+                        </div>
                     </div>
 
                     <div class="flex bg-white/20 rounded-lg p-1 shrink-0">

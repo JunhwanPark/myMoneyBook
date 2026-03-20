@@ -1167,3 +1167,171 @@ document.addEventListener('change', (e) => {
         }
     }
 });
+
+// ==========================================
+// 📈 환율 미니 차트 (Sparkline) 팝업 기능
+// ==========================================
+window.exchangeMiniChartInstance = null;
+
+// 1. 팝업 열기/닫기 함수
+window.toggleExchangeRateChart = () => {
+    const popup = document.getElementById('exchange-chart-popup');
+    if (!popup) return;
+
+    if (popup.classList.contains('hidden')) {
+        popup.classList.remove('hidden');
+        renderExchangeMiniChart(); // 열릴 때 차트를 그립니다.
+    } else {
+        popup.classList.add('hidden');
+    }
+};
+
+// 2. 미니 꺾은선 차트 그리기 (실제 데이터 연동)
+window.renderExchangeMiniChart = async () => {
+    const canvas = document.getElementById('exchangeMiniChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // 차트를 새로 그리기 전에 혹시 남아있을지 모를 기존 차트 삭제
+    if (window.exchangeMiniChartInstance) {
+        window.exchangeMiniChartInstance.destroy();
+        window.exchangeMiniChartInstance = null;
+    }
+
+    // 💡 데이터를 가져오는 동안 빈 화면 대신 로딩 문구를 띄워줍니다.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "bold 11px 'Pretendard', sans-serif";
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillText('실제 환율 데이터를 불러오는 중...', 10, 40);
+
+    try {
+        const labels = [];
+        const data = [];
+        const fetchPromises = [];
+        const today = new Date();
+
+        // 1. 오늘부터 과거 6일까지 총 7일치의 날짜를 계산합니다.
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const dateString = `${yyyy}-${mm}-${dd}`; // 예: 2026-03-20
+
+            labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
+
+            // 2. 무료 환율 API 주소 설정 (오늘 날짜는 latest, 과거는 특정 날짜)
+            const apiUrl =
+                i === 0
+                    ? 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/cny.json'
+                    : `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${dateString}/v1/currencies/cny.json`;
+
+            // 7일 치 API 요청을 배열에 담습니다.
+            fetchPromises.push(
+                fetch(apiUrl)
+                    .then((res) => res.json())
+                    .then((json) => json.cny.krw)
+                    .catch((err) => null) // 통신 실패 시 에러 방지
+            );
+        }
+
+        // 3. 7일 치 데이터를 동시에 빠르게 다 가져옵니다!
+        const results = await Promise.all(fetchPromises);
+
+        // 데이터 정제 (만약 과거 특정일 데이터가 비어있다면, 현재 환율로 임시 대체)
+        const currentRateEl = document.getElementById('cny-rate-value');
+        let fallbackRate = 185.0;
+        if (currentRateEl && currentRateEl.innerText !== '...') {
+            fallbackRate = parseFloat(currentRateEl.innerText.replace(/,/g, ''));
+        }
+
+        results.forEach((rate) => {
+            // 소수점 1자리까지만 남기고 숫자로 변환
+            data.push(rate ? +rate.toFixed(1) : fallbackRate);
+        });
+
+        // 4. 로딩 문구를 지우고 진짜 차트를 그립니다.
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        window.exchangeMiniChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        data: data,
+                        borderColor: '#4f46e5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#ffffff',
+                        pointBorderColor: '#4f46e5',
+                        fill: true,
+                        tension: 0.4,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        display: true,
+                        align: 'top',
+                        anchor: 'end',
+                        offset: 3,
+                        color: '#4f46e5',
+                        font: { size: 9, weight: '900' },
+                        formatter: function (value) {
+                            return value.toFixed(1);
+                        },
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.parsed.y + '원';
+                            },
+                        },
+                        displayColors: false,
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { size: 10 },
+                        bodyFont: { size: 11, weight: 'bold' },
+                        padding: 8,
+                    },
+                },
+                scales: {
+                    x: {
+                        ticks: { font: { size: 9 }, color: '#9ca3af' },
+                        grid: { display: false },
+                    },
+                    y: {
+                        display: false,
+                        suggestedMin: Math.min(...data) - 1,
+                        suggestedMax: Math.max(...data) + 2,
+                    },
+                },
+                layout: { padding: { top: 15, bottom: 0, left: 10, right: 10 } },
+            },
+        });
+    } catch (error) {
+        // 혹시라도 인터넷이 끊기거나 API에 문제가 생겼을 때의 안전장치
+        console.error('환율 데이터 로드 실패:', error);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillText('데이터를 불러오지 못했습니다.', 10, 40);
+    }
+};
+
+// 3. 팝업 바깥(다른 화면)을 터치하면 팝업이 조용히 닫히도록 처리
+document.addEventListener('click', (e) => {
+    const popup = document.getElementById('exchange-chart-popup');
+    const badge = document.getElementById('exchange-rate-badge');
+
+    if (popup && badge && !popup.classList.contains('hidden')) {
+        if (!badge.contains(e.target) && !popup.contains(e.target)) {
+            popup.classList.add('hidden');
+        }
+    }
+});
