@@ -109,15 +109,25 @@ window.renderDailyList = (data, searchKeyword = '') => {
     if (isSearching) {
         const kw = searchKeyword.trim().toLowerCase();
         filtered = data.filter((d) => {
-            const parsed = parseMemo(d.Memo);
             const catLabel = globalCategories.find((c) => c.Value === d.Category)?.Label || '';
-            // 항목명, 카테고리명, 메모 전체에서 검색
-            return (
-                parsed.itemName.toLowerCase().includes(kw) ||
-                catLabel.toLowerCase().includes(kw) ||
-                d.Memo.toLowerCase().includes(kw)
-            );
+
+            // 1. 데이터 원본을 '|' 기준으로 분리합니다. (예: ["사과", "삼성카드", "진짜 맛있는 사과"])
+            const parts = d.Memo ? d.Memo.split('|') : [];
+
+            // 2. 결제 수단이 들어있는 두 번째 자리(인덱스 1)를 완전히 비워버립니다.
+            // -> ["사과", "", "진짜 맛있는 사과"] 가 됩니다.
+            if (parts.length > 1) {
+                parts[1] = '';
+            }
+
+            // 3. 카드가 제거된 순수 내용들과 카테고리명을 띄어쓰기로 길게 하나로 합칩니다.
+            // -> "사과  진짜 맛있는 사과 식비"
+            const searchableText = (parts.join(' ') + ' ' + catLabel).toLowerCase();
+
+            // 4. 이 텍스트 안에 검색어(kw)가 들어있는지만 깔끔하게 확인합니다!
+            return searchableText.includes(kw);
         });
+
         // 검색 중일 때는 월 이동 버튼을 숨깁니다.
         const navEl = document.getElementById('daily-month-navigation');
         if (navEl) navEl.classList.add('hidden');
@@ -1040,35 +1050,87 @@ window.openMonthlyModal = function (type) {
 };
 
 // ==========================================
-// 🌙 다크 모드 제어 및 상태 저장 로직
+// 💡 항목명 자동완성(Auto-complete) 기능
 // ==========================================
-window.toggleDarkMode = () => {
-    const html = document.documentElement;
-    // <html> 태그에 'dark' 클래스를 넣었다 뺐다 합니다.
-    html.classList.toggle('dark');
-    const isDark = html.classList.contains('dark');
+window.showSuggestions = (text) => {
+    const box = document.getElementById('suggestion-box');
+    if (!box) return;
 
-    // 사용자가 선택한 테마를 브라우저에 저장 (새로고침해도 유지됨)
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    const keyword = text.trim().toLowerCase();
 
-    // 버튼 아이콘 모양을 해/달로 변경
-    const icon = document.getElementById('dark-mode-icon');
-    if (icon) {
-        icon.innerText = isDark ? 'light_mode' : 'dark_mode';
+    // 검색어가 없으면 박스 숨김
+    if (keyword.length === 0) {
+        box.innerHTML = '';
+        box.classList.add('hidden');
+        return;
+    }
+
+    // 1. 과거 데이터에서 항목명만 중복 없이 싹 뽑아옵니다.
+    const uniqueNames = [];
+    const seen = new Set();
+
+    if (typeof globalData !== 'undefined') {
+        globalData.forEach((item) => {
+            if (!item.Memo) return;
+            const parsed = parseMemo(item.Memo);
+            const name = parsed.itemName.trim();
+
+            if (name && !seen.has(name)) {
+                seen.add(name);
+                uniqueNames.push(name);
+            }
+        });
+    }
+
+    // 2. 내가 입력한 글자가 포함된 항목명만 걸러내기 (최대 5개)
+    const matched = uniqueNames.filter((name) => name.toLowerCase().includes(keyword)).slice(0, 5);
+
+    // 검색 결과가 없으면 박스 숨김
+    if (matched.length === 0) {
+        box.innerHTML = '';
+        box.classList.add('hidden');
+        return;
+    }
+
+    // 3. 찾은 항목들을 화면에 예쁘게 그려주기
+    box.innerHTML = matched
+        .map(
+            (name) =>
+                `<div onclick="selectSuggestion('${name.replace(/'/g, "\\'")}')" class="px-4 py-2.5 border-b border-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer active:bg-gray-200 transition">
+            <span class="material-symbols-outlined text-[14px] text-gray-400 align-middle mr-1">history</span>
+            ${name}
+        </div>`
+        )
+        .join('');
+
+    box.classList.remove('hidden');
+};
+
+// ==========================================
+// 💡 추천 항목을 터치했을 때 입력창에 쏙 집어넣는 함수
+// ==========================================
+window.selectSuggestion = (name) => {
+    // 👇 회원님의 실제 input id 적용
+    const input = document.getElementById('input-item-name');
+    if (input) {
+        input.value = name;
+    }
+
+    const box = document.getElementById('suggestion-box');
+    if (box) {
+        box.innerHTML = '';
+        box.classList.add('hidden');
     }
 };
 
-// 앱이 처음 켜질 때, 이전에 저장해둔 테마가 있는지 확인하고 적용하는 함수
-window.initTheme = () => {
-    const savedTheme = localStorage.getItem('theme');
-    const wantsDark = savedTheme === 'dark';
+// ==========================================
+// 💡 화면의 다른 곳을 터치하면 자동완성 박스가 조용히 닫히도록 처리
+// ==========================================
+document.addEventListener('click', (e) => {
+    const box = document.getElementById('suggestion-box');
+    const input = document.getElementById('input-item-name');
 
-    if (wantsDark) {
-        document.documentElement.classList.add('dark');
-        const icon = document.getElementById('dark-mode-icon');
-        if (icon) icon.innerText = 'light_mode';
+    if (box && input && e.target !== input && !box.contains(e.target)) {
+        box.classList.add('hidden');
     }
-};
-
-// 화면 로딩이 끝나면 바로 테마 초기화 함수를 실행합니다.
-document.addEventListener('DOMContentLoaded', window.initTheme);
+});
