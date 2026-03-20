@@ -105,30 +105,15 @@ window.renderDailyList = (data, searchKeyword = '') => {
     let filtered = [];
     const isSearching = searchKeyword.trim().length > 0;
 
-    // 💡 검색어가 있으면 "전체 기간"에서 찾고, 없으면 "이번 달" 데이터만 필터링합니다.
     if (isSearching) {
         const kw = searchKeyword.trim().toLowerCase();
         filtered = data.filter((d) => {
             const catLabel = globalCategories.find((c) => c.Value === d.Category)?.Label || '';
-
-            // 1. 데이터 원본을 '|' 기준으로 분리합니다. (예: ["사과", "삼성카드", "진짜 맛있는 사과"])
             const parts = d.Memo ? d.Memo.split('|') : [];
-
-            // 2. 결제 수단이 들어있는 두 번째 자리(인덱스 1)를 완전히 비워버립니다.
-            // -> ["사과", "", "진짜 맛있는 사과"] 가 됩니다.
-            if (parts.length > 1) {
-                parts[1] = '';
-            }
-
-            // 3. 카드가 제거된 순수 내용들과 카테고리명을 띄어쓰기로 길게 하나로 합칩니다.
-            // -> "사과  진짜 맛있는 사과 식비"
+            if (parts.length > 1) parts[1] = '';
             const searchableText = (parts.join(' ') + ' ' + catLabel).toLowerCase();
-
-            // 4. 이 텍스트 안에 검색어(kw)가 들어있는지만 깔끔하게 확인합니다!
             return searchableText.includes(kw);
         });
-
-        // 검색 중일 때는 월 이동 버튼을 숨깁니다.
         const navEl = document.getElementById('daily-month-navigation');
         if (navEl) navEl.classList.add('hidden');
     } else {
@@ -148,18 +133,18 @@ window.renderDailyList = (data, searchKeyword = '') => {
         return;
     }
 
+    applyTopRanks(filtered);
+
     let total = 0;
     const groupedByDate = {};
 
     filtered.forEach((item) => {
         if (item.Type === 'expense') total += Number(item.Amount);
-
         const dateStr = item.Date.substring(0, 10);
         if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
         groupedByDate[dateStr].push(item);
     });
 
-    // 💡 검색 중일 때는 상단에 '검색 합계액'을 표시해 줍니다.
     document.getElementById('daily-total-expense').innerText = isSearching
         ? `검색 합계: ${formatMoney(total)}`
         : formatMoney(total);
@@ -184,25 +169,28 @@ window.renderDailyList = (data, searchKeyword = '') => {
             const isExp = item.Type === 'expense';
             const catLabel =
                 globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
-
             const amountNum = Number(item.Amount);
             const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
             const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
             const displaySign = amountNum < 0 ? '-' : '';
 
+            // 💡 flex-1, min-w-0, truncate 등을 조합한 방탄 레이아웃 적용
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                    <div class="flex items-center gap-2.5">
+                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
                         <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
                             <span class="material-symbols-outlined text-sm">${getCategoryIcon(catLabel)}</span>
                         </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
-                            <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod}</p>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center">
+                                <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                ${item.rankBadge || ''}
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod}</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
                         <p class="text-[9px] text-gray-300 mt-1">${item.User?.split('@')[0]}</p>
                     </div>
@@ -763,27 +751,20 @@ window.closeCategoryModal = () => document.getElementById('category-modal').clas
 // 날짜 클릭 시 상세 내역 모달 (기존 주간 -> 일간으로 변경)
 // ==========================================
 window.openWeeklyModal = function (clickedDateStr) {
-    // 1. 클릭한 날짜 하루만 타겟팅
     const targetDate = clickedDateStr.substring(0, 10);
-
-    // 2. 모달 상단에 표시될 날짜를 보기 좋게 포맷팅 (예: 2026년 3월 15일 일요일)
     const d = new Date(targetDate);
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
 
-    // 3. 기존 모달의 제목(주간 내역)을 '일간 상세 내역'으로 동적 변경
     const modal = document.getElementById('weekly-modal');
     const titleEl = modal.querySelector('h3');
     if (titleEl) titleEl.innerText = '일간 상세 내역';
     document.getElementById('weekly-date-range').innerText = displayDate;
 
-    // 4. 전체 데이터에서 해당 날짜 데이터만 쏙 필터링
     const dailyData = globalData.filter((item) => item.Date.substring(0, 10) === targetDate);
-
     const container = document.getElementById('weekly-list-container');
     container.innerHTML = '';
 
-    // 5. 내역이 없을 경우 비어있는 UI 표시
     if (dailyData.length === 0) {
         container.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16">
@@ -791,7 +772,8 @@ window.openWeeklyModal = function (clickedDateStr) {
                 <p class="text-center text-gray-400 text-sm font-medium">이 날은 내역이 없습니다.</p>
             </div>`;
     } else {
-        // 6. 내역이 있을 경우 리스트 렌더링 (클릭 시 수정 모달 연결 유지)
+        applyTopRanks(dailyData);
+
         dailyData.forEach((item) => {
             const isExp = item.Type === 'expense';
             let catLabel = '미분류';
@@ -801,7 +783,6 @@ window.openWeeklyModal = function (clickedDateStr) {
             }
             const parsed = parseMemo(item.Memo);
             const iconName = getCategoryIcon(catLabel);
-
             const amountNum = Number(item.Amount);
             const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
             const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
@@ -810,16 +791,19 @@ window.openWeeklyModal = function (clickedDateStr) {
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                    <div class="flex items-center gap-2.5">
+                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
                         <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
                             <span class="material-symbols-outlined text-sm">${iconName}</span>
                         </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
-                            <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod} • ${item.Date.substring(0, 10)}</p>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center">
+                                <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                ${item.rankBadge || ''}
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod} • ${item.Date.substring(0, 10)}</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
                     </div>
                 </div>`
@@ -827,7 +811,6 @@ window.openWeeklyModal = function (clickedDateStr) {
         });
     }
 
-    // 7. 모달 애니메이션으로 띄우기
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.remove('opacity-0');
@@ -891,7 +874,6 @@ window.openCardDetailModal = function (cardName, prefix) {
     });
 
     filteredData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-
     const container = document.getElementById('card-detail-list-container');
     container.innerHTML = '';
 
@@ -899,13 +881,13 @@ window.openCardDetailModal = function (cardName, prefix) {
         container.innerHTML =
             '<p class="text-center text-gray-500 py-10 text-sm">결제 내역이 없습니다.</p>';
     } else {
+        applyTopRanks(filteredData);
+
         filteredData.forEach((item) => {
             const parsed = parseMemo(item.Memo);
             const catLabel =
                 globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
             const iconName = getCategoryIcon(catLabel);
-
-            // 👇 카드는 무조건 지출(expense)이므로 항상 빨간색
             const amountNum = Number(item.Amount);
             const displayColor = 'text-red-500';
             const iconBg = 'bg-red-100 text-red-600';
@@ -915,16 +897,19 @@ window.openCardDetailModal = function (cardName, prefix) {
                 'beforeend',
                 `
                 <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
-                    <div class="flex items-center gap-2.5">
+                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
                         <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
                             <span class="material-symbols-outlined text-sm">${iconName}</span>
                         </div>
-                        <div>
-                            <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
-                            <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${item.Date.substring(0, 10)}</p>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center">
+                                <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                ${item.rankBadge || ''}
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${item.Date.substring(0, 10)}</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
                         ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                     </div>
@@ -979,7 +964,8 @@ window.openMonthlyModal = function (type) {
                 <p class="text-center text-gray-400 text-sm font-medium">이번 달 ${typeName} 내역이 없습니다.</p>
             </div>`;
     } else {
-        // 1. 데이터를 날짜별로 그룹핑
+        applyTopRanks(monthlyData);
+
         const groupedByDate = {};
         monthlyData.forEach((item) => {
             const dateStr = item.Date.substring(0, 10);
@@ -987,16 +973,13 @@ window.openMonthlyModal = function (type) {
             groupedByDate[dateStr].push(item);
         });
 
-        // 2. 날짜를 최신순(내림차순)으로 정렬
         const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
 
-        // 3. 그룹핑된 날짜 순서대로 렌더링
         sortedDates.forEach((dateStr) => {
             const d = new Date(dateStr);
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
 
-            // 👇 날짜 헤더 추가
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
@@ -1005,7 +988,6 @@ window.openMonthlyModal = function (type) {
                 </div>`
             );
 
-            // 👇 해당 날짜에 속한 항목 렌더링
             groupedByDate[dateStr].forEach((item) => {
                 const isExp = item.Type === 'expense';
                 let catLabel = '미분류';
@@ -1015,7 +997,6 @@ window.openMonthlyModal = function (type) {
                 }
                 const parsed = parseMemo(item.Memo);
                 const iconName = getCategoryIcon(catLabel);
-
                 const amountNum = Number(item.Amount);
                 const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
                 const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
@@ -1024,16 +1005,19 @@ window.openMonthlyModal = function (type) {
                 container.insertAdjacentHTML(
                     'beforeend',
                     `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                        <div class="flex items-center gap-2.5">
+                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
                             <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
                                 <span class="material-symbols-outlined text-sm">${iconName}</span>
                             </div>
-                            <div>
-                                <p class="text-sm font-bold text-gray-800 leading-none">${parsed.itemName}</p>
-                                <p class="text-[10px] text-gray-400 mt-1">${catLabel} • ${parsed.payMethod}</p>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center">
+                                    <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                    ${item.rankBadge || ''}
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod}</p>
                             </div>
                         </div>
-                        <div class="text-right">
+                        <div class="text-right shrink-0 ml-3">
                             <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
                         </div>
                     </div>`
@@ -1335,3 +1319,28 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+// ==========================================
+// 🏆 리스트 내 Top 1~3 랭킹 뱃지 생성기 (디자인 개선)
+// ==========================================
+window.applyTopRanks = (list) => {
+    list.forEach((item) => (item.rankBadge = ''));
+
+    const expenses = list
+        .filter((d) => d.Type === 'expense' && Number(d.Amount) > 0)
+        .sort((a, b) => Number(b.Amount) - Number(a.Amount));
+    const incomes = list
+        .filter((d) => d.Type === 'income' && Number(d.Amount) > 0)
+        .sort((a, b) => Number(b.Amount) - Number(a.Amount));
+
+    expenses.slice(0, 3).forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        // 💡 shrink-0 추가 및 텍스트를 'TOP 1' -> '1위'로 축소
+        item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-red-600 bg-red-50 px-1 py-0.5 rounded border border-red-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
+    });
+
+    incomes.slice(0, 3).forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
+    });
+};
