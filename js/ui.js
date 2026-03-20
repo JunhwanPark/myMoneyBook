@@ -275,212 +275,230 @@ window.renderCalendarEvents = () => {
 };
 
 // ==========================================
-// 1. 통계 화면 렌더링 (말일 정산 로직 추가)
+// 1. 통계 화면 렌더링 (말일 정산 및 에러 방지 안전망 적용)
 // ==========================================
 window.renderChart = function () {
     updateMonthTitles();
     const targetY = currentDisplayDate.getFullYear();
     const targetM = currentDisplayDate.getMonth();
     const prefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
+
+    // 이번 달 '달력 기준' 지출 내역 (도넛 차트용)
     const expenses = globalData.filter((d) => d.Type === 'expense' && d.Date?.startsWith(prefix));
     const chartEl = document.getElementById('expenseChart');
+    const noDataEl = document.getElementById('no-chart-data');
+    const container = document.getElementById('card-stats-container');
 
-    if (!expenses.length) {
-        chartEl.style.display = 'none';
-        document.getElementById('no-chart-data').classList.remove('hidden');
-        document.getElementById('chart-total-expense').innerText = '총 0원';
-        document.getElementById('card-stats-container').innerHTML = '';
-        return;
-    }
+    // ==========================================
+    // 📊 상단 도넛 차트 렌더링 (안전망 씌움)
+    // ==========================================
+    try {
+        let sum = 0;
+        const catTotals = {};
+        expenses.forEach((item) => {
+            const cat = globalCategories.find((c) => c.Value === item.Category)?.Label || '기타';
+            catTotals[cat] = (catTotals[cat] || 0) + Number(item.Amount);
+            sum += Number(item.Amount);
+        });
 
-    chartEl.style.display = 'block';
-    document.getElementById('no-chart-data').classList.add('hidden');
+        const totalEl = document.getElementById('chart-total-expense');
+        if (totalEl) totalEl.innerText = `총 ${formatMoney(sum)}`;
 
-    const catTotals = {};
-    let sum = 0;
-    expenses.forEach((item) => {
-        const cat = globalCategories.find((c) => c.Value === item.Category)?.Label || '기타';
-        catTotals[cat] = (catTotals[cat] || 0) + Number(item.Amount);
-        sum += Number(item.Amount);
-    });
-    document.getElementById('chart-total-expense').innerText = `총 ${formatMoney(sum)}`;
+        // 차트를 감싸고 있는 하얀색 배경 박스 찾기
+        const chartWrapper = chartEl ? chartEl.closest('.bg-white') : null;
 
-    if (expenseChart) expenseChart.destroy();
+        if (!expenses.length) {
+            // 지출이 없으면 캔버스와 하얀 박스를 통째로 숨깁니다.
+            if (chartWrapper) chartWrapper.style.display = 'none';
+            if (noDataEl) noDataEl.classList.remove('hidden');
+        } else {
+            // 지출이 있으면 하얀 박스를 다시 보여줍니다.
+            if (chartWrapper) chartWrapper.style.display = 'flex';
+            if (noDataEl) noDataEl.classList.add('hidden');
 
-    const chartLabels = [];
-    const chartData = [];
-    for (const [cat, val] of Object.entries(catTotals)) {
-        if (val > 0) {
-            chartLabels.push(cat);
-            chartData.push(val);
-        }
-    }
+            // 💡 핵심 버그 픽스: 캔버스에 이미 그려진 차트가 있다면 변수명에 상관없이 강제로 찾아내 파괴!
+            const existingChart = Chart.getChart(chartEl);
+            if (existingChart) {
+                existingChart.destroy();
+            }
 
-    expenseChart = new Chart(chartEl.getContext('2d'), {
-        type: 'doughnut',
-        plugins: [ChartDataLabels],
-        data: {
-            labels: chartLabels,
-            datasets: [
-                {
-                    data: chartData,
-                    backgroundColor: [
-                        '#ef4444',
-                        '#3b82f6',
-                        '#f59e0b',
-                        '#10b981',
-                        '#8b5cf6',
-                        '#6366f1',
-                        '#ec4899',
+            const chartLabels = [];
+            const chartData = [];
+            for (const [cat, val] of Object.entries(catTotals)) {
+                if (val > 0) {
+                    chartLabels.push(cat);
+                    chartData.push(val);
+                }
+            }
+
+            // 새 차트 그리기
+            new Chart(chartEl.getContext('2d'), {
+                type: 'doughnut',
+                plugins: [ChartDataLabels],
+                data: {
+                    labels: chartLabels,
+                    datasets: [
+                        {
+                            data: chartData,
+                            backgroundColor: [
+                                '#ef4444',
+                                '#3b82f6',
+                                '#f59e0b',
+                                '#10b981',
+                                '#8b5cf6',
+                                '#6366f1',
+                                '#ec4899',
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverOffset: 4,
+                        },
                     ],
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverOffset: 4,
                 },
-            ],
-        },
-        // 👇 이 options 부분만 덮어씌워 주세요!
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            // 차트 위아래 여백을 살짝 줄여서 범례가 들어갈 세로 공간을 더 확보합니다 (15 -> 10)
-            layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
-            plugins: {
-                legend: {
-                    position: 'right',
-                    labels: {
-                        boxWidth: 10, // 컬러 네모 박스 크기 살짝 축소 (12 -> 10)
-                        padding: 8, // 💡 핵심: 항목 사이의 줄 간격을 대폭 축소 (15 -> 8)
-                        font: { size: 10, family: "'Pretendard', sans-serif" }, // 글씨 크기 미세 조정 (11 -> 10)
-                    },
-                },
-                datalabels: {
-                    color: '#4b5563',
-                    anchor: 'end',
-                    align: 'end',
-                    offset: 2,
-                    font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
-                    formatter: (value, ctx) => {
-                        let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                        let percentage = ((value * 100) / totalSum).toFixed(0) + '%';
-                        if ((value * 100) / totalSum <= 4) return null;
-                        return percentage;
-                    },
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function (context) {
-                            let label = context.label || '';
-                            if (label) label += ': ';
-                            if (context.parsed !== null) label += formatMoney(context.parsed);
-                            return label;
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 10,
+                                padding: 8,
+                                font: { size: 10, family: "'Pretendard', sans-serif" },
+                            },
+                        },
+                        datalabels: {
+                            color: '#4b5563',
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 2,
+                            font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
+                            formatter: (value, ctx) => {
+                                let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                let percentage = ((value * 100) / totalSum).toFixed(0) + '%';
+                                if ((value * 100) / totalSum <= 4) return null;
+                                return percentage;
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null)
+                                        label += formatMoney(context.parsed);
+                                    return label;
+                                },
+                            },
                         },
                     },
                 },
-            },
-        },
-    });
-
-    // ==========================================
-    // 여기서부터가 수정된 부분입니다!
-    // ==========================================
-    const container = document.getElementById('card-stats-container');
-    container.innerHTML =
-        '<h3 class="text-xs font-bold text-gray-500 mb-2 mt-6">카드별 정산 (기준일 반영)</h3>';
-    const cardSums = {};
-
-    globalData.forEach((item) => {
-        if (item.Type !== 'expense') return;
-        const parsed = parseMemo(item.Memo);
-        const cardDef = globalCards.find((c) => c.Label.split('|')[0] === parsed.payMethod);
-        if (!cardDef) return;
-
-        const dayStr = cardDef.Label.split('|')[1] || '31';
-        const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
-
-        const d = new Date(item.Date);
-        let y = d.getFullYear(),
-            m = d.getMonth();
-
-        if (!isEnd && d.getDate() > parseInt(dayStr)) {
-            m++;
-            if (m > 11) {
-                m = 0;
-                y++;
-            }
-        }
-
-        if (`${y}-${String(m + 1).padStart(2, '0')}` === prefix) {
-            cardSums[parsed.payMethod] = (cardSums[parsed.payMethod] || 0) + Number(item.Amount);
-        }
-    });
-
-    // 💡 화면에 바로 그리지 않고 정렬을 위해 배열(cardStatsList)에 먼저 담습니다.
-    const cardStatsList = [];
-
-    globalCards.forEach((card) => {
-        const [name, dayStr] = card.Label.split('|');
-        const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
-
-        let start, end;
-        if (isEnd) {
-            start = new Date(targetY, targetM, 1);
-            end = new Date(targetY, targetM + 1, 0);
-        } else {
-            const closingDay = parseInt(dayStr);
-            end = new Date(targetY, targetM, closingDay);
-            start = new Date(targetY, targetM - 1, closingDay + 1);
-        }
-
-        const displayDay = isEnd ? '말일' : `${dayStr}일`;
-        const amount = cardSums[name] || 0;
-
-        // 결제 금액이 0원보다 큰 카드만 배열에 추가합니다 (0원 숨김 반영)
-        if (amount > 0) {
-            cardStatsList.push({
-                name: name,
-                displayDay: displayDay,
-                start: start,
-                end: end,
-                amount: amount,
             });
         }
-    });
+    } catch (e) {
+        console.error('차트 렌더링 중 에러 발생:', e);
+    }
 
-    // 💡 1순위: 금액 내림차순 정렬 / 2순위: 같으면 이름 가나다순 정렬
-    cardStatsList.sort((a, b) => {
-        if (b.amount !== a.amount) {
-            return b.amount - a.amount;
-        }
-        return a.name.localeCompare(b.name);
-    });
+    // ==========================================
+    // 💳 하단 카드별 정산 리스트 (기준일 반영)
+    // ==========================================
+    try {
+        if (!container) return;
+        container.innerHTML =
+            '<h3 class="text-xs font-bold text-gray-500 mb-2 mt-6">카드별 정산 (기준일 반영)</h3>';
+        const cardSums = {};
 
-    // 💡 정렬이 끝난 배열을 순서대로 화면에 그려줍니다.
-    cardStatsList.forEach((stat) => {
-        container.insertAdjacentHTML(
-            'beforeend',
-            `<div onclick="openCardDetailModal('${stat.name}', '${prefix}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
-                <div class="flex justify-between items-center mb-0.5">
-                    <div>
-                        <span class="text-sm font-extrabold text-gray-800 leading-none">${stat.name}</span>
-                        <span class="text-[10px] text-indigo-500 font-bold ml-1">기준: ${stat.displayDay}</span>
+        globalData.forEach((item) => {
+            if (item.Type !== 'expense') return;
+            const parsed = parseMemo(item.Memo);
+            const cardDef = globalCards.find((c) => c.Label.split('|')[0] === parsed.payMethod);
+            if (!cardDef) return;
+
+            const dayStr = cardDef.Label.split('|')[1] || '31';
+            const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
+
+            const d = new Date(item.Date);
+            let y = d.getFullYear(),
+                m = d.getMonth();
+
+            // 기준일을 넘겼으면 청구월을 다음 달로 넘김
+            if (!isEnd && d.getDate() > parseInt(dayStr)) {
+                m++;
+                if (m > 11) {
+                    m = 0;
+                    y++;
+                }
+            }
+
+            if (`${y}-${String(m + 1).padStart(2, '0')}` === prefix) {
+                cardSums[parsed.payMethod] =
+                    (cardSums[parsed.payMethod] || 0) + Number(item.Amount);
+            }
+        });
+
+        const cardStatsList = [];
+
+        globalCards.forEach((card) => {
+            const [name, dayStr] = card.Label.split('|');
+            const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
+
+            let start, end;
+            if (isEnd) {
+                start = new Date(targetY, targetM, 1);
+                end = new Date(targetY, targetM + 1, 0);
+            } else {
+                const closingDay = parseInt(dayStr);
+                end = new Date(targetY, targetM, closingDay);
+                start = new Date(targetY, targetM - 1, closingDay + 1);
+            }
+
+            const displayDay = isEnd ? '말일' : `${dayStr}일`;
+            const amount = cardSums[name] || 0;
+
+            if (amount > 0) {
+                cardStatsList.push({
+                    name: name,
+                    displayDay: displayDay,
+                    start: start,
+                    end: end,
+                    amount: amount,
+                });
+            }
+        });
+
+        cardStatsList.sort((a, b) => {
+            if (b.amount !== a.amount) return b.amount - a.amount;
+            return a.name.localeCompare(b.name);
+        });
+
+        cardStatsList.forEach((stat) => {
+            container.insertAdjacentHTML(
+                'beforeend',
+                `<div onclick="openCardDetailModal('${stat.name}', '${prefix}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <div>
+                            <span class="text-sm font-extrabold text-gray-800 leading-none">${stat.name}</span>
+                            <span class="text-[10px] text-indigo-500 font-bold ml-1">기준: ${stat.displayDay}</span>
+                        </div>
+                        <span class="text-sm font-black text-gray-900 leading-none">${formatMoney(stat.amount)}</span>
                     </div>
-                    <span class="text-sm font-black text-gray-900 leading-none">${formatMoney(stat.amount)}</span>
-                </div>
-                <div class="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
-                    <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-                    ${stat.start.toLocaleDateString()} ~ ${stat.end.toLocaleDateString()}
-                </div>
-            </div>`
-        );
-    });
+                    <div class="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                        <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                        ${stat.start.toLocaleDateString()} ~ ${stat.end.toLocaleDateString()}
+                    </div>
+                </div>`
+            );
+        });
 
-    // 결제된 카드가 하나도 없을 경우의 안내 문구
-    if (cardStatsList.length === 0) {
-        container.insertAdjacentHTML(
-            'beforeend',
-            '<p class="text-center text-gray-400 text-sm py-4 font-medium">이번 달 정산될 카드 내역이 없습니다.</p>'
-        );
+        if (cardStatsList.length === 0) {
+            container.insertAdjacentHTML(
+                'beforeend',
+                '<p class="text-center text-gray-400 text-sm py-4 font-medium">이번 달 정산될 카드 내역이 없습니다.</p>'
+            );
+        }
+    } catch (e) {
+        console.error('카드 리스트 렌더링 중 에러 발생:', e);
     }
 };
 
