@@ -217,3 +217,10 @@ textarea:focus {
     border-color: var(--theme-color);
     box-shadow: 0 0 0 2px var(--theme-light);
 }
+
+/* ==========================================
+   💡 수입 탭 선택 시 마이너스 버튼 자동 숨김
+   ========================================== */
+form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
+    display: none !important;
+}

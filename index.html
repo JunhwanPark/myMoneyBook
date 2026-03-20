@@ -439,14 +439,27 @@
                             <option value="">카테고리 선택</option>
                         </select>
                     </div>
-                    <input
-                        type="text"
-                        id="input-amount"
-                        inputmode="decimal"
-                        placeholder="금액"
-                        class="w-full border border-gray-300 p-3 rounded-lg text-sm font-bold outline-none"
-                        required
-                    />
+                    <div class="flex gap-2 items-center">
+                        <button
+                            type="button"
+                            id="btn-minus-toggle"
+                            onclick="toggleMinusSign()"
+                            class="w-11 h-11 shrink-0 bg-red-50 border border-red-100 rounded-full flex items-center justify-center text-red-500 active:bg-red-200 transition shadow-sm"
+                            tabindex="-1"
+                        >
+                            <span class="material-symbols-outlined font-black text-[22px]"
+                                >remove</span
+                            >
+                        </button>
+                        <input
+                            type="text"
+                            id="input-amount"
+                            inputmode="decimal"
+                            placeholder="금액"
+                            class="w-full border border-gray-300 p-3 rounded-lg text-sm font-bold outline-none"
+                            required
+                        />
+                    </div>
 
                     <div
                         id="payment-section"

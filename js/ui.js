@@ -1134,3 +1134,36 @@ document.addEventListener('click', (e) => {
         box.classList.add('hidden');
     }
 });
+
+// ==========================================
+// 💡 금액 입력창 마이너스(+/-) 토글 기능
+// ==========================================
+window.toggleMinusSign = () => {
+    const input = document.getElementById('input-amount');
+    if (!input) return;
+
+    let val = input.value.trim();
+
+    // 이미 '-' 기호가 맨 앞에 있다면 지워주고 (플러스로 변경)
+    if (val.startsWith('-')) {
+        input.value = val.substring(1);
+    }
+    // '-' 기호가 없다면 맨 앞에 붙여줍니다 (마이너스로 변경)
+    else {
+        input.value = '-' + val;
+    }
+};
+
+// ==========================================
+// 💡 수입 탭으로 변경 시, 입력창의 '-' 기호 자동 제거
+// ==========================================
+document.addEventListener('change', (e) => {
+    // 클릭한 것이 수입/지출 라디오 버튼이고, 그 값이 'income(수입)'이라면
+    if (e.target.name === 'type' && e.target.value === 'income') {
+        const amountInput = document.getElementById('input-amount');
+        // 금액에 마이너스가 붙어있으면 떼어버립니다.
+        if (amountInput && amountInput.value.startsWith('-')) {
+            amountInput.value = amountInput.value.substring(1);
+        }
+    }
+});
