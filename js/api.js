@@ -113,7 +113,7 @@ window.loadDailyRecords = async () => {
     }
 };
 
-window.saveRecord = async () => {
+window.saveRecord = () => {
     const type = document.querySelector('input[name="type"]:checked').value;
     const date = document.getElementById('input-date').value;
     const category = document.getElementById('input-category').value;
@@ -121,19 +121,16 @@ window.saveRecord = async () => {
     const memoDetail = document.getElementById('input-memo-detail').value;
     const payType = document.querySelector('input[name="pay_type"]:checked').value;
 
-    // 👇 콤마를 제거한 순수 문자열 상태로 가져옵니다.
     const rawAmount = document
         .getElementById('input-amount')
         .value.replace(/,/g, '')
         .replace(/-/g, '');
     const rawDiscount = document.getElementById('input-discount').value.replace(/,/g, '');
 
-    // 👇 문자열이 아예 비어있는 경우('', 아예 안 적은 경우)만 막습니다. (0은 통과)
     if (!date || rawAmount === '' || !itemName) {
         return alert('필수 항목(날짜, 항목 이름, 금액)을 입력해주세요.');
     }
 
-    // 마이너스 부호 확인 및 최종 금액 계산
     const amountStr = document.getElementById('input-amount').value.replace(/,/g, '');
     const amountVal = Number(amountStr);
     const discountVal = Number(rawDiscount) || 0;
@@ -146,9 +143,14 @@ window.saveRecord = async () => {
     }
 
     const memo = `${itemName}\nPAY:${paymentMethod}\nDISC:${discountVal}\n${memoDetail}`;
+    const action = document.getElementById('input-action').value;
+
+    // 💡 임시 ID 생성 (새로 추가할 경우 구글 시트가 ID를 주기도 전에 화면에 그리기 위함)
+    const recordId = document.getElementById('input-id').value || 'temp_' + Date.now();
+
     const payload = {
-        action: document.getElementById('input-action').value,
-        id: document.getElementById('input-id').value,
+        action: action,
+        id: recordId,
         country: currentCountry,
         date,
         userEmail: currentUserEmail,
@@ -158,42 +160,97 @@ window.saveRecord = async () => {
         memo,
     };
 
-    const btn = document.getElementById('save-btn');
-    btn.innerText = '저장 중...';
-    btn.disabled = true;
+    // ==========================================
+    // 🚀 1. 딜레이 제로(0초): 모달창 즉시 닫기
+    // ==========================================
+    closeAddModal();
 
-    try {
-        const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if ((await res.json()).status === 'success') {
-            closeAddModal();
-            loadDailyRecords();
-        }
-    } catch (e) {
-        alert('저장 중 오류가 발생했습니다.');
-    } finally {
-        btn.innerText = '저장하기';
-        btn.disabled = false;
+    // ==========================================
+    // 🚀 2. 낙관적 업데이트: 서버 응답을 기다리지 않고 화면에 먼저 그려버리기!
+    // ==========================================
+    const optimisticData = {
+        ID: recordId,
+        Date: date + 'T00:00:00.000Z',
+        Type: type,
+        Category: category,
+        Amount: finalAmount.toString(),
+        Memo: memo,
+        User: currentUserEmail || 'me',
+    };
+
+    if (action === 'create') {
+        globalData.push(optimisticData);
+    } else {
+        const idx = globalData.findIndex((d) => d.ID === recordId);
+        if (idx > -1) globalData[idx] = optimisticData;
     }
+
+    // 변경된 데이터를 바탕으로 화면 즉시 새로고침 (사용자는 여기서 저장이 끝났다고 느낍니다)
+    if (typeof renderDailyList === 'function') renderDailyList(globalData);
+    if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
+    if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
+    const statsTab = document.getElementById('view-stats');
+    if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function')
+        renderChart();
+
+    // ==========================================
+    // 🚀 3. 백그라운드 동기화: 사용자가 딴짓할 때 조용히 서버에 전송
+    // ==========================================
+    showLoader(); // 상단에 '동기화 중...' 토스트 띄우기
+
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status === 'success') {
+                // 구글 시트에 안전하게 저장이 끝나면, 임시 ID 등을 실제 ID로 덮어씌우기 위해 조용히 싱크
+                loadDailyRecords();
+            }
+        })
+        .catch((e) => {
+            alert('저장 중 통신 오류가 발생했습니다.');
+            loadDailyRecords(); // 실패 시 원래 서버 데이터로 원상복구
+        });
 };
 
-window.deleteRecord = async () => {
+window.deleteRecord = () => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
-    try {
-        const res = await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'delete',
-                id: document.getElementById('input-id').value,
-                country: currentCountry,
-            }),
+
+    const recordId = document.getElementById('input-id').value;
+
+    // 🚀 1. 즉시 모달 닫기
+    closeAddModal();
+
+    // 🚀 2. 즉시 화면에서 데이터 삭제 및 새로고침 (낙관적 업데이트)
+    globalData = globalData.filter((d) => d.ID !== recordId);
+
+    if (typeof renderDailyList === 'function') renderDailyList(globalData);
+    if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
+    if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
+    const statsTab = document.getElementById('view-stats');
+    if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function')
+        renderChart();
+
+    // 🚀 3. 백그라운드 삭제 요청
+    showLoader(); // 토스트 띄우기
+
+    fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({
+            action: 'delete',
+            id: recordId,
+            country: currentCountry,
+        }),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status === 'success') {
+                loadDailyRecords(); // 삭제 성공 시 조용히 데이터 싱크
+            }
+        })
+        .catch((e) => {
+            alert('삭제 중 통신 오류가 발생했습니다.');
+            loadDailyRecords(); // 실패 시 삭제 취소 및 롤백
         });
-        if ((await res.json()).status === 'success') {
-            closeAddModal();
-            loadDailyRecords();
-        }
-    } catch (e) {
-        alert('통신 오류');
-    }
 };
 
 // ==========================================
