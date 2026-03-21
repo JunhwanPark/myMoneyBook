@@ -1451,3 +1451,48 @@ window.setCardStatMode = (mode) => {
     window.cardStatMode = mode;
     renderChart(); // 상태를 바꾸고 차트 영역만 다시 그립니다!
 };
+
+// ==========================================
+// 🚀 앱 버전(Git Commit SHA) 자동 불러오기 기능
+// ==========================================
+window.fetchAppVersion = async () => {
+    const githubUser = 'JunhwanPark';
+    const githubRepo = 'myMoneyBook';
+    const branch = 'main';
+
+    const shaEl = document.getElementById('app-version-sha');
+    const dateEl = document.getElementById('app-version-date');
+
+    if (!shaEl || !dateEl) return;
+
+    try {
+        const res = await fetch(
+            `https://api.github.com/repos/${githubUser}/${githubRepo}/commits?sha=${branch}&per_page=1`
+        );
+
+        if (!res.ok) throw new Error('Network response was not ok');
+
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+            const latestCommit = data[0];
+
+            // 1. Short SHA 추출 (앞 7자리)
+            const shortSha = latestCommit.sha.substring(0, 7);
+
+            // 2. 날짜 포맷팅 (한국 시간 기준)
+            const commitDate = new Date(latestCommit.commit.author.date);
+            const dateStr = `${commitDate.getFullYear()}.${String(commitDate.getMonth() + 1).padStart(2, '0')}.${String(commitDate.getDate()).padStart(2, '0')} ${String(commitDate.getHours()).padStart(2, '0')}:${String(commitDate.getMinutes()).padStart(2, '0')}`;
+
+            shaEl.innerText = shortSha;
+            dateEl.innerText = dateStr;
+        }
+    } catch (error) {
+        console.error('버전 정보를 불러오지 못했습니다.', error);
+        shaEl.innerText = 'unknown';
+        dateEl.innerText = '업데이트 확인 불가';
+    }
+};
+
+// 앱 로딩이 완료되면 즉시 버전 정보를 가져옵니다.
+document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
