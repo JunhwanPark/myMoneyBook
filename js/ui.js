@@ -537,13 +537,33 @@ window.renderCardDropdown = () => {
     });
 };
 
+// ==========================================
+// 💡 입력창(Dropdown) 카테고리 렌더링 (커스텀 순서 반영)
+// ==========================================
 window.renderCategoryDropdown = (type) => {
     const select = document.getElementById('input-category');
     if (!select) return;
     select.innerHTML = '<option value="">카테고리 선택</option>';
+
+    // 스마트폰에 저장된 나만의 카테고리 순서표를 불러옵니다.
+    const savedOrder = JSON.parse(localStorage.getItem('categoryOrder')) || [];
+
     globalCategories
         .filter((c) => c.Type === type)
-        .sort((a, b) => a.Label.localeCompare(b.Label))
+        .sort((a, b) => {
+            const idxA = savedOrder.indexOf(a.Value);
+            const idxB = savedOrder.indexOf(b.Value);
+
+            // 둘 다 저장된 순서가 있으면 그 순서대로
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            // a만 있으면 a가 위로
+            if (idxA !== -1) return -1;
+            // b만 있으면 b가 위로
+            if (idxB !== -1) return 1;
+
+            // 새로 추가해서 순서가 없는 애들은 맨 밑에서 가나다순 정렬
+            return a.Label.localeCompare(b.Label);
+        })
         .forEach((c) =>
             select.insertAdjacentHTML('beforeend', `<option value="${c.Value}">${c.Label}</option>`)
         );
@@ -696,10 +716,9 @@ window.closeCardModal = () => {
 };
 
 // ==========================================
-// 카테고리 관리 모달 리스트 렌더링
+// 💡 카테고리 관리 모달 리스트 렌더링 및 드래그 엔진 장착
 // ==========================================
 window.openCategoryModal = () => {
-    // 💡 모달을 열 때 폼과 버튼을 항상 초기 상태('추가')로 리셋
     const btnCat = document.getElementById('btn-add-cat');
     if (btnCat) {
         btnCat.innerText = '추가';
@@ -712,7 +731,17 @@ window.openCategoryModal = () => {
     const container = document.getElementById('category-list-container');
     container.innerHTML = '';
 
+    // 스마트폰에 저장된 나만의 카테고리 순서표를 불러옵니다.
+    const savedOrder = JSON.parse(localStorage.getItem('categoryOrder')) || [];
+
     const sortedCategories = [...globalCategories].sort((a, b) => {
+        const idxA = savedOrder.indexOf(a.Value);
+        const idxB = savedOrder.indexOf(b.Value);
+
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+
         if (a.Type !== b.Type) return a.Type === 'income' ? -1 : 1;
         return a.Label.localeCompare(b.Label);
     });
@@ -727,10 +756,12 @@ window.openCategoryModal = () => {
                     ? '<span class="bg-red-100 text-red-600 px-2 py-0.5 rounded text-[10px] font-bold shrink-0">지출</span>'
                     : '<span class="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold shrink-0">수입</span>';
 
+            // 👇 li 태그에 data-id를 달아주고, 햄버거 버튼(menu)을 추가했습니다.
             container.insertAdjacentHTML(
                 'beforeend',
-                `<li class="py-1.5 flex justify-between items-center gap-2">
-                    <div class="flex items-center gap-2 overflow-hidden">
+                `<li class="py-2 flex justify-between items-center gap-2 bg-white" data-id="${c.Value}">
+                    <div class="flex items-center gap-2 overflow-hidden flex-1">
+                        <span class="material-symbols-outlined text-gray-400 cursor-grab active:cursor-grabbing hover:text-gray-600 drag-handle text-[18px] p-1">menu</span>
                         ${typeBadge}
                         <span class="text-sm font-medium text-gray-800 truncate">${c.Label}</span>
                     </div>
@@ -746,6 +777,22 @@ window.openCategoryModal = () => {
             );
         });
     }
+
+    // 💡 부드러운 드래그 앤 드롭 기능(SortableJS) 활성화
+    if (window.categorySortable) {
+        window.categorySortable.destroy(); // 중복 생성 방지
+    }
+
+    window.categorySortable = new Sortable(container, {
+        handle: '.drag-handle', // 햄버거 아이콘을 잡았을 때만 이동하게 설정
+        animation: 150, // 스르륵 이동하는 애니메이션 속도
+        ghostClass: 'bg-gray-50', // 드래그 중인 항목의 배경색 변경
+        onEnd: function () {
+            // 드래그해서 위치를 내려놓는 순간, 바뀐 순서를 쫙 읽어들여서 스마트폰에 기억시킵니다!
+            const newOrder = Array.from(container.children).map((li) => li.getAttribute('data-id'));
+            localStorage.setItem('categoryOrder', JSON.stringify(newOrder));
+        },
+    });
 
     document.getElementById('category-modal').classList.remove('hidden');
     setTimeout(() => document.getElementById('category-modal').classList.remove('opacity-0'), 10);
