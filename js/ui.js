@@ -401,12 +401,28 @@ window.renderChart = function () {
     }
 
     // ==========================================
-    // 💳 하단 카드별 정산 리스트 (기준일 반영)
+    // 💳 하단 카드별 정산 리스트 (기준일 vs 달력월 토글 적용)
     // ==========================================
     try {
         if (!container) return;
-        container.innerHTML =
-            '<h3 class="text-xs font-bold text-gray-500 mb-2 mt-6">카드별 정산 (기준일 반영)</h3>';
+
+        // 💡 기본값을 'calendar'(1일~말일)로 변경했습니다!
+        window.cardStatMode = window.cardStatMode || 'calendar';
+        const isBilling = window.cardStatMode === 'billing';
+
+        const btnClassOn = 'bg-white text-gray-800 shadow-sm rounded-md px-2 py-1 transition-all';
+        const btnClassOff = 'text-gray-400 hover:text-gray-600 px-2 py-1 transition-all';
+
+        // 👇 버튼 순서 스왑 (1일~말일이 왼쪽으로 오도록 수정)
+        container.innerHTML = `
+            <div class="flex justify-between items-end mb-3 mt-6">
+                <h3 class="text-xs font-bold text-gray-500">카드별 결제액</h3>
+                <div class="flex bg-gray-100 p-0.5 rounded-lg text-[10px] font-bold">
+                    <button onclick="setCardStatMode('calendar')" class="${!isBilling ? btnClassOn : btnClassOff}">1일~말일</button>
+                    <button onclick="setCardStatMode('billing')" class="${isBilling ? btnClassOn : btnClassOff}">기준일</button>
+                </div>
+            </div>`;
+
         const cardSums = {};
 
         globalData.forEach((item) => {
@@ -418,20 +434,29 @@ window.renderChart = function () {
             const dayStr = cardDef.Label.split('|')[1] || '31';
             const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
 
-            const d = new Date(item.Date);
-            let y = d.getFullYear(),
-                m = d.getMonth();
+            let isTargetMonth = false;
 
-            // 기준일을 넘겼으면 청구월을 다음 달로 넘김
-            if (!isEnd && d.getDate() > parseInt(dayStr)) {
-                m++;
-                if (m > 11) {
-                    m = 0;
-                    y++;
+            if (isBilling) {
+                const d = new Date(item.Date);
+                let y = d.getFullYear(),
+                    m = d.getMonth();
+                if (!isEnd && d.getDate() > parseInt(dayStr)) {
+                    m++;
+                    if (m > 11) {
+                        m = 0;
+                        y++;
+                    }
+                }
+                if (`${y}-${String(m + 1).padStart(2, '0')}` === prefix) {
+                    isTargetMonth = true;
+                }
+            } else {
+                if (item.Date.startsWith(prefix)) {
+                    isTargetMonth = true;
                 }
             }
 
-            if (`${y}-${String(m + 1).padStart(2, '0')}` === prefix) {
+            if (isTargetMonth) {
                 cardSums[parsed.payMethod] =
                     (cardSums[parsed.payMethod] || 0) + Number(item.Amount);
             }
@@ -444,26 +469,25 @@ window.renderChart = function () {
             const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
 
             let start, end;
-            if (isEnd) {
+            if (isBilling) {
+                if (isEnd) {
+                    start = new Date(targetY, targetM, 1);
+                    end = new Date(targetY, targetM + 1, 0);
+                } else {
+                    const closingDay = parseInt(dayStr);
+                    end = new Date(targetY, targetM, closingDay);
+                    start = new Date(targetY, targetM - 1, closingDay + 1);
+                }
+            } else {
                 start = new Date(targetY, targetM, 1);
                 end = new Date(targetY, targetM + 1, 0);
-            } else {
-                const closingDay = parseInt(dayStr);
-                end = new Date(targetY, targetM, closingDay);
-                start = new Date(targetY, targetM - 1, closingDay + 1);
             }
 
-            const displayDay = isEnd ? '말일' : `${dayStr}일`;
+            const displayDay = isBilling ? (isEnd ? '말일' : `${dayStr}일`) : '1일~말일';
             const amount = cardSums[name] || 0;
 
             if (amount > 0) {
-                cardStatsList.push({
-                    name: name,
-                    displayDay: displayDay,
-                    start: start,
-                    end: end,
-                    amount: amount,
-                });
+                cardStatsList.push({ name, displayDay, start, end, amount });
             }
         });
 
@@ -475,7 +499,7 @@ window.renderChart = function () {
         cardStatsList.forEach((stat) => {
             container.insertAdjacentHTML(
                 'beforeend',
-                `<div onclick="openCardDetailModal('${stat.name}', '${prefix}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
+                `<div onclick="openCardDetailModal('${stat.name}', '${prefix}', '${window.cardStatMode}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
                     <div class="flex justify-between items-center mb-0.5">
                         <div>
                             <span class="text-sm font-extrabold text-gray-800 leading-none">${stat.name}</span>
@@ -895,47 +919,57 @@ window.closeWeeklyModal = function () {
 // ==========================================
 // 2. 카드 상세 내역 모달 제어 (말일 로직 추가)
 // ==========================================
-window.openCardDetailModal = function (cardName, prefix) {
+window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
     const cardDef = globalCards.find((c) => c.Label.split('|')[0] === cardName);
     if (!cardDef) return;
 
     const dayStr = cardDef.Label.split('|')[1] || '31';
     const isEnd = dayStr === '말' || dayStr === '말일' || dayStr === '31';
+    const isBilling = mode === 'billing';
 
     const [targetY, targetMStr] = prefix.split('-');
     const year = parseInt(targetY);
     const month = parseInt(targetMStr) - 1;
 
     let start, end;
-    if (isEnd) {
+    if (isBilling) {
+        if (isEnd) {
+            start = new Date(year, month, 1);
+            end = new Date(year, month + 1, 0);
+        } else {
+            const closingDay = parseInt(dayStr);
+            end = new Date(year, month, closingDay);
+            start = new Date(year, month - 1, closingDay + 1);
+        }
+    } else {
         start = new Date(year, month, 1);
         end = new Date(year, month + 1, 0);
-    } else {
-        const closingDay = parseInt(dayStr);
-        end = new Date(year, month, closingDay);
-        start = new Date(year, month - 1, closingDay + 1);
     }
 
     document.getElementById('card-detail-title').innerText = `${cardName} 결제 내역`;
     document.getElementById('card-detail-date-range').innerText =
-        `${start.toLocaleDateString()} ~ ${end.toLocaleDateString()}`;
+        `${start.toLocaleDateString()} ~ ${end.toLocaleDateString()} ${!isBilling ? '(달력 기준)' : ''}`;
 
     const filteredData = globalData.filter((item) => {
         if (item.Type !== 'expense') return false;
         const parsed = parseMemo(item.Memo);
         if (parsed.payMethod !== cardName) return false;
 
-        const d = new Date(item.Date);
-        let y = d.getFullYear(),
-            m = d.getMonth();
-        if (!isEnd && d.getDate() > parseInt(dayStr)) {
-            m++;
-            if (m > 11) {
-                m = 0;
-                y++;
+        if (isBilling) {
+            const d = new Date(item.Date);
+            let y = d.getFullYear(),
+                m = d.getMonth();
+            if (!isEnd && d.getDate() > parseInt(dayStr)) {
+                m++;
+                if (m > 11) {
+                    m = 0;
+                    y++;
+                }
             }
+            return `${y}-${String(m + 1).padStart(2, '0')}` === prefix;
+        } else {
+            return item.Date.startsWith(prefix);
         }
-        return `${y}-${String(m + 1).padStart(2, '0')}` === prefix;
     });
 
     filteredData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
@@ -1408,4 +1442,12 @@ window.applyTopRanks = (list) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
         item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
     });
+};
+
+// ==========================================
+// 💡 카드 통계 기준 토글 함수 (기준일 <-> 달력월)
+// ==========================================
+window.setCardStatMode = (mode) => {
+    window.cardStatMode = mode;
+    renderChart(); // 상태를 바꾸고 차트 영역만 다시 그립니다!
 };
