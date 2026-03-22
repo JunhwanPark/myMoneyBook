@@ -149,7 +149,25 @@ window.renderDailyList = (data, searchKeyword = '') => {
         ? `검색 합계: ${formatMoney(total)}`
         : formatMoney(total);
 
-    const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+    // 👇 정렬 로직 적용 (과거순 vs 최신순)
+    const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+        return window.listSortOrder === 'asc'
+            ? new Date(a) - new Date(b)
+            : new Date(b) - new Date(a);
+    });
+
+    // 👇 정렬 토글 버튼 UI 추가
+    container.insertAdjacentHTML(
+        'beforeend',
+        `
+        <div class="flex justify-end mb-2 px-1">
+            <button onclick="toggleListSortOrder()" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
+                <span class="material-symbols-outlined text-[14px]">swap_vert</span>
+                ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+            </button>
+        </div>
+    `
+    );
 
     sortedDates.forEach((dateStr) => {
         const d = new Date(dateStr);
@@ -174,7 +192,6 @@ window.renderDailyList = (data, searchKeyword = '') => {
             const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
             const displaySign = amountNum < 0 ? '-' : '';
 
-            // 💡 flex-1, min-w-0, truncate 등을 조합한 방탄 레이아웃 적용
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
@@ -1029,7 +1046,6 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
         }
     });
 
-    filteredData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
     const container = document.getElementById('card-detail-list-container');
     container.innerHTML = '';
 
@@ -1039,39 +1055,84 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
     } else {
         applyTopRanks(filteredData);
 
+        // 💡 날짜별로 데이터를 그룹핑(묶기) 합니다.
+        const groupedByDate = {};
         filteredData.forEach((item) => {
-            const parsed = parseMemo(item.Memo);
-            const catLabel =
-                globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
-            const iconName = getCategoryIcon(catLabel);
-            const amountNum = Number(item.Amount);
-            const displayColor = 'text-red-500';
-            const iconBg = 'bg-red-100 text-red-600';
-            const displaySign = amountNum < 0 ? '-' : '';
+            const dateStr = item.Date.substring(0, 10);
+            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
+            groupedByDate[dateStr].push(item);
+        });
 
+        // 👇 그룹핑된 날짜들을 정렬 옵션에 맞춰 정렬합니다.
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+            return window.listSortOrder === 'asc'
+                ? new Date(a) - new Date(b)
+                : new Date(b) - new Date(a);
+        });
+
+        // 정렬 토글 버튼 삽입
+        container.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div class="flex justify-end mb-3 px-1">
+                <button onclick="window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc'; localStorage.setItem('listSortOrder', window.listSortOrder); openCardDetailModal('${cardName}', '${prefix}', '${mode}');" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-[14px]">swap_vert</span>
+                    ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                </button>
+            </div>
+        `
+        );
+
+        // 💡 정렬된 날짜 순서대로 그룹 헤더와 내부 아이템들을 그려줍니다.
+        sortedDates.forEach((dateStr) => {
+            const d = new Date(dateStr);
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+
+            // 날짜 구분선 (헤더) 렌더링
             container.insertAdjacentHTML(
                 'beforeend',
-                `
-                <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
-                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                        <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-sm">${iconName}</span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center">
-                                <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
-                                ${item.rankBadge || ''}
-                            </div>
-                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${item.Date.substring(0, 10)}</p>
-                        </div>
-                    </div>
-                    <div class="text-right shrink-0 ml-3">
-                        <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
-                        ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
-                    </div>
-                </div>
-            `
+                `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
+                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                    ${displayDate}
+                </div>`
             );
+
+            // 해당 날짜에 속한 항목 렌더링
+            groupedByDate[dateStr].forEach((item) => {
+                const parsed = parseMemo(item.Memo);
+                const catLabel =
+                    globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
+                const iconName = getCategoryIcon(catLabel);
+                const amountNum = Number(item.Amount);
+                const displayColor = 'text-red-500';
+                const iconBg = 'bg-red-100 text-red-600';
+                const displaySign = amountNum < 0 ? '-' : '';
+
+                container.insertAdjacentHTML(
+                    'beforeend',
+                    `
+                    <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
+                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-sm">${iconName}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center">
+                                    <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                    ${item.rankBadge || ''}
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel}</p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0 ml-3">
+                            <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                            ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
+                        </div>
+                    </div>
+                `
+                );
+            });
         });
     }
 
@@ -1129,7 +1190,25 @@ window.openMonthlyModal = function (type) {
             groupedByDate[dateStr].push(item);
         });
 
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+        // 👇 정렬 로직 적용
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+            return window.listSortOrder === 'asc'
+                ? new Date(a) - new Date(b)
+                : new Date(b) - new Date(a);
+        });
+
+        // 👇 정렬 토글 버튼 삽입
+        container.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div class="flex justify-end mb-2 px-1">
+                <button onclick="window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc'; localStorage.setItem('listSortOrder', window.listSortOrder); openMonthlyModal('${type}');" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-[14px]">swap_vert</span>
+                    ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                </button>
+            </div>
+        `
+        );
 
         sortedDates.forEach((dateStr) => {
             const d = new Date(dateStr);
@@ -1559,22 +1638,17 @@ document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
 // ==========================================
 window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
     const typeName = type === 'income' ? '수입' : '지출';
-    const modal = document.getElementById('weekly-modal'); // 기존 모달 재활용
+    const modal = document.getElementById('weekly-modal');
     const titleEl = modal.querySelector('h3');
 
-    // 모달 상단 제목 변경 (예: 외식/배달 상세 내역)
     if (titleEl) titleEl.innerText = `${categoryLabel} 상세 내역`;
 
-    // 모달 날짜 표시 변경
     const [year, month] = prefix.split('-');
     document.getElementById('weekly-date-range').innerText =
         `${year}년 ${parseInt(month)}월 ${typeName}`;
 
-    // 💡 선택한 카테고리의 데이터만 쏙 필터링!
     const catData = globalData.filter((item) => {
         if (!item.Date.startsWith(prefix) || item.Type !== type) return false;
-
-        // 👇 여기도 '미분류'로 맞춰주어야 터치했을 때 내역을 정확히 찾아옵니다!
         const itemCatLabel =
             globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
         return itemCatLabel === categoryLabel;
@@ -1590,10 +1664,8 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                 <p class="text-center text-gray-400 text-sm font-medium">내역이 없습니다.</p>
             </div>`;
     } else {
-        // 1등~3등 메달 달아주기 엔진 가동!
         applyTopRanks(catData);
 
-        // 보기 좋게 날짜별로 그룹핑
         const groupedByDate = {};
         catData.forEach((item) => {
             const dateStr = item.Date.substring(0, 10);
@@ -1601,14 +1673,31 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
             groupedByDate[dateStr].push(item);
         });
 
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+        // 👇 정렬 로직 적용
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
+            return window.listSortOrder === 'asc'
+                ? new Date(a) - new Date(b)
+                : new Date(b) - new Date(a);
+        });
+
+        // 👇 정렬 토글 버튼 삽입
+        container.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div class="flex justify-end mb-2 px-1">
+                <button onclick="window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc'; localStorage.setItem('listSortOrder', window.listSortOrder); openCategoryDetailModal('${categoryLabel}', '${type}', '${prefix}');" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
+                    <span class="material-symbols-outlined text-[14px]">swap_vert</span>
+                    ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                </button>
+            </div>
+        `
+        );
 
         sortedDates.forEach((dateStr) => {
             const d = new Date(dateStr);
             const days = ['일', '월', '화', '수', '목', '금', '토'];
             const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
 
-            // 날짜 헤더
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
@@ -1617,7 +1706,6 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                 </div>`
             );
 
-            // 해당 날짜의 내역들 렌더링
             groupedByDate[dateStr].forEach((item) => {
                 const parsed = parseMemo(item.Memo);
                 const isExp = item.Type === 'expense';
@@ -1651,10 +1739,27 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
         });
     }
 
-    // 모달 스르륵 띄우기
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.remove('opacity-0');
         document.getElementById('weekly-modal-content').classList.remove('translate-y-full');
     }, 10);
+};
+
+// ==========================================
+// 💡 리스트 정렬 순서 전역 상태 및 토글 함수
+// ==========================================
+window.listSortOrder = localStorage.getItem('listSortOrder') || 'asc'; // 기본값: asc (1일 ➔ 말일)
+
+window.toggleListSortOrder = () => {
+    // 상태를 반대로 뒤집고 스마트폰에 기억시킵니다.
+    window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc';
+    localStorage.setItem('listSortOrder', window.listSortOrder);
+
+    // 현재 내역 탭이 열려있다면 즉시 리스트를 다시 그립니다.
+    const searchInput = document.getElementById('search-input');
+    const keyword = searchInput ? searchInput.value : '';
+    if (typeof renderDailyList === 'function' && typeof globalData !== 'undefined') {
+        renderDailyList(globalData, keyword);
+    }
 };
