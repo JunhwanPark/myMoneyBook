@@ -922,7 +922,14 @@ window.openWeeklyModal = function (clickedDateStr) {
     const modal = document.getElementById('weekly-modal');
     const titleEl = modal.querySelector('h3');
     if (titleEl) titleEl.innerText = '일간 상세 내역';
-    document.getElementById('weekly-date-range').innerText = displayDate;
+
+    // 💡 기존의 단순 텍스트 대신, 다른 목록들과 완벽히 똑같은 아이콘+구분선 디자인으로 덮어씌웁니다!
+    document.getElementById('weekly-date-range').innerHTML = `
+        <div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
+            <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+            ${displayDate}
+        </div>
+    `;
 
     const dailyData = globalData.filter((item) => item.Date.substring(0, 10) === targetDate);
     const container = document.getElementById('weekly-list-container');
@@ -963,7 +970,7 @@ window.openWeeklyModal = function (clickedDateStr) {
                                 <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
                                 ${item.rankBadge || ''}
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod} • ${item.Date.substring(0, 10)}</p>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod}</p>
                         </div>
                     </div>
                     <div class="text-right shrink-0 ml-3">
