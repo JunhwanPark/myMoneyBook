@@ -275,7 +275,15 @@ window.renderCalendarEvents = () => {
 };
 
 // ==========================================
-// 1. 통계 화면 렌더링 (말일 정산 및 에러 방지 안전망 적용)
+// 💡 지출/수입 차트 토글 함수
+// ==========================================
+window.setChartMode = (mode) => {
+    window.chartStatMode = mode;
+    renderChart(); // 상태를 바꾸고 차트 영역을 다시 그립니다.
+};
+
+// ==========================================
+// 1. 통계 화면 렌더링 (지출/수입 토글 및 카드 정산)
 // ==========================================
 window.renderChart = function () {
     updateMonthTitles();
@@ -283,44 +291,103 @@ window.renderChart = function () {
     const targetM = currentDisplayDate.getMonth();
     const prefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
 
-    // 이번 달 '달력 기준' 지출 내역 (도넛 차트용)
-    const expenses = globalData.filter((d) => d.Type === 'expense' && d.Date?.startsWith(prefix));
-    const chartEl = document.getElementById('expenseChart');
+    // 💡 차트 모드 확인 (기본값: 지출)
+    window.chartStatMode = window.chartStatMode || 'expense';
+    const isExpense = window.chartStatMode === 'expense';
+
+    // 토글 버튼 디자인 활성화/비활성화 처리
+    const btnExp = document.getElementById('btn-tab-expense');
+    const btnInc = document.getElementById('btn-tab-income');
+    const btnClassOn = 'bg-white text-gray-800 shadow-sm rounded-md px-3 py-1 transition-all';
+    const btnClassOff = 'text-gray-400 hover:text-gray-600 px-3 py-1 transition-all';
+
+    if (btnExp && btnInc) {
+        btnExp.className = isExpense ? btnClassOn : btnClassOff;
+        btnInc.className = !isExpense ? btnClassOn : btnClassOff;
+    }
+
+    // 선택된 모드(지출 or 수입)에 맞는 데이터만 쏙 필터링
+    const filteredData = globalData.filter(
+        (d) => d.Type === window.chartStatMode && d.Date?.startsWith(prefix)
+    );
+
+    const chartEl = document.getElementById('mainChart');
     const noDataEl = document.getElementById('no-chart-data');
-    const container = document.getElementById('card-stats-container');
+    const totalAmountEl = document.getElementById('chart-total-amount');
+    const chartWrapper = document.getElementById('chart-wrapper');
+
+    // 💡 차트 공통 옵션
+    const getChartOptions = () => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
+        plugins: {
+            legend: {
+                position: 'right',
+                labels: {
+                    boxWidth: 10,
+                    padding: 8,
+                    font: { size: 10, family: "'Pretendard', sans-serif" },
+                },
+            },
+            datalabels: {
+                color: '#4b5563',
+                anchor: 'end',
+                align: 'end',
+                offset: 2,
+                font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
+                formatter: (value, ctx) => {
+                    let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                    let percentage = ((value * 100) / totalSum).toFixed(0) + '%';
+                    if ((value * 100) / totalSum <= 4) return null;
+                    return percentage;
+                },
+            },
+            tooltip: {
+                callbacks: {
+                    label: function (context) {
+                        let label = context.label || '';
+                        if (label) label += ': ';
+                        if (context.parsed !== null) label += formatMoney(context.parsed);
+                        return label;
+                    },
+                },
+            },
+        },
+    });
 
     // ==========================================
-    // 📊 상단 도넛 차트 렌더링 (안전망 씌움)
+    // 📊 도넛 차트 렌더링
     // ==========================================
     try {
         let sum = 0;
         const catTotals = {};
-        expenses.forEach((item) => {
+        filteredData.forEach((item) => {
             const cat = globalCategories.find((c) => c.Value === item.Category)?.Label || '기타';
             catTotals[cat] = (catTotals[cat] || 0) + Number(item.Amount);
             sum += Number(item.Amount);
         });
 
-        const totalEl = document.getElementById('chart-total-expense');
-        if (totalEl) totalEl.innerText = `총 ${formatMoney(sum)}`;
+        // 지출은 빨간색, 수입은 파란색으로 총액 글씨색 변경
+        if (totalAmountEl) {
+            totalAmountEl.innerText = `총 ${formatMoney(sum)}`;
+            totalAmountEl.className = isExpense
+                ? 'text-sm font-bold text-red-500'
+                : 'text-sm font-bold text-blue-500';
+        }
 
-        // 차트를 감싸고 있는 하얀색 배경 박스 찾기
-        const chartWrapper = chartEl ? chartEl.closest('.bg-white') : null;
-
-        if (!expenses.length) {
-            // 지출이 없으면 캔버스와 하얀 박스를 통째로 숨깁니다.
+        if (!filteredData.length) {
             if (chartWrapper) chartWrapper.style.display = 'none';
-            if (noDataEl) noDataEl.classList.remove('hidden');
+            if (noDataEl) {
+                noDataEl.innerText = isExpense ? '지출 내역이 없습니다.' : '수입 내역이 없습니다.';
+                noDataEl.classList.remove('hidden');
+            }
         } else {
-            // 지출이 있으면 하얀 박스를 다시 보여줍니다.
             if (chartWrapper) chartWrapper.style.display = 'flex';
             if (noDataEl) noDataEl.classList.add('hidden');
 
-            // 💡 핵심 버그 픽스: 캔버스에 이미 그려진 차트가 있다면 변수명에 상관없이 강제로 찾아내 파괴!
             const existingChart = Chart.getChart(chartEl);
-            if (existingChart) {
-                existingChart.destroy();
-            }
+            if (existingChart) existingChart.destroy();
 
             const chartLabels = [];
             const chartData = [];
@@ -331,7 +398,26 @@ window.renderChart = function () {
                 }
             }
 
-            // 새 차트 그리기
+            // 테마 색상 분리
+            const colorsExpense = [
+                '#ef4444',
+                '#f59e0b',
+                '#3b82f6',
+                '#10b981',
+                '#8b5cf6',
+                '#6366f1',
+                '#ec4899',
+            ];
+            const colorsIncome = [
+                '#3b82f6',
+                '#10b981',
+                '#0ea5e9',
+                '#6366f1',
+                '#8b5cf6',
+                '#d946ef',
+                '#f43f5e',
+            ];
+
             new Chart(chartEl.getContext('2d'), {
                 type: 'doughnut',
                 plugins: [ChartDataLabels],
@@ -340,80 +426,33 @@ window.renderChart = function () {
                     datasets: [
                         {
                             data: chartData,
-                            backgroundColor: [
-                                '#ef4444',
-                                '#3b82f6',
-                                '#f59e0b',
-                                '#10b981',
-                                '#8b5cf6',
-                                '#6366f1',
-                                '#ec4899',
-                            ],
+                            backgroundColor: isExpense ? colorsExpense : colorsIncome,
                             borderWidth: 2,
                             borderColor: '#ffffff',
                             hoverOffset: 4,
                         },
                     ],
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                boxWidth: 10,
-                                padding: 8,
-                                font: { size: 10, family: "'Pretendard', sans-serif" },
-                            },
-                        },
-                        datalabels: {
-                            color: '#4b5563',
-                            anchor: 'end',
-                            align: 'end',
-                            offset: 2,
-                            font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
-                            formatter: (value, ctx) => {
-                                let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                                let percentage = ((value * 100) / totalSum).toFixed(0) + '%';
-                                if ((value * 100) / totalSum <= 4) return null;
-                                return percentage;
-                            },
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    let label = context.label || '';
-                                    if (label) label += ': ';
-                                    if (context.parsed !== null)
-                                        label += formatMoney(context.parsed);
-                                    return label;
-                                },
-                            },
-                        },
-                    },
-                },
+                options: getChartOptions(),
             });
         }
     } catch (e) {
-        console.error('차트 렌더링 중 에러 발생:', e);
+        console.error('차트 에러:', e);
     }
 
     // ==========================================
-    // 💳 하단 카드별 정산 리스트 (기준일 vs 달력월 토글 적용)
+    // 💳 하단 카드별 정산 리스트
     // ==========================================
     try {
+        const container = document.getElementById('card-stats-container');
         if (!container) return;
 
-        // 💡 기본값을 'calendar'(1일~말일)로 변경했습니다!
         window.cardStatMode = window.cardStatMode || 'calendar';
         const isBilling = window.cardStatMode === 'billing';
 
         const btnClassOn = 'bg-white text-gray-800 shadow-sm rounded-md px-2 py-1 transition-all';
         const btnClassOff = 'text-gray-400 hover:text-gray-600 px-2 py-1 transition-all';
 
-        // 👇 버튼 순서 스왑 (1일~말일이 왼쪽으로 오도록 수정)
         container.innerHTML = `
             <div class="flex justify-between items-end mb-3 mt-6">
                 <h3 class="text-xs font-bold text-gray-500">카드별 결제액</h3>
