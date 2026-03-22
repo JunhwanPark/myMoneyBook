@@ -316,11 +316,28 @@ window.renderChart = function () {
     const totalAmountEl = document.getElementById('chart-total-amount');
     const chartWrapper = document.getElementById('chart-wrapper');
 
-    // 💡 차트 공통 옵션
+    // 💡 차트 공통 옵션 (터치 이벤트 추가)
     const getChartOptions = () => ({
         responsive: true,
         maintainAspectRatio: false,
         layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
+
+        // 👇 1. 차트 조각을 클릭(터치)했을 때 작동하는 마법!
+        onClick: (event, elements, chart) => {
+            if (elements.length > 0) {
+                const index = elements[0].index; // 터치한 조각의 인덱스 번호
+                const categoryLabel = chart.data.labels[index]; // 터치한 카테고리 이름 (예: 외식/배달)
+                const currentMode = window.chartStatMode || 'expense'; // 현재 지출 모드인지 수입 모드인지 확인
+
+                // 상세 내역을 띄워주는 새로운 함수 호출
+                openCategoryDetailModal(categoryLabel, currentMode, prefix);
+            }
+        },
+        // 👇 2. PC에서 마우스 올렸을 때 클릭 가능한 '손가락' 모양으로 변경
+        onHover: (event, elements) => {
+            event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+        },
+
         plugins: {
             legend: {
                 position: 'right',
@@ -363,7 +380,8 @@ window.renderChart = function () {
         let sum = 0;
         const catTotals = {};
         filteredData.forEach((item) => {
-            const cat = globalCategories.find((c) => c.Value === item.Category)?.Label || '기타';
+            // 👇 '기타'로 숨어있던 이름을 '미분류'로 완벽히 통일합니다!
+            const cat = globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
             catTotals[cat] = (catTotals[cat] || 0) + Number(item.Amount);
             sum += Number(item.Amount);
         });
@@ -1535,3 +1553,108 @@ window.fetchAppVersion = async () => {
 
 // 앱 로딩이 완료되면 즉시 버전 정보를 가져옵니다.
 document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
+
+// ==========================================
+// 💡 도넛 차트 카테고리 클릭 시 상세 내역 모달 띄우기
+// ==========================================
+window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
+    const typeName = type === 'income' ? '수입' : '지출';
+    const modal = document.getElementById('weekly-modal'); // 기존 모달 재활용
+    const titleEl = modal.querySelector('h3');
+
+    // 모달 상단 제목 변경 (예: 외식/배달 상세 내역)
+    if (titleEl) titleEl.innerText = `${categoryLabel} 상세 내역`;
+
+    // 모달 날짜 표시 변경
+    const [year, month] = prefix.split('-');
+    document.getElementById('weekly-date-range').innerText =
+        `${year}년 ${parseInt(month)}월 ${typeName}`;
+
+    // 💡 선택한 카테고리의 데이터만 쏙 필터링!
+    const catData = globalData.filter((item) => {
+        if (!item.Date.startsWith(prefix) || item.Type !== type) return false;
+
+        // 👇 여기도 '미분류'로 맞춰주어야 터치했을 때 내역을 정확히 찾아옵니다!
+        const itemCatLabel =
+            globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
+        return itemCatLabel === categoryLabel;
+    });
+
+    const container = document.getElementById('weekly-list-container');
+    container.innerHTML = '';
+
+    if (catData.length === 0) {
+        container.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-16">
+                <span class="material-symbols-outlined text-gray-300 text-5xl mb-3">receipt_long</span>
+                <p class="text-center text-gray-400 text-sm font-medium">내역이 없습니다.</p>
+            </div>`;
+    } else {
+        // 1등~3등 메달 달아주기 엔진 가동!
+        applyTopRanks(catData);
+
+        // 보기 좋게 날짜별로 그룹핑
+        const groupedByDate = {};
+        catData.forEach((item) => {
+            const dateStr = item.Date.substring(0, 10);
+            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
+            groupedByDate[dateStr].push(item);
+        });
+
+        const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+
+        sortedDates.forEach((dateStr) => {
+            const d = new Date(dateStr);
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+
+            // 날짜 헤더
+            container.insertAdjacentHTML(
+                'beforeend',
+                `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
+                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                    ${displayDate}
+                </div>`
+            );
+
+            // 해당 날짜의 내역들 렌더링
+            groupedByDate[dateStr].forEach((item) => {
+                const parsed = parseMemo(item.Memo);
+                const isExp = item.Type === 'expense';
+                const iconName = getCategoryIcon(categoryLabel);
+                const amountNum = Number(item.Amount);
+                const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
+                const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
+                const displaySign = amountNum < 0 ? '-' : '';
+
+                container.insertAdjacentHTML(
+                    'beforeend',
+                    `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
+                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
+                            <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                                <span class="material-symbols-outlined text-sm">${iconName}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center">
+                                    <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                    ${item.rankBadge || ''}
+                                </div>
+                                <p class="text-[10px] text-gray-400 mt-1 truncate">${categoryLabel} • ${parsed.payMethod}</p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0 ml-3">
+                            <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                        </div>
+                    </div>`
+                );
+            });
+        });
+    }
+
+    // 모달 스르륵 띄우기
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        document.getElementById('weekly-modal-content').classList.remove('translate-y-full');
+    }, 10);
+};
