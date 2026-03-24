@@ -600,26 +600,79 @@ window.renderChart = function () {
     }
 };
 
-window.updateMonthlyTotals = function (dateObj) {
-    const incomeEl = document.getElementById('monthly-income-total');
-    const expenseEl = document.getElementById('monthly-expense-total');
-    if (!incomeEl || !expenseEl) return;
+// ==========================================
+// 💡 이번 달 총 수입/지출 및 지난달 대비 증감 계산
+// ==========================================
+window.updateMonthlyTotals = function () {
+    if (typeof globalData === 'undefined' || !globalData) return;
 
-    let incomeTotal = 0;
-    let expenseTotal = 0;
-    const targetDate = dateObj || currentDisplayDate;
-    const targetMonthPrefix = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    const targetY = currentDisplayDate.getFullYear();
+    const targetM = currentDisplayDate.getMonth();
 
-    if (globalData && globalData.length > 0) {
-        globalData.forEach((item) => {
-            if (item.Date && item.Date.substring(0, 7) === targetMonthPrefix) {
-                if (item.Type === 'income') incomeTotal += Number(item.Amount);
-                else if (item.Type === 'expense') expenseTotal += Number(item.Amount);
-            }
-        });
+    // 이번 달 접두사 (예: "2026-03")
+    const currentPrefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
+
+    // 지난달 접두사 계산
+    let prevY = targetY;
+    let prevM = targetM - 1;
+    if (prevM < 0) {
+        prevM = 11;
+        prevY--;
     }
-    incomeEl.innerText = formatMoney(incomeTotal);
-    expenseEl.innerText = formatMoney(expenseTotal);
+    const prevPrefix = `${prevY}-${String(prevM + 1).padStart(2, '0')}`;
+
+    let currentIncome = 0;
+    let currentExpense = 0;
+    let prevIncome = 0;
+    let prevExpense = 0;
+
+    globalData.forEach((item) => {
+        if (!item.Date) return;
+
+        if (item.Date.startsWith(currentPrefix)) {
+            if (item.Type === 'income') currentIncome += Number(item.Amount);
+            if (item.Type === 'expense') currentExpense += Number(item.Amount);
+        } else if (item.Date.startsWith(prevPrefix)) {
+            if (item.Type === 'income') prevIncome += Number(item.Amount);
+            if (item.Type === 'expense') prevExpense += Number(item.Amount);
+        }
+    });
+
+    // 👇 1. HTML의 실제 ID(monthly-income-total)에 맞춰서 이번 달 금액 넣기
+    const elIncome = document.getElementById('monthly-income-total');
+    const elExpense = document.getElementById('monthly-expense-total');
+    if (elIncome) elIncome.innerText = formatMoney(currentIncome);
+    if (elExpense) elExpense.innerText = formatMoney(currentExpense);
+
+    // 👇 2. 지난달 대비 증감(MoM) 계산 및 화면에 찍기
+    const momIncomeEl = document.getElementById('mom-income');
+    const momExpenseEl = document.getElementById('mom-expense');
+
+    if (momIncomeEl) {
+        const diff = currentIncome - prevIncome;
+        if (prevIncome === 0 && currentIncome === 0) {
+            momIncomeEl.innerHTML = `<span class="text-gray-300">내역 없음</span>`;
+        } else if (diff > 0) {
+            momIncomeEl.innerHTML = `<span class="text-blue-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>${formatMoney(diff)}</span>`;
+        } else if (diff < 0) {
+            momIncomeEl.innerHTML = `<span class="text-red-400 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_downward</span>${formatMoney(Math.abs(diff))}</span>`;
+        } else {
+            momIncomeEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
+        }
+    }
+
+    if (momExpenseEl) {
+        const diff = currentExpense - prevExpense;
+        if (prevExpense === 0 && currentExpense === 0) {
+            momExpenseEl.innerHTML = `<span class="text-gray-300">내역 없음</span>`;
+        } else if (diff > 0) {
+            momExpenseEl.innerHTML = `<span class="text-red-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>${formatMoney(diff)}</span>`;
+        } else if (diff < 0) {
+            momExpenseEl.innerHTML = `<span class="text-blue-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_downward</span>${formatMoney(Math.abs(diff))}</span>`;
+        } else {
+            momExpenseEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
+        }
+    }
 };
 
 // ==========================================
