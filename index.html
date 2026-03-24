@@ -152,23 +152,24 @@
 
                     <div
                         id="daily-month-navigation"
-                        class="flex justify-between items-center mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100"
+                        class="flex justify-between items-center mb-4 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
                     >
                         <button
                             onclick="changeGlobalMonth(-1)"
-                            class="p-2 text-gray-400 hover:text-primary"
+                            class="p-1 text-gray-400 hover:text-primary transition-colors"
                         >
-                            <span class="material-symbols-outlined">chevron_left</span>
+                            <span class="material-symbols-outlined text-[22px]">chevron_left</span>
                         </button>
                         <h2
                             id="daily-month-title"
-                            class="text-lg font-extrabold text-gray-900"
+                            onclick="goToCurrentMonth()"
+                            class="text-base font-extrabold text-gray-800 cursor-pointer hover:text-primary active:scale-95 transition-all"
                         ></h2>
                         <button
                             onclick="changeGlobalMonth(1)"
-                            class="p-2 text-gray-400 hover:text-primary"
+                            class="p-1 text-gray-400 hover:text-primary transition-colors"
                         >
-                            <span class="material-symbols-outlined">chevron_right</span>
+                            <span class="material-symbols-outlined text-[22px]">chevron_right</span>
                         </button>
                     </div>
 
@@ -202,22 +203,26 @@
                     </div>
 
                     <div
-                        class="flex justify-between items-center mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100"
+                        class="flex justify-between items-center mb-4 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
                     >
                         <button
                             onclick="changeGlobalMonth(-1)"
-                            class="p-2 text-gray-400 hover:text-primary transition-colors"
+                            class="p-1 text-gray-400 hover:text-primary transition-colors"
                         >
-                            <span class="material-symbols-outlined">chevron_left</span>
+                            <span class="material-symbols-outlined text-[22px]">chevron_left</span>
                         </button>
-                        <h2 id="monthly-month-title" class="text-lg font-extrabold text-gray-900">
+                        <h2
+                            id="monthly-month-title"
+                            onclick="goToCurrentMonth()"
+                            class="text-base font-extrabold text-gray-800 cursor-pointer hover:text-primary active:scale-95 transition-all"
+                        >
                             2026년 3월
                         </h2>
                         <button
                             onclick="changeGlobalMonth(1)"
-                            class="p-2 text-gray-400 hover:text-primary transition-colors"
+                            class="p-1 text-gray-400 hover:text-primary transition-colors"
                         >
-                            <span class="material-symbols-outlined">chevron_right</span>
+                            <span class="material-symbols-outlined text-[22px]">chevron_right</span>
                         </button>
                     </div>
 
@@ -285,23 +290,24 @@
                     </div>
 
                     <div
-                        class="flex justify-between items-center mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100"
+                        class="flex justify-between items-center mb-4 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
                     >
                         <button
                             onclick="changeGlobalMonth(-1)"
-                            class="p-2 text-gray-400 hover:text-primary"
+                            class="p-1 text-gray-400 hover:text-primary transition-colors"
                         >
-                            <span class="material-symbols-outlined">chevron_left</span>
+                            <span class="material-symbols-outlined text-[22px]">chevron_left</span>
                         </button>
                         <h2
                             id="stats-month-title"
-                            class="text-lg font-extrabold text-gray-900"
+                            onclick="goToCurrentMonth()"
+                            class="text-base font-extrabold text-gray-800 cursor-pointer hover:text-primary active:scale-95 transition-all"
                         ></h2>
                         <button
                             onclick="changeGlobalMonth(1)"
-                            class="p-2 text-gray-400 hover:text-primary"
+                            class="p-1 text-gray-400 hover:text-primary transition-colors"
                         >
-                            <span class="material-symbols-outlined">chevron_right</span>
+                            <span class="material-symbols-outlined text-[22px]">chevron_right</span>
                         </button>
                     </div>
 
@@ -346,16 +352,19 @@
                 <section id="view-settings" class="tab-content">
                     <h2 class="text-md font-semibold text-gray-700 mb-4">설정</h2>
                     <div
-                        class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-4 border border-gray-100"
+                        class="bg-gray-50 py-2 px-4 rounded-xl mb-6 flex items-center gap-3 border border-gray-100"
                     >
                         <div
-                            class="bg-primary-light text-primary p-3 rounded-full flex items-center justify-center"
+                            class="bg-primary-light text-primary p-2 rounded-full flex items-center justify-center"
                         >
-                            <span class="material-symbols-outlined text-2xl">person</span>
+                            <span class="material-symbols-outlined text-xl">person</span>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-500 mb-0.5">현재 계정</p>
-                            <p id="settings-user-email" class="font-bold text-gray-800 text-sm"></p>
+                            <p class="text-[10px] text-gray-500 mb-0 leading-none">현재 계정</p>
+                            <p
+                                id="settings-user-email"
+                                class="font-bold text-gray-800 text-sm mt-0.5 leading-none"
+                            ></p>
                         </div>
                     </div>
                     <ul class="divide-y divide-gray-100">

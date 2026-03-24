@@ -1823,3 +1823,33 @@ window.toggleListSortOrder = () => {
         renderDailyList(globalData, keyword);
     }
 };
+
+// ==========================================
+// 💡 이번 달로 순간이동(복귀) 하는 함수
+// ==========================================
+window.goToCurrentMonth = () => {
+    // 1. 기준 날짜를 진짜 '오늘'로 리셋합니다.
+    currentDisplayDate = new Date();
+
+    // 2. 상단 타이틀 글씨들을 일제히 업데이트합니다.
+    if (typeof updateMonthTitles === 'function') updateMonthTitles();
+
+    // 3. 현재 열려있는 탭들에 맞춰 데이터를 다시 화면에 뿌려줍니다.
+    if (typeof renderDailyList === 'function' && typeof globalData !== 'undefined') {
+        const searchInput = document.getElementById('search-input');
+        const keyword = searchInput ? searchInput.value : '';
+        renderDailyList(globalData, keyword);
+    }
+
+    if (typeof calendar !== 'undefined' && calendar) {
+        calendar.gotoDate(currentDisplayDate); // 캘린더 라이브러리도 이번 달로 이동
+        if (typeof renderCalendarEvents === 'function') renderCalendarEvents();
+    }
+
+    if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
+
+    const statsTab = document.getElementById('view-stats');
+    if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function') {
+        renderChart();
+    }
+};
