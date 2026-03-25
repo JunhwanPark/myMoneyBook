@@ -673,6 +673,23 @@ window.updateMonthlyTotals = function () {
             momExpenseEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
         }
     }
+
+    // (updateMonthlyTotals 함수 내부의 맨 아랫부분)
+    if (momExpenseEl) {
+        const diff = currentExpense - prevExpense;
+        if (prevExpense === 0 && currentExpense === 0) {
+            momExpenseEl.innerHTML = `<span class="text-gray-300">내역 없음</span>`;
+        } else if (diff > 0) {
+            momExpenseEl.innerHTML = `<span class="text-red-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>${formatMoney(diff)}</span>`;
+        } else if (diff < 0) {
+            momExpenseEl.innerHTML = `<span class="text-blue-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_downward</span>${formatMoney(Math.abs(diff))}</span>`;
+        } else {
+            momExpenseEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
+        }
+    }
+
+    // 👇 차트를 그려달라고 명령하는 한 줄을 여기에 추가합니다!
+    if (typeof renderCumulativeChart === 'function') renderCumulativeChart();
 };
 
 // ==========================================
@@ -1852,4 +1869,157 @@ window.goToCurrentMonth = () => {
     if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function') {
         renderChart();
     }
+};
+
+// ==========================================
+// 📈 지난달 대비 누적 지출 꺾은선(Area) 차트 렌더링
+// ==========================================
+window.renderCumulativeChart = function () {
+    const ctx = document.getElementById('monthlyCumulativeChart');
+    if (!ctx) return;
+
+    const targetY = currentDisplayDate.getFullYear();
+    const targetM = currentDisplayDate.getMonth();
+    const currentPrefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
+
+    let prevY = targetY;
+    let prevM = targetM - 1;
+    if (prevM < 0) {
+        prevM = 11;
+        prevY--;
+    }
+    const prevPrefix = `${prevY}-${String(prevM + 1).padStart(2, '0')}`;
+
+    // 이번 달이 며칠까지 있는지 계산 (예: 28일, 30일, 31일)
+    const daysInMonth = new Date(targetY, targetM + 1, 0).getDate();
+    const labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+    const currentExpenses = globalData.filter(
+        (d) => d.Type === 'expense' && d.Date?.startsWith(currentPrefix)
+    );
+    const prevExpenses = globalData.filter(
+        (d) => d.Type === 'expense' && d.Date?.startsWith(prevPrefix)
+    );
+
+    const currentCum = new Array(daysInMonth).fill(null);
+    const prevCum = new Array(daysInMonth).fill(null);
+
+    let currentSum = 0;
+    let prevSum = 0;
+
+    const today = new Date();
+    // 현재 보고 있는 달력이 '진짜 이번 달'인지 확인
+    const isActualCurrentMonth = targetY === today.getFullYear() && targetM === today.getMonth();
+    const todayDate = today.getDate();
+    const daysInPrevMonth = new Date(prevY, prevM + 1, 0).getDate();
+
+    // 1일부터 말일까지 매일매일의 누적액을 계산합니다.
+    for (let i = 1; i <= daysInMonth; i++) {
+        // [지난달 데이터 누적]
+        if (i <= daysInPrevMonth) {
+            const pDayStr = String(i).padStart(2, '0');
+            const pDaySum = prevExpenses
+                .filter((d) => d.Date.substring(8, 10) === pDayStr)
+                .reduce((a, b) => a + Number(b.Amount), 0);
+            prevSum += pDaySum;
+        }
+        prevCum[i - 1] = prevSum; // 지난달이 이번 달보다 짧으면 마지막 금액을 끝까지 유지
+
+        // [이번 달 데이터 누적]
+        if (isActualCurrentMonth && i > todayDate) {
+            // 미래의 날짜는 선을 그리지 않고 비워둡니다 (null)
+        } else {
+            const cDayStr = String(i).padStart(2, '0');
+            const cDaySum = currentExpenses
+                .filter((d) => d.Date.substring(8, 10) === cDayStr)
+                .reduce((a, b) => a + Number(b.Amount), 0);
+            currentSum += cDaySum;
+            currentCum[i - 1] = currentSum;
+        }
+    }
+
+    // 기존 차트가 있으면 지우고 새로 그리기
+    if (window.monthlyCumChartInstance) {
+        window.monthlyCumChartInstance.destroy();
+    }
+
+    window.monthlyCumChartInstance = new Chart(ctx, {
+        type: 'line',
+        plugins: [ChartDataLabels], // 글로벌 플러그인 로드 (하지만 아래에서 꺼줄 겁니다)
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '지난달',
+                    data: prevCum,
+                    borderColor: '#d1d5db', // 흐린 회색 선
+                    backgroundColor: 'rgba(243, 244, 246, 0.4)', // 흐린 회색 배경
+                    borderWidth: 2,
+                    borderDash: [4, 4], // 점선 스타일
+                    pointRadius: 0, // 평소엔 점 숨기기
+                    pointHoverRadius: 4,
+                    fill: true,
+                    tension: 0.3, // 부드러운 곡선
+                },
+                {
+                    label: '이번 달',
+                    data: currentCum,
+                    borderColor: '#ef4444', // 쨍한 빨간색 선 (지출 경각심!)
+                    backgroundColor: 'rgba(239, 68, 68, 0.08)', // 아주 옅은 붉은 배경
+                    borderWidth: 2.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    fill: true,
+                    tension: 0.3,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false, // 마우스를 올리면 같은 날짜의 두 선 데이터를 동시에 툴팁으로 보여줍니다.
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 10,
+                        usePointStyle: true,
+                        font: { size: 10, family: "'Pretendard', sans-serif" },
+                    },
+                },
+                datalabels: {
+                    display: false, // 꺾은선 그래프에서는 글씨가 지저분해지므로 꺼줍니다.
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 12, weight: 'bold' },
+                    padding: 10,
+                    callbacks: {
+                        title: (items) => `${items[0].label}일 누적 지출`,
+                        label: (context) => {
+                            if (context.parsed.y !== null) {
+                                return ` ${context.dataset.label}: ${formatMoney(context.parsed.y)}원`;
+                            }
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxTicksLimit: 7, font: { size: 9 }, color: '#9ca3af' }, // 날짜는 띄엄띄엄 표기
+                },
+                y: {
+                    display: false, // 공간 절약을 위해 세로축 금액 글씨는 숨깁니다. (툴팁으로 확인)
+                    min: 0,
+                },
+            },
+        },
+    });
 };

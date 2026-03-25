@@ -37,6 +37,18 @@
         <script src="https://accounts.google.com/gsi/client" async defer></script>
         <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
         <link rel="stylesheet" href="style.css" />
+
+        <style>
+            .fc .fc-daygrid-day-frame {
+                min-height: 45px !important; /* 기본적으로 뚱뚱하게 잡히는 최소 높이 대폭 축소 */
+            }
+            .fc .fc-daygrid-day-events {
+                margin-bottom: 0 !important; /* 수입/지출 글씨 아래 텅 빈 공간 제거 */
+            }
+            .fc-daygrid-event-harness {
+                margin-top: 1px !important; /* 수입과 지출 사이의 간격 바짝 붙이기 */
+            }
+        </style>
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans theme-transition">
         <div
@@ -203,7 +215,7 @@
                     </div>
 
                     <div
-                        class="flex justify-between items-center mb-4 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
+                        class="flex justify-between items-center mb-2 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
                     >
                         <button
                             onclick="changeGlobalMonth(-1)"
@@ -228,10 +240,10 @@
 
                     <div
                         id="calendar"
-                        class="bg-white rounded-3xl p-2 mb-6 text-[10px] sm:text-xs shadow-sm border border-gray-100"
+                        class="bg-white rounded-3xl p-2 mb-2 text-[10px] sm:text-xs shadow-sm border border-gray-100"
                     ></div>
 
-                    <div class="flex gap-3 mt-4 mb-2">
+                    <div class="flex gap-3 mt-2 mb-2">
                         <div
                             onclick="openMonthlyModal('income')"
                             class="flex-1 bg-white border border-gray-100 shadow-sm rounded-2xl p-4 text-center cursor-pointer hover:shadow-md hover:border-blue-200 active:scale-[0.98] transition-all"
@@ -280,6 +292,18 @@
                             >
                                 -
                             </p>
+                        </div>
+                    </div>
+                    <div class="mt-4 mb-2 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-end mb-3">
+                            <h3 class="text-xs font-bold text-gray-500">누적 지출 추이</h3>
+                            <span
+                                class="text-[9px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100"
+                                >지난달 vs 이번 달</span
+                            >
+                        </div>
+                        <div class="relative w-full h-[160px]">
+                            <canvas id="monthlyCumulativeChart"></canvas>
                         </div>
                     </div>
                 </section>
