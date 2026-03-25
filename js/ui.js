@@ -300,7 +300,7 @@ window.setChartMode = (mode) => {
 };
 
 // ==========================================
-// 1. 통계 화면 렌더링 (지출/수입 토글 및 카드 정산)
+// 1. 통계 화면 렌더링 (지출/수입/누적추이 토글 및 카드 정산)
 // ==========================================
 window.renderChart = function () {
     updateMonthTitles();
@@ -310,98 +310,184 @@ window.renderChart = function () {
 
     // 💡 차트 모드 확인 (기본값: 지출)
     window.chartStatMode = window.chartStatMode || 'expense';
-    const isExpense = window.chartStatMode === 'expense';
+    const mode = window.chartStatMode;
 
-    // 토글 버튼 디자인 활성화/비활성화 처리
+    // 3단 토글 버튼 디자인 처리
     const btnExp = document.getElementById('btn-tab-expense');
     const btnInc = document.getElementById('btn-tab-income');
+    const btnCum = document.getElementById('btn-tab-cum');
     const btnClassOn = 'bg-white text-gray-800 shadow-sm rounded-md px-3 py-1 transition-all';
     const btnClassOff = 'text-gray-400 hover:text-gray-600 px-3 py-1 transition-all';
 
-    if (btnExp && btnInc) {
-        btnExp.className = isExpense ? btnClassOn : btnClassOff;
-        btnInc.className = !isExpense ? btnClassOn : btnClassOff;
+    if (btnExp && btnInc && btnCum) {
+        btnExp.className = mode === 'expense' ? btnClassOn : btnClassOff;
+        btnInc.className = mode === 'income' ? btnClassOn : btnClassOff;
+        btnCum.className = mode === 'cumulative' ? btnClassOn : btnClassOff;
     }
-
-    // 선택된 모드(지출 or 수입)에 맞는 데이터만 쏙 필터링
-    const filteredData = globalData.filter(
-        (d) => d.Type === window.chartStatMode && d.Date?.startsWith(prefix)
-    );
 
     const chartEl = document.getElementById('mainChart');
     const noDataEl = document.getElementById('no-chart-data');
     const totalAmountEl = document.getElementById('chart-total-amount');
     const chartWrapper = document.getElementById('chart-wrapper');
 
-    // 💡 차트 공통 옵션 (모바일 화면 짤림 방지 최적화)
-    const getChartOptions = () => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        // 👇 1. 왼쪽 패딩을 35로 대폭 늘려서 퍼센트 글씨가 잘리지 않게 방어 공간을 만듭니다.
-        layout: { padding: { top: 20, bottom: 20, left: 35, right: 10 } },
+    const existingChart = Chart.getChart(chartEl);
+    if (existingChart) existingChart.destroy();
 
-        onClick: (event, elements, chart) => {
-            if (elements.length > 0) {
-                const index = elements[0].index;
-                const categoryLabel = chart.data.labels[index];
-                const currentMode = window.chartStatMode || 'expense';
-                openCategoryDetailModal(categoryLabel, currentMode, prefix);
+    // ==========================================
+    // 📈 모드 1: 누적 지출 추이 꺾은선 차트 그리기
+    // ==========================================
+    if (mode === 'cumulative') {
+        if (totalAmountEl) {
+            totalAmountEl.innerText = '지난달 vs 이번달';
+            totalAmountEl.className = 'text-sm font-bold text-gray-500';
+        }
+
+        let prevY = targetY;
+        let prevM = targetM - 1;
+        if (prevM < 0) {
+            prevM = 11;
+            prevY--;
+        }
+        const prevPrefix = `${prevY}-${String(prevM + 1).padStart(2, '0')}`;
+
+        const daysInMonth = new Date(targetY, targetM + 1, 0).getDate();
+        const labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+        const currentExpenses = globalData.filter(
+            (d) => d.Type === 'expense' && d.Date?.startsWith(prefix)
+        );
+        const prevExpenses = globalData.filter(
+            (d) => d.Type === 'expense' && d.Date?.startsWith(prevPrefix)
+        );
+
+        const currentCum = new Array(daysInMonth).fill(null);
+        const prevCum = new Array(daysInMonth).fill(null);
+
+        let currentSum = 0;
+        let prevSum = 0;
+
+        const today = new Date();
+        const isActualCurrentMonth =
+            targetY === today.getFullYear() && targetM === today.getMonth();
+        const todayDate = today.getDate();
+        const daysInPrevMonth = new Date(prevY, prevM + 1, 0).getDate();
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            if (i <= daysInPrevMonth) {
+                const pDayStr = String(i).padStart(2, '0');
+                const pDaySum = prevExpenses
+                    .filter((d) => d.Date.substring(8, 10) === pDayStr)
+                    .reduce((a, b) => a + Number(b.Amount), 0);
+                prevSum += pDaySum;
             }
-        },
-        onHover: (event, elements) => {
-            event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
-        },
+            prevCum[i - 1] = prevSum;
 
-        plugins: {
-            legend: {
-                position: 'right',
-                // 👇 2. 범례의 네모 박스 크기와 글씨를 줄이고, 여백을 조절하여 좁은 화면에 다 들어가게 합니다.
-                labels: {
-                    boxWidth: 8,
-                    padding: 12,
-                    font: { size: 9, family: "'Pretendard', sans-serif" },
-                },
+            if (isActualCurrentMonth && i > todayDate) {
+                // 미래는 빈칸
+            } else {
+                const cDayStr = String(i).padStart(2, '0');
+                const cDaySum = currentExpenses
+                    .filter((d) => d.Date.substring(8, 10) === cDayStr)
+                    .reduce((a, b) => a + Number(b.Amount), 0);
+                currentSum += cDaySum;
+                currentCum[i - 1] = currentSum;
+            }
+        }
+
+        if (chartWrapper) chartWrapper.style.display = 'flex';
+        if (noDataEl) noDataEl.classList.add('hidden');
+
+        new Chart(chartEl.getContext('2d'), {
+            type: 'line',
+            plugins: [ChartDataLabels],
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '지난달',
+                        data: prevCum,
+                        borderColor: '#d1d5db',
+                        backgroundColor: 'rgba(243, 244, 246, 0.4)',
+                        borderWidth: 2,
+                        borderDash: [4, 4],
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        fill: true,
+                        tension: 0.3,
+                    },
+                    {
+                        // 👇 '이번 달'의 띄어쓰기를 없애서 '지난달'과 글자 폭을 완벽하게 맞췄습니다!
+                        label: '이번달',
+                        data: currentCum,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        fill: true,
+                        tension: 0.3,
+                    },
+                ],
             },
-            datalabels: {
-                color: '#4b5563',
-                anchor: 'end',
-                align: 'end',
-                offset: 4, // 👈 3. 차트 테두리에서 글씨를 조금 더 밀어내어 겹치지 않게 합니다.
-                font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
-                formatter: (value, ctx) => {
-                    let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                    let percentage = ((value * 100) / totalSum).toFixed(0) + '%';
-                    if ((value * 100) / totalSum <= 4) return null;
-                    return percentage;
-                },
-            },
-            tooltip: {
-                callbacks: {
-                    label: function (context) {
-                        let label = context.label || '';
-                        if (label) label += ': ';
-                        if (context.parsed !== null) label += formatMoney(context.parsed);
-                        return label;
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20, bottom: 0, left: 10, right: 10 } },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            boxWidth: 10,
+                            usePointStyle: true,
+                            font: { size: 10, family: "'Pretendard', sans-serif" },
+                        },
+                    },
+                    datalabels: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleFont: { size: 11 },
+                        bodyFont: { size: 12, weight: 'bold' },
+                        padding: 10,
+                        callbacks: {
+                            title: (items) => `${items[0].label}일 누적 지출`,
+                            label: (context) => {
+                                if (context.parsed.y !== null) {
+                                    // 👇 끝에 억지로 붙어있던 '원' 글자를 지워 '원원' 중복과 중국 모드 텍스트 꼬임을 해결했습니다!
+                                    return ` ${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
+                                }
+                            },
+                        },
                     },
                 },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { maxTicksLimit: 7, font: { size: 9 }, color: '#9ca3af' },
+                    },
+                    y: { display: false, min: 0 },
+                },
             },
-        },
-    });
+        });
+    } else {
+        // ==========================================
+        // 🍩 모드 2 & 3: 지출 / 수입 도넛 차트 그리기
+        // ==========================================
+        const isExpense = mode === 'expense';
+        const filteredData = globalData.filter(
+            (d) => d.Type === mode && d.Date?.startsWith(prefix)
+        );
 
-    // ==========================================
-    // 📊 도넛 차트 렌더링
-    // ==========================================
-    try {
         let sum = 0;
         const catTotals = {};
         filteredData.forEach((item) => {
-            // 👇 '기타'로 숨어있던 이름을 '미분류'로 완벽히 통일합니다!
             const cat = globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
             catTotals[cat] = (catTotals[cat] || 0) + Number(item.Amount);
             sum += Number(item.Amount);
         });
 
-        // 지출은 빨간색, 수입은 파란색으로 총액 글씨색 변경
         if (totalAmountEl) {
             totalAmountEl.innerText = `총 ${formatMoney(sum)}`;
             totalAmountEl.className = isExpense
@@ -419,25 +505,15 @@ window.renderChart = function () {
             if (chartWrapper) chartWrapper.style.display = 'flex';
             if (noDataEl) noDataEl.classList.add('hidden');
 
-            const existingChart = Chart.getChart(chartEl);
-            if (existingChart) existingChart.destroy();
-
-            // 👇 1. 임시 배열에 라벨과 금액을 짝지어서 담아줍니다.
             const sortedCategories = [];
             for (const [cat, val] of Object.entries(catTotals)) {
-                if (val > 0) {
-                    sortedCategories.push({ label: cat, value: val });
-                }
+                if (val > 0) sortedCategories.push({ label: cat, value: val });
             }
-
-            // 👇 2. 금액(value)이 큰 순서대로(내림차순) 정렬하는 마법!
             sortedCategories.sort((a, b) => b.value - a.value);
 
-            // 👇 3. 정렬된 순서대로 차트용 라벨과 데이터 배열을 완성합니다.
             const chartLabels = sortedCategories.map((item) => item.label);
             const chartData = sortedCategories.map((item) => item.value);
 
-            // 테마 색상 분리
             const colorsExpense = [
                 '#ef4444',
                 '#f59e0b',
@@ -472,15 +548,61 @@ window.renderChart = function () {
                         },
                     ],
                 },
-                options: getChartOptions(),
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20, bottom: 20, left: 35, right: 10 } },
+                    onClick: (event, elements, chart) => {
+                        if (elements.length > 0) {
+                            const index = elements[0].index;
+                            const categoryLabel = chart.data.labels[index];
+                            openCategoryDetailModal(categoryLabel, mode, prefix);
+                        }
+                    },
+                    onHover: (event, elements) => {
+                        event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 8,
+                                padding: 12,
+                                font: { size: 9, family: "'Pretendard', sans-serif" },
+                            },
+                        },
+                        datalabels: {
+                            color: '#4b5563',
+                            anchor: 'end',
+                            align: 'end',
+                            offset: 4,
+                            font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
+                            formatter: (value, ctx) => {
+                                let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                let percentage = ((value * 100) / totalSum).toFixed(0) + '%';
+                                if ((value * 100) / totalSum <= 4) return null;
+                                return percentage;
+                            },
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null)
+                                        label += formatMoney(context.parsed);
+                                    return label;
+                                },
+                            },
+                        },
+                    },
+                },
             });
         }
-    } catch (e) {
-        console.error('차트 에러:', e);
     }
 
     // ==========================================
-    // 💳 하단 카드별 정산 리스트
+    // 💳 하단 카드별 정산 리스트 렌더링 (기존 로직 동일 유지)
     // ==========================================
     try {
         const container = document.getElementById('card-stats-container');
@@ -596,7 +718,7 @@ window.renderChart = function () {
         if (cardStatsList.length === 0) {
             container.insertAdjacentHTML(
                 'beforeend',
-                '<p class="text-center text-gray-400 text-sm py-4 font-medium">이번 달 정산될 카드 내역이 없습니다.</p>'
+                '<p class="text-center text-gray-400 text-sm py-4 font-medium">이번달 정산될 카드 내역이 없습니다.</p>'
             );
         }
     } catch (e) {
@@ -691,9 +813,6 @@ window.updateMonthlyTotals = function () {
             momExpenseEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
         }
     }
-
-    // 👇 차트를 그려달라고 명령하는 한 줄을 여기에 추가합니다!
-    if (typeof renderCumulativeChart === 'function') renderCumulativeChart();
 };
 
 // ==========================================
@@ -1259,7 +1378,7 @@ window.openMonthlyModal = function (type) {
         container.innerHTML = `
             <div class="flex flex-col items-center justify-center py-16">
                 <span class="material-symbols-outlined text-gray-300 text-5xl mb-3">receipt_long</span>
-                <p class="text-center text-gray-400 text-sm font-medium">이번 달 ${typeName} 내역이 없습니다.</p>
+                <p class="text-center text-gray-400 text-sm font-medium">이번달 ${typeName} 내역이 없습니다.</p>
             </div>`;
     } else {
         applyTopRanks(monthlyData);
@@ -1871,157 +1990,4 @@ window.goToCurrentMonth = () => {
     if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function') {
         renderChart();
     }
-};
-
-// ==========================================
-// 📈 지난달 대비 누적 지출 꺾은선(Area) 차트 렌더링
-// ==========================================
-window.renderCumulativeChart = function () {
-    const ctx = document.getElementById('monthlyCumulativeChart');
-    if (!ctx) return;
-
-    const targetY = currentDisplayDate.getFullYear();
-    const targetM = currentDisplayDate.getMonth();
-    const currentPrefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
-
-    let prevY = targetY;
-    let prevM = targetM - 1;
-    if (prevM < 0) {
-        prevM = 11;
-        prevY--;
-    }
-    const prevPrefix = `${prevY}-${String(prevM + 1).padStart(2, '0')}`;
-
-    // 이번 달이 며칠까지 있는지 계산 (예: 28일, 30일, 31일)
-    const daysInMonth = new Date(targetY, targetM + 1, 0).getDate();
-    const labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-    const currentExpenses = globalData.filter(
-        (d) => d.Type === 'expense' && d.Date?.startsWith(currentPrefix)
-    );
-    const prevExpenses = globalData.filter(
-        (d) => d.Type === 'expense' && d.Date?.startsWith(prevPrefix)
-    );
-
-    const currentCum = new Array(daysInMonth).fill(null);
-    const prevCum = new Array(daysInMonth).fill(null);
-
-    let currentSum = 0;
-    let prevSum = 0;
-
-    const today = new Date();
-    // 현재 보고 있는 달력이 '진짜 이번 달'인지 확인
-    const isActualCurrentMonth = targetY === today.getFullYear() && targetM === today.getMonth();
-    const todayDate = today.getDate();
-    const daysInPrevMonth = new Date(prevY, prevM + 1, 0).getDate();
-
-    // 1일부터 말일까지 매일매일의 누적액을 계산합니다.
-    for (let i = 1; i <= daysInMonth; i++) {
-        // [지난달 데이터 누적]
-        if (i <= daysInPrevMonth) {
-            const pDayStr = String(i).padStart(2, '0');
-            const pDaySum = prevExpenses
-                .filter((d) => d.Date.substring(8, 10) === pDayStr)
-                .reduce((a, b) => a + Number(b.Amount), 0);
-            prevSum += pDaySum;
-        }
-        prevCum[i - 1] = prevSum; // 지난달이 이번 달보다 짧으면 마지막 금액을 끝까지 유지
-
-        // [이번 달 데이터 누적]
-        if (isActualCurrentMonth && i > todayDate) {
-            // 미래의 날짜는 선을 그리지 않고 비워둡니다 (null)
-        } else {
-            const cDayStr = String(i).padStart(2, '0');
-            const cDaySum = currentExpenses
-                .filter((d) => d.Date.substring(8, 10) === cDayStr)
-                .reduce((a, b) => a + Number(b.Amount), 0);
-            currentSum += cDaySum;
-            currentCum[i - 1] = currentSum;
-        }
-    }
-
-    // 기존 차트가 있으면 지우고 새로 그리기
-    if (window.monthlyCumChartInstance) {
-        window.monthlyCumChartInstance.destroy();
-    }
-
-    window.monthlyCumChartInstance = new Chart(ctx, {
-        type: 'line',
-        plugins: [ChartDataLabels], // 글로벌 플러그인 로드 (하지만 아래에서 꺼줄 겁니다)
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: '지난달',
-                    data: prevCum,
-                    borderColor: '#d1d5db', // 흐린 회색 선
-                    backgroundColor: 'rgba(243, 244, 246, 0.4)', // 흐린 회색 배경
-                    borderWidth: 2,
-                    borderDash: [4, 4], // 점선 스타일
-                    pointRadius: 0, // 평소엔 점 숨기기
-                    pointHoverRadius: 4,
-                    fill: true,
-                    tension: 0.3, // 부드러운 곡선
-                },
-                {
-                    label: '이번 달',
-                    data: currentCum,
-                    borderColor: '#ef4444', // 쨍한 빨간색 선 (지출 경각심!)
-                    backgroundColor: 'rgba(239, 68, 68, 0.08)', // 아주 옅은 붉은 배경
-                    borderWidth: 2.5,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    fill: true,
-                    tension: 0.3,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false, // 마우스를 올리면 같은 날짜의 두 선 데이터를 동시에 툴팁으로 보여줍니다.
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                        boxWidth: 10,
-                        usePointStyle: true,
-                        font: { size: 10, family: "'Pretendard', sans-serif" },
-                    },
-                },
-                datalabels: {
-                    display: false, // 꺾은선 그래프에서는 글씨가 지저분해지므로 꺼줍니다.
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 11 },
-                    bodyFont: { size: 12, weight: 'bold' },
-                    padding: 10,
-                    callbacks: {
-                        title: (items) => `${items[0].label}일 누적 지출`,
-                        label: (context) => {
-                            if (context.parsed.y !== null) {
-                                return ` ${context.dataset.label}: ${formatMoney(context.parsed.y)}원`;
-                            }
-                        },
-                    },
-                },
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { maxTicksLimit: 7, font: { size: 9 }, color: '#9ca3af' }, // 날짜는 띄엄띄엄 표기
-                },
-                y: {
-                    display: false, // 공간 절약을 위해 세로축 금액 글씨는 숨깁니다. (툴팁으로 확인)
-                    min: 0,
-                },
-            },
-        },
-    });
 };
