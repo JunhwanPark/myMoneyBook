@@ -333,24 +333,21 @@ window.renderChart = function () {
     const totalAmountEl = document.getElementById('chart-total-amount');
     const chartWrapper = document.getElementById('chart-wrapper');
 
-    // 💡 차트 공통 옵션 (터치 이벤트 추가)
+    // 💡 차트 공통 옵션 (모바일 화면 짤림 방지 최적화)
     const getChartOptions = () => ({
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 25, bottom: 25, left: 10, right: 10 } },
+        // 👇 1. 왼쪽 패딩을 35로 대폭 늘려서 퍼센트 글씨가 잘리지 않게 방어 공간을 만듭니다.
+        layout: { padding: { top: 20, bottom: 20, left: 35, right: 10 } },
 
-        // 👇 1. 차트 조각을 클릭(터치)했을 때 작동하는 마법!
         onClick: (event, elements, chart) => {
             if (elements.length > 0) {
-                const index = elements[0].index; // 터치한 조각의 인덱스 번호
-                const categoryLabel = chart.data.labels[index]; // 터치한 카테고리 이름 (예: 외식/배달)
-                const currentMode = window.chartStatMode || 'expense'; // 현재 지출 모드인지 수입 모드인지 확인
-
-                // 상세 내역을 띄워주는 새로운 함수 호출
+                const index = elements[0].index;
+                const categoryLabel = chart.data.labels[index];
+                const currentMode = window.chartStatMode || 'expense';
                 openCategoryDetailModal(categoryLabel, currentMode, prefix);
             }
         },
-        // 👇 2. PC에서 마우스 올렸을 때 클릭 가능한 '손가락' 모양으로 변경
         onHover: (event, elements) => {
             event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
         },
@@ -358,17 +355,18 @@ window.renderChart = function () {
         plugins: {
             legend: {
                 position: 'right',
+                // 👇 2. 범례의 네모 박스 크기와 글씨를 줄이고, 여백을 조절하여 좁은 화면에 다 들어가게 합니다.
                 labels: {
-                    boxWidth: 10,
-                    padding: 8,
-                    font: { size: 10, family: "'Pretendard', sans-serif" },
+                    boxWidth: 8,
+                    padding: 12,
+                    font: { size: 9, family: "'Pretendard', sans-serif" },
                 },
             },
             datalabels: {
                 color: '#4b5563',
                 anchor: 'end',
                 align: 'end',
-                offset: 2,
+                offset: 4, // 👈 3. 차트 테두리에서 글씨를 조금 더 밀어내어 겹치지 않게 합니다.
                 font: { weight: 'bold', size: 10, family: "'Pretendard', sans-serif" },
                 formatter: (value, ctx) => {
                     let totalSum = ctx.dataset.data.reduce((a, b) => a + b, 0);
@@ -424,14 +422,20 @@ window.renderChart = function () {
             const existingChart = Chart.getChart(chartEl);
             if (existingChart) existingChart.destroy();
 
-            const chartLabels = [];
-            const chartData = [];
+            // 👇 1. 임시 배열에 라벨과 금액을 짝지어서 담아줍니다.
+            const sortedCategories = [];
             for (const [cat, val] of Object.entries(catTotals)) {
                 if (val > 0) {
-                    chartLabels.push(cat);
-                    chartData.push(val);
+                    sortedCategories.push({ label: cat, value: val });
                 }
             }
+
+            // 👇 2. 금액(value)이 큰 순서대로(내림차순) 정렬하는 마법!
+            sortedCategories.sort((a, b) => b.value - a.value);
+
+            // 👇 3. 정렬된 순서대로 차트용 라벨과 데이터 배열을 완성합니다.
+            const chartLabels = sortedCategories.map((item) => item.label);
+            const chartData = sortedCategories.map((item) => item.value);
 
             // 테마 색상 분리
             const colorsExpense = [
