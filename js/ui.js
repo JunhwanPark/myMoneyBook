@@ -209,7 +209,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
                     </div>
                     <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
-                        <p class="text-[9px] text-gray-300 mt-1">${item.User?.split('@')[0]}</p>
+                        ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                     </div>
                 </div>`
             );
@@ -997,7 +997,6 @@ window.openWeeklyModal = function (clickedDateStr) {
     const titleEl = modal.querySelector('h3');
     if (titleEl) titleEl.innerText = '일간 상세 내역';
 
-    // 💡 기존의 단순 텍스트 대신, 다른 목록들과 완벽히 똑같은 아이콘+구분선 디자인으로 덮어씌웁니다!
     document.getElementById('weekly-date-range').innerHTML = `
         <div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
             <span class="material-symbols-outlined text-[14px]">calendar_today</span>
@@ -1049,6 +1048,7 @@ window.openWeeklyModal = function (clickedDateStr) {
                     </div>
                     <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                        ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                     </div>
                 </div>`
             );
@@ -1271,14 +1271,12 @@ window.openMonthlyModal = function (type) {
             groupedByDate[dateStr].push(item);
         });
 
-        // 👇 정렬 로직 적용
         const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
             return window.listSortOrder === 'asc'
                 ? new Date(a) - new Date(b)
                 : new Date(b) - new Date(a);
         });
 
-        // 👇 정렬 토글 버튼 삽입
         container.insertAdjacentHTML(
             'beforeend',
             `
@@ -1335,6 +1333,7 @@ window.openMonthlyModal = function (type) {
                         </div>
                         <div class="text-right shrink-0 ml-3">
                             <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                            ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                         </div>
                     </div>`
                 );
@@ -1754,14 +1753,12 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
             groupedByDate[dateStr].push(item);
         });
 
-        // 👇 정렬 로직 적용
         const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
             return window.listSortOrder === 'asc'
                 ? new Date(a) - new Date(b)
                 : new Date(b) - new Date(a);
         });
 
-        // 👇 정렬 토글 버튼 삽입
         container.insertAdjacentHTML(
             'beforeend',
             `
@@ -1813,6 +1810,7 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                         </div>
                         <div class="text-right shrink-0 ml-3">
                             <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                            ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                         </div>
                     </div>`
                 );
