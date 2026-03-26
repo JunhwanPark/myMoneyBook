@@ -2003,3 +2003,45 @@ window.goToCurrentMonth = () => {
         renderChart();
     }
 };
+
+// ==========================================
+// 🎨 앱 스킨(배경색) 제어 함수
+// ==========================================
+window.changeSkin = (skin) => {
+    localStorage.setItem('appSkin', skin); // 스마트폰에 설정 저장
+    applySkin(); // 즉시 스킨 적용
+};
+
+window.applySkin = () => {
+    const skin = localStorage.getItem('appSkin') || 'default';
+    const selectEl = document.getElementById('skin-selector');
+    if (selectEl) selectEl.value = skin;
+
+    const body = document.body;
+    if (skin === 'season') {
+        body.classList.add('theme-season');
+        const month = new Date().getMonth() + 1; // 오늘 날짜 기준 월(1~12)
+        let seasonBg = '#ffffff';
+
+        // 가장 예쁘고 가독성을 해치지 않는 Tailwind 50단계 파스텔톤 컬러 적용!
+        if (month >= 3 && month <= 5) {
+            seasonBg = '#fff1f2'; // 봄 🌸 (연한 벚꽃 핑크 - rose-50)
+        } else if (month >= 6 && month <= 8) {
+            seasonBg = '#f0f9ff'; // 여름 🍉 (시원한 바다 파랑 - sky-50)
+        } else if (month >= 9 && month <= 11) {
+            seasonBg = '#fffbeb'; // 가을 🍁 (따뜻한 단풍 베이지 - amber-50)
+        } else {
+            seasonBg = '#f8fafc'; // 겨울 ❄️ (포근한 눈꽃 회색 - slate-50)
+        }
+
+        // 전체 앱의 배경색 변수(CSS 마법)를 해당 계절색으로 교체!
+        document.documentElement.style.setProperty('--season-bg', seasonBg);
+    } else {
+        // 기본(White) 모드일 경우 원래대로 복구
+        body.classList.remove('theme-season');
+        document.documentElement.style.removeProperty('--season-bg');
+    }
+};
+
+// 💡 앱 로딩 시 마지막으로 저장된 스킨을 잊지 않고 불러옵니다.
+document.addEventListener('DOMContentLoaded', window.applySkin);

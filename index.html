@@ -40,13 +40,18 @@
 
         <style>
             .fc .fc-daygrid-day-frame {
-                min-height: 45px !important; /* 기본적으로 뚱뚱하게 잡히는 최소 높이 대폭 축소 */
+                min-height: 45px !important;
             }
             .fc .fc-daygrid-day-events {
-                margin-bottom: 0 !important; /* 수입/지출 글씨 아래 텅 빈 공간 제거 */
+                margin-bottom: 0 !important;
             }
             .fc-daygrid-event-harness {
-                margin-top: 1px !important; /* 수입과 지출 사이의 간격 바짝 붙이기 */
+                margin-top: 1px !important;
+            }
+            /* 👇 새로 추가: 계절 스킨을 켰을 때 모든 흰색(bg-white)을 파스텔로 변경! */
+            body.theme-season .bg-white {
+                background-color: var(--season-bg, #ffffff) !important;
+                transition: background-color 0.5s ease-in-out; /* 부드러운 전환 효과 */
             }
         </style>
     </head>
@@ -371,22 +376,34 @@
                 <section id="view-settings" class="tab-content">
                     <h2 class="text-md font-semibold text-gray-700 mb-4">설정</h2>
                     <div
-                        class="bg-gray-50 py-2 px-4 rounded-xl mb-6 flex items-center gap-3 border border-gray-100"
+                        class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-4 border border-gray-100"
                     >
                         <div
-                            class="bg-primary-light text-primary p-2 rounded-full flex items-center justify-center"
+                            class="bg-primary-light text-primary p-3 rounded-full flex items-center justify-center"
                         >
-                            <span class="material-symbols-outlined text-xl">person</span>
+                            <span class="material-symbols-outlined text-2xl">person</span>
                         </div>
                         <div>
-                            <p class="text-[10px] text-gray-500 mb-0 leading-none">현재 계정</p>
-                            <p
-                                id="settings-user-email"
-                                class="font-bold text-gray-800 text-sm mt-0.5 leading-none"
-                            ></p>
+                            <p class="text-xs text-gray-500 mb-0.5">현재 계정</p>
+                            <p id="settings-user-email" class="font-bold text-gray-800 text-sm"></p>
                         </div>
                     </div>
+
                     <ul class="divide-y divide-gray-100">
+                        <li class="py-4 flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <span class="material-symbols-outlined text-pink-400">palette</span>
+                                <span>앱 스킨 (배경색)</span>
+                            </div>
+                            <select
+                                id="skin-selector"
+                                onchange="changeSkin(this.value)"
+                                class="border border-gray-200 rounded-lg p-1.5 text-xs font-bold text-gray-600 outline-none bg-gray-50 cursor-pointer"
+                            >
+                                <option value="default">기본 (White)</option>
+                                <option value="season">계절 (Season)</option>
+                            </select>
+                        </li>
                         <li
                             onclick="openCardModal()"
                             class="py-4 flex justify-between items-center cursor-pointer hover:bg-gray-50"
