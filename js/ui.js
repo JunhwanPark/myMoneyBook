@@ -214,7 +214,13 @@ window.renderDailyList = (data, searchKeyword = '') => {
             </div>`
         );
 
-        groupedByDate[dateStr].forEach((item) => {
+        // 👇 추가된 부분: 같은 날짜 안에서 최신순이면 뒤집기!
+        let itemsForDate = groupedByDate[dateStr];
+        if (window.listSortOrder === 'desc') {
+            itemsForDate = [...itemsForDate].reverse();
+        }
+
+        itemsForDate.forEach((item) => {
             const parsed = parseMemo(item.Memo);
             const isExp = item.Type === 'expense';
             const catLabel =
@@ -1180,7 +1186,13 @@ window.openWeeklyModal = function (clickedDateStr) {
     } else {
         applyTopRanks(dailyData);
 
-        dailyData.forEach((item) => {
+        // 👇 추가된 부분: 일간 데이터 배열 뒤집기
+        let itemsToRender = dailyData;
+        if (window.listSortOrder === 'desc') {
+            itemsToRender = [...dailyData].reverse();
+        }
+
+        itemsToRender.forEach((item) => {
             const isExp = item.Type === 'expense';
             let catLabel = '미분류';
             if (item.Category) {
@@ -1342,8 +1354,14 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
                 </div>`
             );
 
+            // 👇 추가된 부분: 카드 상세 모달 내부 순서 뒤집기
+            let itemsForDate = groupedByDate[dateStr];
+            if (window.listSortOrder === 'desc') {
+                itemsForDate = [...itemsForDate].reverse();
+            }
+
             // 해당 날짜에 속한 항목 렌더링
-            groupedByDate[dateStr].forEach((item) => {
+            itemsForDate.forEach((item) => {
                 const parsed = parseMemo(item.Memo);
                 const catLabel =
                     globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
@@ -1465,7 +1483,13 @@ window.openMonthlyModal = function (type) {
                 </div>`
             );
 
-            groupedByDate[dateStr].forEach((item) => {
+            // 👇 추가된 부분: 월간 수입/지출 모달 내부 순서 뒤집기
+            let itemsForDate = groupedByDate[dateStr];
+            if (window.listSortOrder === 'desc') {
+                itemsForDate = [...itemsForDate].reverse();
+            }
+
+            itemsForDate.forEach((item) => {
                 const isExp = item.Type === 'expense';
                 let catLabel = '미분류';
                 if (item.Category) {
@@ -1947,7 +1971,13 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                 </div>`
             );
 
-            groupedByDate[dateStr].forEach((item) => {
+            // 👇 추가된 부분: 카테고리 상세 모달 내부 순서 뒤집기
+            let itemsForDate = groupedByDate[dateStr];
+            if (window.listSortOrder === 'desc') {
+                itemsForDate = [...itemsForDate].reverse();
+            }
+
+            itemsForDate.forEach((item) => {
                 const parsed = parseMemo(item.Memo);
                 const isExp = item.Type === 'expense';
                 const iconName = getCategoryIcon(categoryLabel);
