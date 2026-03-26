@@ -2045,3 +2045,76 @@ window.applySkin = () => {
 
 // 💡 앱 로딩 시 마지막으로 저장된 스킨을 잊지 않고 불러옵니다.
 document.addEventListener('DOMContentLoaded', window.applySkin);
+
+// ==========================================
+// 👆 화면 스와이프(Swipe) 제스처로 탭 이동하기
+// ==========================================
+(function initSwipeNavigation() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+
+    // 탭 순서와 이름 정의 (루프를 위해)
+    const tabOrder = ['daily', 'monthly', 'stats', 'settings'];
+    const tabNames = ['내역', '달력', '통계', '설정'];
+
+    // 스와이프 이벤트를 감지할 메인 영역을 잡습니다.
+    const mainArea = document.querySelector('main');
+    if (!mainArea) return;
+
+    mainArea.addEventListener(
+        'touchstart',
+        (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        },
+        { passive: true }
+    );
+
+    mainArea.addEventListener(
+        'touchend',
+        (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            touchEndY = e.changedTouches[0].screenY;
+            handleSwipe();
+        },
+        { passive: true }
+    );
+
+    function handleSwipe() {
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+
+        // X축(가로) 이동 거리가 50px 이상이고, Y축(세로) 스크롤보다 클 때만 스와이프로 인정!
+        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+            // 현재 활성화된 탭이 무엇인지 찾습니다.
+            const activeTabSection = document.querySelector('.tab-content.active');
+            if (!activeTabSection) return;
+
+            const activeTabId = activeTabSection.id.replace('view-', '');
+            let currentIndex = tabOrder.indexOf(activeTabId);
+            if (currentIndex === -1) return;
+
+            // 👈 왼쪽으로 밀었을 때 (다음 탭으로)
+            if (deltaX < 0) {
+                currentIndex = (currentIndex + 1) % tabOrder.length; // 끝이면 처음으로 (루프)
+            }
+            // 👉 오른쪽으로 밀었을 때 (이전 탭으로)
+            else {
+                currentIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length; // 처음이면 끝으로 (루프)
+            }
+
+            const nextTabId = tabOrder[currentIndex];
+            const nextTabName = tabNames[currentIndex];
+
+            // 하단 네비게이션 버튼들 중에서 이동할 탭의 버튼을 찾아냅니다.
+            const nextBtn = document.querySelector(`nav button[onclick*="'${nextTabId}'"]`);
+
+            // 스와이프 방향에 맞춰 화면을 휙! 전환합니다.
+            if (nextTabId && nextBtn) {
+                window.switchTab(nextTabId, nextTabName, nextBtn);
+            }
+        }
+    }
+})();
