@@ -53,6 +53,39 @@
                 background-color: var(--season-bg, #ffffff) !important;
                 transition: background-color 0.5s ease-in-out; /* 부드러운 전환 효과 */
             }
+
+            body.theme-season .bg-white {
+                background-color: var(--season-bg, #ffffff) !important;
+                transition: background-color 0.5s ease-in-out;
+            }
+
+            /* 👇 새로 추가: 탭 스와이프 슬라이드 애니메이션 (빠르고 부드럽게!) */
+            @keyframes slideInFromRight {
+                0% {
+                    transform: translateX(20%);
+                    opacity: 0;
+                }
+                100% {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideInFromLeft {
+                0% {
+                    transform: translateX(-20%);
+                    opacity: 0;
+                }
+                100% {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            .slide-in-right {
+                animation: slideInFromRight 0.2s ease-out forwards;
+            }
+            .slide-in-left {
+                animation: slideInFromLeft 0.2s ease-out forwards;
+            }
         </style>
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans theme-transition">

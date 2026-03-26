@@ -19,7 +19,7 @@ window.changeGlobalMonth = (offset) => {
     if (calendar) calendar.gotoDate(currentDisplayDate);
 };
 
-window.switchTab = (tabId, title, btnElement) => {
+window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
     const searchInput = document.getElementById('search-input');
     const clearBtn = document.getElementById('search-clear-btn');
 
@@ -32,14 +32,46 @@ window.switchTab = (tabId, title, btnElement) => {
         }
     }
 
-    document.querySelectorAll('.tab-content').forEach((el) => el.classList.remove('active'));
-    document.getElementById('view-' + tabId).classList.add('active');
+    // 💡 애니메이션 방향 계산 (현재 탭과 이동할 탭의 순서 비교)
+    const tabOrder = ['daily', 'monthly', 'stats', 'settings'];
+    const currentActive = document.querySelector('.tab-content.active');
+    let currentTabId = 'daily';
+    if (currentActive) {
+        currentTabId = currentActive.id.replace('view-', '');
+    }
+
+    const currentIndex = tabOrder.indexOf(currentTabId);
+    const newIndex = tabOrder.indexOf(tabId);
+
+    let direction = 'right'; // 기본 방향
+    if (forceDirection) {
+        direction = forceDirection; // 스와이프 시 강제 지정된 방향
+    } else if (currentIndex !== -1 && newIndex !== -1) {
+        direction = newIndex > currentIndex ? 'right' : 'left'; // 하단 버튼 클릭 시 방향 계산
+    }
+
+    // 기존 탭 숨기기 및 애니메이션 클래스 초기화
+    document.querySelectorAll('.tab-content').forEach((el) => {
+        el.classList.remove('active', 'slide-in-right', 'slide-in-left');
+    });
+
+    // 새 탭 띄우기 및 방향에 맞는 애니메이션 장착!
+    const targetTab = document.getElementById('view-' + tabId);
+    targetTab.classList.add('active');
+    if (direction === 'right') {
+        targetTab.classList.add('slide-in-right');
+    } else {
+        targetTab.classList.add('slide-in-left');
+    }
+
+    // 하단 버튼 색상 변경
     document.querySelectorAll('.nav-btn').forEach((btn) => {
         btn.classList.remove('text-primary');
         btn.classList.add('text-gray-400');
     });
     if (btnElement) btnElement.classList.replace('text-gray-400', 'text-primary');
 
+    // 각 탭에 맞는 렌더링 함수 실행
     if (tabId === 'daily') {
         renderDailyList(globalData);
     } else if (tabId === 'monthly') {
@@ -2088,7 +2120,6 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
 
         // X축(가로) 이동 거리가 50px 이상이고, Y축(세로) 스크롤보다 클 때만 스와이프로 인정!
         if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
-            // 현재 활성화된 탭이 무엇인지 찾습니다.
             const activeTabSection = document.querySelector('.tab-content.active');
             if (!activeTabSection) return;
 
@@ -2096,24 +2127,26 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
             let currentIndex = tabOrder.indexOf(activeTabId);
             if (currentIndex === -1) return;
 
-            // 👈 왼쪽으로 밀었을 때 (다음 탭으로)
+            let direction = 'right';
+
+            // 👈 화면을 왼쪽으로 밀었을 때 (다음 탭으로)
             if (deltaX < 0) {
-                currentIndex = (currentIndex + 1) % tabOrder.length; // 끝이면 처음으로 (루프)
+                currentIndex = (currentIndex + 1) % tabOrder.length;
+                direction = 'right'; // 새 화면이 오른쪽에서 밀려 들어옴
             }
-            // 👉 오른쪽으로 밀었을 때 (이전 탭으로)
+            // 👉 화면을 오른쪽으로 밀었을 때 (이전 탭으로)
             else {
-                currentIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length; // 처음이면 끝으로 (루프)
+                currentIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+                direction = 'left'; // 새 화면이 왼쪽에서 밀려 들어옴
             }
 
             const nextTabId = tabOrder[currentIndex];
             const nextTabName = tabNames[currentIndex];
-
-            // 하단 네비게이션 버튼들 중에서 이동할 탭의 버튼을 찾아냅니다.
             const nextBtn = document.querySelector(`nav button[onclick*="'${nextTabId}'"]`);
 
-            // 스와이프 방향에 맞춰 화면을 휙! 전환합니다.
             if (nextTabId && nextBtn) {
-                window.switchTab(nextTabId, nextTabName, nextBtn);
+                // 방향(direction) 변수를 끝에 같이 넘겨줍니다!
+                window.switchTab(nextTabId, nextTabName, nextBtn, direction);
             }
         }
     }
