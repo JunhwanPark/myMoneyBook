@@ -624,6 +624,7 @@ window.renderChart = function () {
             </div>`;
 
         const cardSums = {};
+        const cardDiscounts = {}; // 👇 할인 누적액을 담아둘 바구니 추가!
 
         globalData.forEach((item) => {
             if (item.Type !== 'expense') return;
@@ -659,6 +660,9 @@ window.renderChart = function () {
             if (isTargetMonth) {
                 cardSums[parsed.payMethod] =
                     (cardSums[parsed.payMethod] || 0) + Number(item.Amount);
+                // 👇 해당 달의 카드별 할인액도 차곡차곡 더해줍니다!
+                cardDiscounts[parsed.payMethod] =
+                    (cardDiscounts[parsed.payMethod] || 0) + (parsed.discount || 0);
             }
         });
 
@@ -685,9 +689,10 @@ window.renderChart = function () {
 
             const displayDay = isBilling ? (isEnd ? '말일' : `${dayStr}일`) : '1일~말일';
             const amount = cardSums[name] || 0;
+            const discount = cardDiscounts[name] || 0; // 👇 누적된 할인액 가져오기
 
             if (amount > 0) {
-                cardStatsList.push({ name, displayDay, start, end, amount });
+                cardStatsList.push({ name, displayDay, start, end, amount, discount }); // 리스트에 할인액도 포함
             }
         });
 
@@ -699,18 +704,25 @@ window.renderChart = function () {
         cardStatsList.forEach((stat) => {
             container.insertAdjacentHTML(
                 'beforeend',
-                `<div onclick="openCardDetailModal('${stat.name}', '${prefix}', '${window.cardStatMode}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition">
-                    <div class="flex justify-between items-center mb-0.5">
-                        <div>
-                            <span class="text-sm font-extrabold text-gray-800 leading-none">${stat.name}</span>
-                            <span class="text-[10px] text-indigo-500 font-bold ml-1">기준: ${stat.displayDay}</span>
+                // 👇 전체 뼈대를 flex justify-between items-center 로 묶어서 좌우 수직 중앙 정렬을 맞춥니다.
+                `<div onclick="openCardDetailModal('${stat.name}', '${prefix}', '${window.cardStatMode}')" class="bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 mb-2 shadow-sm cursor-pointer hover:bg-gray-200 active:scale-[0.99] transition flex justify-between items-center">
+
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center mb-1">
+                            <span class="text-sm font-extrabold text-gray-800 leading-none truncate">${stat.name}</span>
+                            <span class="text-[10px] text-indigo-500 font-bold ml-1 shrink-0">기준: ${stat.displayDay}</span>
                         </div>
-                        <span class="text-sm font-black text-gray-900 leading-none">${formatMoney(stat.amount)}</span>
+                        <div class="text-[10px] text-gray-400 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                            ${stat.start.toLocaleDateString()} ~ ${stat.end.toLocaleDateString()}
+                        </div>
                     </div>
-                    <div class="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
-                        <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-                        ${stat.start.toLocaleDateString()} ~ ${stat.end.toLocaleDateString()}
+
+                    <div class="text-right shrink-0 ml-3">
+                        <p class="text-sm font-black text-gray-900 leading-none">${formatMoney(stat.amount)}</p>
+                        ${stat.discount > 0 ? `<p class="text-[10px] text-blue-500 mt-1 font-bold tracking-tight">할인 ${formatMoney(stat.discount)}</p>` : ''}
                     </div>
+
                 </div>`
             );
         });
