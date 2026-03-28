@@ -922,13 +922,20 @@ window.openAddModal = () => {
     document.getElementById('add-form').reset();
     document.getElementById('input-id').value = '';
     document.getElementById('input-action').value = 'create';
-    document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
+
+    // 👇 UTC 기준이 아닌, 사용자의 로컬 시간(한국 시간) 기준으로 오늘 날짜를 구합니다!
+    const today = new Date();
+    const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    document.getElementById('input-date').value = localDate;
+
     document.getElementById('save-btn').innerText = '저장하기';
     document.getElementById('delete-btn').classList.add('hidden');
     document.getElementById('payment-section').classList.remove('hidden');
+
     renderCardDropdown();
     toggleCardSelect();
     renderCategoryDropdown('expense');
+
     const modal = document.getElementById('add-modal');
     modal.classList.remove('hidden');
     setTimeout(() => {
