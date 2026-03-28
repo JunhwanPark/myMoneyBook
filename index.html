@@ -6,6 +6,63 @@
             name="viewport"
             content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
         />
+        <script>
+            (function optimizeForTablet() {
+                function handleDisplay() {
+                    // 💡 1. 진짜 모바일/태블릿 OS인지 깐깐하게 확인 (터치형 윈도우 PC 등 제외!)
+                    const isMobileOS =
+                        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+                    const blocker = document.getElementById('landscape-blocker');
+
+                    // PC 환경이면 아래의 확대 및 차단 마법을 실행하지 않고, 경고창도 무조건 숨긴 채 즉시 종료합니다!
+                    if (!isMobileOS) {
+                        if (blocker) blocker.style.display = 'none';
+                        return;
+                    }
+
+                    const screenW = Math.min(window.screen.width, window.screen.height);
+                    const isTablet = screenW > 450 && screenW <= 1200;
+
+                    const isPortrait = window.screen.orientation
+                        ? window.screen.orientation.type.startsWith('portrait')
+                        : window.innerHeight >= window.innerWidth;
+                    const isLandscape = !isPortrait;
+
+                    // 1. 태블릿 세로모드 비율 그대로 꽉 차게 확대 (Zoom 효과)
+                    const metaViewport = document.querySelector('meta[name="viewport"]');
+                    if (isTablet && isPortrait) {
+                        metaViewport.setAttribute('content', 'width=420, user-scalable=no');
+                    } else {
+                        metaViewport.setAttribute(
+                            'content',
+                            'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+                        );
+                    }
+
+                    // 2. 모바일/태블릿 가로모드 차단 오버레이 제어
+                    const mainApp = document.getElementById('main-app');
+                    const loginScreen = document.getElementById('login-screen');
+
+                    if (isLandscape && screenW > 0) {
+                        if (blocker) blocker.style.display = 'flex';
+                        if (mainApp) mainApp.style.display = 'none';
+                        if (loginScreen) loginScreen.style.display = 'none';
+                        document.body.style.backgroundColor = '#111827';
+                    } else {
+                        if (blocker) blocker.style.display = 'none';
+                        if (mainApp) mainApp.style.display = '';
+                        if (loginScreen) loginScreen.style.display = '';
+                        document.body.style.backgroundColor = '';
+                    }
+                }
+
+                window.addEventListener('resize', handleDisplay);
+                window.addEventListener('orientationchange', handleDisplay);
+                document.addEventListener('DOMContentLoaded', handleDisplay);
+            })();
+        </script>
         <title>변민삼박 가계부</title>
         <meta name="apple-mobile-web-app-title" content="가계부" />
         <meta name="application-name" content="가계부" />
@@ -89,6 +146,20 @@
         </style>
     </head>
     <body class="bg-gray-100 text-gray-800 font-sans theme-transition">
+        <div
+            id="landscape-blocker"
+            style="display: none"
+            class="fixed inset-0 z-[9999] flex-col items-center justify-center text-white bg-gray-900"
+        >
+            <span class="material-symbols-outlined text-6xl mb-6 animate-bounce text-indigo-400"
+                >screen_rotation</span
+            >
+            <h2 class="text-2xl font-black mb-3">세로 모드로 돌려주세요</h2>
+            <p class="text-gray-400 text-sm text-center font-medium leading-relaxed">
+                이 앱은 세로 모드에 최적화되어 있습니다.<br />
+                기기를 세워서 사용해 주세요.
+            </p>
+        </div>
         <div
             id="global-loader"
             class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 z-[100] bg-gray-900/90 text-white px-5 py-2.5 rounded-full shadow-2xl flex items-center gap-3 pointer-events-none transition-all"
