@@ -1,3 +1,16 @@
+// ==========================================
+// 🛡️ XSS 방어용 HTML 특수문자 치환 함수
+// ==========================================
+window.escapeHTML = function (str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
 window.updateMonthTitles = function () {
     const year = currentDisplayDate.getFullYear();
     const month = currentDisplayDate.getMonth() + 1;
@@ -239,10 +252,10 @@ window.renderDailyList = (data, searchKeyword = '') => {
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center">
-                                <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                                 ${item.rankBadge || ''}
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod}</p>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
                         </div>
                     </div>
                     <div class="text-right shrink-0 ml-3">
@@ -874,7 +887,10 @@ window.renderCardDropdown = () => {
     select.innerHTML = '<option value="">카드 선택</option>';
     globalCards.forEach((c) => {
         const name = c.Label.split('|')[0];
-        select.insertAdjacentHTML('beforeend', `<option value="${name}">${name}</option>`);
+        select.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`
+        );
     });
 };
 
@@ -1023,11 +1039,11 @@ window.openCardModal = () => {
             'beforeend',
             `<li class="py-1.5 flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-800">${name}</span>
+                    <span class="text-sm font-medium text-gray-800">${escapeHTML(name)}</span>
                     <span class="text-[10px] text-gray-400">기준: ${displayDay}</span>
                 </div>
                 <div class="flex gap-1 shrink-0">
-                    <button onclick="prepareEditCard('${c.Value}', '${name}', '${dayStr}')" class="text-gray-400 hover:text-blue-500 transition p-1">
+                    <button onclick="prepareEditCard('${c.Value}', '${escapeHTML(name)}', '${dayStr}')" class="text-gray-400 hover:text-blue-500 transition p-1">
                         <span class="material-symbols-outlined text-sm">edit</span>
                     </button>
                     <button onclick="deleteCard('${c.Value}')" class="text-gray-400 hover:text-red-500 transition p-1">
@@ -1222,10 +1238,10 @@ window.openWeeklyModal = function (clickedDateStr) {
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center">
-                                <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                                 ${item.rankBadge || ''}
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod}</p>
+                            <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
                         </div>
                     </div>
                     <div class="text-right shrink-0 ml-3">
@@ -1388,7 +1404,7 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center">
-                                    <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                    <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                                     ${item.rankBadge || ''}
                                 </div>
                                 <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel}</p>
@@ -1519,10 +1535,10 @@ window.openMonthlyModal = function (type) {
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center">
-                                    <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                    <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                                     ${item.rankBadge || ''}
                                 </div>
-                                <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel} • ${parsed.payMethod}</p>
+                                <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
                             </div>
                         </div>
                         <div class="text-right shrink-0 ml-3">
@@ -1591,7 +1607,7 @@ window.showSuggestions = (text) => {
             (name) =>
                 `<div onclick="selectSuggestion('${name.replace(/'/g, "\\'")}')" class="px-4 py-2.5 border-b border-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer active:bg-gray-200 transition">
             <span class="material-symbols-outlined text-[14px] text-gray-400 align-middle mr-1">history</span>
-            ${name}
+            ${escapeHTML(name)}
         </div>`
         )
         .join('');
@@ -2002,10 +2018,10 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                             </div>
                             <div class="flex-1 min-w-0">
                                 <div class="flex items-center">
-                                    <p class="text-sm font-bold text-gray-800 truncate">${parsed.itemName}</p>
+                                    <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                                     ${item.rankBadge || ''}
                                 </div>
-                                <p class="text-[10px] text-gray-400 mt-1 truncate">${categoryLabel} • ${parsed.payMethod}</p>
+                                <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(categoryLabel)} • ${escapeHTML(parsed.payMethod)}</p>
                             </div>
                         </div>
                         <div class="text-right shrink-0 ml-3">
