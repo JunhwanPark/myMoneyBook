@@ -69,10 +69,11 @@ window.fetchExchangeRate = async () => {
 };
 
 // ==========================================
-// 기존 데이터 로드 함수 (국가별 신용카드 분리 로직 적용)
+// 기존 데이터 로드 함수 (국가별 신용카드 분리 및 무음 모드 적용)
 // ==========================================
-window.loadDailyRecords = async () => {
-    showLoader();
+window.loadDailyRecords = async (isSilent = false) => {
+    // 💡 isSilent가 true일 때(백그라운드 싱크)는 로딩창을 띄우지 않습니다!
+    if (!isSilent) showLoader();
     try {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
@@ -82,10 +83,8 @@ window.loadDailyRecords = async () => {
         if (result.status === 'success') {
             globalData = result.data || [];
 
-            // 👇 일반 카테고리에서는 'card', 'card_KR', 'card_CN'을 모두 제외합니다.
             globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
 
-            // 👇 국가별 신용카드 분리 (한국은 기존 'card' 호환 유지, 중국은 'card_CN'만)
             globalCards = (result.categories || [])
                 .filter((c) => {
                     if (currentCountry === 'KR') return c.Type === 'card' || c.Type === 'card_KR';
@@ -107,9 +106,9 @@ window.loadDailyRecords = async () => {
         }
     } catch (error) {
         console.error('데이터 로드 중 에러 발생:', error);
-        alert('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
+        if (!isSilent) alert('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
     } finally {
-        hideLoader();
+        if (!isSilent) hideLoader();
     }
 };
 
@@ -145,7 +144,7 @@ window.saveRecord = () => {
     const memo = `${itemName}\nPAY:${paymentMethod}\nDISC:${discountVal}\n${memoDetail}`;
     const action = document.getElementById('input-action').value;
 
-    // 💡 임시 ID 생성 (새로 추가할 경우 구글 시트가 ID를 주기도 전에 화면에 그리기 위함)
+    // 임시 ID 생성
     const recordId = document.getElementById('input-id').value || 'temp_' + Date.now();
 
     const payload = {
@@ -160,14 +159,10 @@ window.saveRecord = () => {
         memo,
     };
 
-    // ==========================================
     // 🚀 1. 딜레이 제로(0초): 모달창 즉시 닫기
-    // ==========================================
     closeAddModal();
 
-    // ==========================================
     // 🚀 2. 낙관적 업데이트: 서버 응답을 기다리지 않고 화면에 먼저 그려버리기!
-    // ==========================================
     const optimisticData = {
         ID: recordId,
         Date: date + 'T00:00:00.000Z',
@@ -182,10 +177,14 @@ window.saveRecord = () => {
         globalData.push(optimisticData);
     } else {
         const idx = globalData.findIndex((d) => d.ID === recordId);
-        if (idx > -1) globalData[idx] = optimisticData;
+        if (idx > -1) {
+            // 💡 백엔드와 동일하게 기존 위치에서 빼서 맨 뒤로 넣습니다. (최신순 상단 노출용)
+            globalData.splice(idx, 1);
+            globalData.push(optimisticData);
+        }
     }
 
-    // 변경된 데이터를 바탕으로 화면 즉시 새로고침 (사용자는 여기서 저장이 끝났다고 느낍니다)
+    // 변경된 데이터를 바탕으로 화면 즉시 렌더링
     if (typeof renderDailyList === 'function') renderDailyList(globalData);
     if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
     if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
@@ -193,22 +192,18 @@ window.saveRecord = () => {
     if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function')
         renderChart();
 
-    // ==========================================
-    // 🚀 3. 백그라운드 동기화: 사용자가 딴짓할 때 조용히 서버에 전송
-    // ==========================================
-    showLoader(); // 상단에 '동기화 중...' 토스트 띄우기
-
+    // 🚀 3. 백그라운드 동기화 (로딩 스피너 완전 제거!)
     fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
         .then((res) => res.json())
         .then((data) => {
             if (data.status === 'success') {
-                // 구글 시트에 안전하게 저장이 끝나면, 임시 ID 등을 실제 ID로 덮어씌우기 위해 조용히 싱크
-                loadDailyRecords();
+                // 성공 시 화면 깜빡임 없이 조용히(isSilent=true) 서버 데이터와 싱크 맞추기
+                loadDailyRecords(true);
             }
         })
         .catch((e) => {
-            alert('저장 중 통신 오류가 발생했습니다.');
-            loadDailyRecords(); // 실패 시 원래 서버 데이터로 원상복구
+            alert('저장 중 네트워크 오류가 발생하여 이전 상태로 복구됩니다.');
+            loadDailyRecords(true);
         });
 };
 
@@ -220,7 +215,7 @@ window.deleteRecord = () => {
     // 🚀 1. 즉시 모달 닫기
     closeAddModal();
 
-    // 🚀 2. 즉시 화면에서 데이터 삭제 및 새로고침 (낙관적 업데이트)
+    // 🚀 2. 즉시 화면에서 데이터 삭제 및 새로고침 (로딩 바 없음)
     globalData = globalData.filter((d) => d.ID !== recordId);
 
     if (typeof renderDailyList === 'function') renderDailyList(globalData);
@@ -231,8 +226,6 @@ window.deleteRecord = () => {
         renderChart();
 
     // 🚀 3. 백그라운드 삭제 요청
-    showLoader(); // 토스트 띄우기
-
     fetch(GAS_URL, {
         method: 'POST',
         body: JSON.stringify({
@@ -244,12 +237,12 @@ window.deleteRecord = () => {
         .then((res) => res.json())
         .then((data) => {
             if (data.status === 'success') {
-                loadDailyRecords(); // 삭제 성공 시 조용히 데이터 싱크
+                loadDailyRecords(true); // 성공 시 조용히 데이터 싱크
             }
         })
         .catch((e) => {
-            alert('삭제 중 통신 오류가 발생했습니다.');
-            loadDailyRecords(); // 실패 시 삭제 취소 및 롤백
+            alert('삭제 중 통신 오류가 발생하여 원상복구 되었습니다.');
+            loadDailyRecords(true); // 실패 시 롤백
         });
 };
 
