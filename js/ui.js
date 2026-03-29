@@ -2188,3 +2188,87 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
         }
     }
 })();
+
+// ==========================================
+// 💡 브라우저 뒤로 가기(History API) 자동 감지 엔진
+// ==========================================
+(function initModalHistoryManager() {
+    window.modalStack = [];
+    window.isProgrammaticBack = false; // 앱 내부 버튼으로 닫을 때의 충돌 방지용 플래그
+
+    // 우리 앱에서 사용하는 모든 팝업창(모달)의 ID 목록입니다.
+    const modalIds = [
+        'add-modal',
+        'card-modal',
+        'category-modal',
+        'weekly-modal',
+        'card-detail-modal',
+    ];
+
+    // 💡 마법의 핵심: MutationObserver로 팝업들의 'hidden' 클래스 변화를 실시간으로 감시합니다.
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class') {
+                const target = mutation.target;
+                const id = target.id;
+
+                if (modalIds.includes(id)) {
+                    const isHidden = target.classList.contains('hidden');
+                    const isInStack = window.modalStack.includes(id);
+
+                    if (!isHidden && !isInStack) {
+                        // 1. 모달이 화면에 나타났을 때 (가짜 페이지 이동 기록을 하나 만듭니다)
+                        window.modalStack.push(id);
+                        history.pushState({ modal: id }, '', '');
+                    } else if (isHidden && isInStack) {
+                        // 2. 사용자가 화면의 [X] 버튼이나 취소를 눌러 정상적으로 닫았을 때
+                        window.modalStack = window.modalStack.filter((mId) => mId !== id);
+
+                        // 이미 닫혔으니 뒤로가기 기록도 코드로 조용히 한 칸 지워줍니다.
+                        window.isProgrammaticBack = true;
+                        history.back();
+
+                        // 약간의 시간차 후 플래그 해제 (아래의 popstate 이벤트가 오작동하지 않도록)
+                        setTimeout(() => {
+                            window.isProgrammaticBack = false;
+                        }, 100);
+                    }
+                }
+            }
+        });
+    });
+
+    // 앱이 켜질 때, 모든 모달 팝업의 옷(class)에 감시 카메라를 달아줍니다.
+    document.addEventListener('DOMContentLoaded', () => {
+        modalIds.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) observer.observe(el, { attributes: true, attributeFilter: ['class'] });
+        });
+    });
+
+    // 💡 스마트폰에서 진짜 '뒤로 가기' 제스처를 했을 때의 동작을 가로챕니다!
+    window.addEventListener('popstate', (e) => {
+        // [X] 버튼을 눌러서 우리 코드가 강제로 지운 히스토리라면 무시합니다.
+        if (window.isProgrammaticBack) return;
+
+        // 화면에 열려있는 모달이 있다면? (앱이 꺼지는 대신 모달만 닫게 함)
+        if (window.modalStack.length > 0) {
+            // 스택에서 가장 위에 있는(가장 마지막에 열린) 모달 ID를 꺼냄
+            const topModalId = window.modalStack.pop();
+
+            // 각 모달의 고유 닫기 함수를 실행하여 화면에서 부드럽게 지움
+            if (topModalId === 'add-modal' && typeof closeAddModal === 'function') closeAddModal();
+            else if (topModalId === 'card-modal' && typeof closeCardModal === 'function')
+                closeCardModal();
+            else if (topModalId === 'category-modal' && typeof closeCategoryModal === 'function')
+                closeCategoryModal();
+            else if (topModalId === 'weekly-modal' && typeof closeWeeklyModal === 'function')
+                closeWeeklyModal();
+            else if (
+                topModalId === 'card-detail-modal' &&
+                typeof closeCardDetailModal === 'function'
+            )
+                closeCardDetailModal();
+        }
+    });
+})();
