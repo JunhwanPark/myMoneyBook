@@ -9,14 +9,14 @@
         <script>
             (function optimizeForTablet() {
                 function handleDisplay() {
-                    // 💡 1. 진짜 모바일/태블릿 OS인지 깐깐하게 확인 (터치형 윈도우 PC 등 제외!)
+                    // 1. 순수하게 OS(운영체제) 정보만으로 모바일/태블릿 여부를 판단합니다.
                     const isMobileOS =
                         /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
                         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
                     const blocker = document.getElementById('landscape-blocker');
 
-                    // PC 환경이면 아래의 확대 및 차단 마법을 실행하지 않고, 경고창도 무조건 숨긴 채 즉시 종료합니다!
+                    // 💡 핵심 수정: 터치 지원 모니터라도 OS가 안드로이드/iOS가 아니면 무조건 작동 중지!
                     if (!isMobileOS) {
                         if (blocker) blocker.style.display = 'none';
                         return;
@@ -25,14 +25,16 @@
                     const screenW = Math.min(window.screen.width, window.screen.height);
                     const isTablet = screenW > 450 && screenW <= 1200;
 
-                    const isPortrait = window.screen.orientation
-                        ? window.screen.orientation.type.startsWith('portrait')
-                        : window.innerHeight >= window.innerWidth;
-                    const isLandscape = !isPortrait;
+                    const isWideViewport = window.innerWidth > window.innerHeight;
 
-                    // 1. 태블릿 세로모드 비율 그대로 꽉 차게 확대 (Zoom 효과)
+                    const isLandscapeOrientation = window.screen.orientation
+                        ? window.screen.orientation.type.startsWith('landscape')
+                        : isWideViewport;
+
+                    const isLandscape = isLandscapeOrientation && isWideViewport;
+
                     const metaViewport = document.querySelector('meta[name="viewport"]');
-                    if (isTablet && isPortrait) {
+                    if (isTablet && !isLandscape) {
                         metaViewport.setAttribute('content', 'width=420, user-scalable=no');
                     } else {
                         metaViewport.setAttribute(
@@ -41,7 +43,6 @@
                         );
                     }
 
-                    // 2. 모바일/태블릿 가로모드 차단 오버레이 제어
                     const mainApp = document.getElementById('main-app');
                     const loginScreen = document.getElementById('login-screen');
 
