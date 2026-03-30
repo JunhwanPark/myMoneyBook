@@ -385,11 +385,11 @@ window.renderChart = function () {
     if (existingChart) existingChart.destroy();
 
     // ==========================================
-    // 📈 모드 1: 누적 지출 추이 꺾은선 차트 그리기
+    // 📈 모드 1: 누적 지출/수입 추이 꺾은선 차트 그리기
     // ==========================================
     if (mode === 'cumulative') {
         if (totalAmountEl) {
-            totalAmountEl.innerText = '지난달 vs 이번달';
+            totalAmountEl.innerText = '지난달 vs 이번달 (수입/지출)';
             totalAmountEl.className = 'text-sm font-bold text-gray-500';
         }
 
@@ -404,6 +404,7 @@ window.renderChart = function () {
         const daysInMonth = new Date(targetY, targetM + 1, 0).getDate();
         const labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
+        // 💡 지출 데이터 필터링
         const currentExpenses = globalData.filter(
             (d) => d.Type === 'expense' && d.Date?.startsWith(prefix)
         );
@@ -411,11 +412,23 @@ window.renderChart = function () {
             (d) => d.Type === 'expense' && d.Date?.startsWith(prevPrefix)
         );
 
+        // 💡 수입 데이터 필터링 (새로 추가됨)
+        const currentIncomes = globalData.filter(
+            (d) => d.Type === 'income' && d.Date?.startsWith(prefix)
+        );
+        const prevIncomes = globalData.filter(
+            (d) => d.Type === 'income' && d.Date?.startsWith(prevPrefix)
+        );
+
         const currentCum = new Array(daysInMonth).fill(null);
         const prevCum = new Array(daysInMonth).fill(null);
+        const currentIncCum = new Array(daysInMonth).fill(null);
+        const prevIncCum = new Array(daysInMonth).fill(null);
 
         let currentSum = 0;
         let prevSum = 0;
+        let currentIncSum = 0;
+        let prevIncSum = 0;
 
         const today = new Date();
         const isActualCurrentMonth =
@@ -423,25 +436,31 @@ window.renderChart = function () {
         const todayDate = today.getDate();
         const daysInPrevMonth = new Date(prevY, prevM + 1, 0).getDate();
 
+        // 💡 하루씩 돌면서 지출과 수입을 동시에 누적 계산합니다.
         for (let i = 1; i <= daysInMonth; i++) {
             if (i <= daysInPrevMonth) {
                 const pDayStr = String(i).padStart(2, '0');
-                const pDaySum = prevExpenses
+                prevSum += prevExpenses
                     .filter((d) => d.Date.substring(8, 10) === pDayStr)
                     .reduce((a, b) => a + Number(b.Amount), 0);
-                prevSum += pDaySum;
+                prevIncSum += prevIncomes
+                    .filter((d) => d.Date.substring(8, 10) === pDayStr)
+                    .reduce((a, b) => a + Number(b.Amount), 0);
             }
             prevCum[i - 1] = prevSum;
+            prevIncCum[i - 1] = prevIncSum;
 
-            if (isActualCurrentMonth && i > todayDate) {
-                // 미래는 빈칸
-            } else {
+            if (!(isActualCurrentMonth && i > todayDate)) {
                 const cDayStr = String(i).padStart(2, '0');
-                const cDaySum = currentExpenses
+                currentSum += currentExpenses
                     .filter((d) => d.Date.substring(8, 10) === cDayStr)
                     .reduce((a, b) => a + Number(b.Amount), 0);
-                currentSum += cDaySum;
+                currentIncSum += currentIncomes
+                    .filter((d) => d.Date.substring(8, 10) === cDayStr)
+                    .reduce((a, b) => a + Number(b.Amount), 0);
+
                 currentCum[i - 1] = currentSum;
+                currentIncCum[i - 1] = currentIncSum;
             }
         }
 
@@ -455,22 +474,43 @@ window.renderChart = function () {
                 labels: labels,
                 datasets: [
                     {
-                        label: '지난달',
-                        data: prevCum,
-                        borderColor: '#d1d5db',
-                        backgroundColor: 'rgba(243, 244, 246, 0.4)',
-                        borderWidth: 2,
-                        borderDash: [4, 4],
+                        label: '지난달 수입',
+                        data: prevIncCum,
+                        borderColor: '#93c5fd', // 연한 파란색
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        borderDash: [3, 3],
                         pointRadius: 0,
                         pointHoverRadius: 4,
+                        tension: 0.3,
+                        hidden: true, // 복잡함을 줄이기 위해 처음엔 꺼둡니다 (클릭 시 켜짐)
+                    },
+                    {
+                        label: '지난달 지출',
+                        data: prevCum,
+                        borderColor: '#d1d5db', // 회색
+                        backgroundColor: 'transparent',
+                        borderWidth: 1.5,
+                        borderDash: [3, 3],
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.3,
+                    },
+                    {
+                        label: '이번달 수입',
+                        data: currentIncCum,
+                        borderColor: '#3b82f6', // 파란색
+                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                        borderWidth: 2.5,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
                         fill: true,
                         tension: 0.3,
                     },
                     {
-                        // 👇 '이번 달'의 띄어쓰기를 없애서 '지난달'과 글자 폭을 완벽하게 맞췄습니다!
-                        label: '이번달',
+                        label: '이번달 지출',
                         data: currentCum,
-                        borderColor: '#ef4444',
+                        borderColor: '#ef4444', // 빨간색
                         backgroundColor: 'rgba(239, 68, 68, 0.08)',
                         borderWidth: 2.5,
                         pointRadius: 0,
@@ -491,22 +531,21 @@ window.renderChart = function () {
                         position: 'top',
                         align: 'end',
                         labels: {
-                            boxWidth: 10,
+                            boxWidth: 8,
                             usePointStyle: true,
-                            font: { size: 10, family: "'Pretendard', sans-serif" },
+                            font: { size: 9, family: "'Pretendard', sans-serif" },
                         },
                     },
                     datalabels: { display: false },
                     tooltip: {
                         backgroundColor: 'rgba(0, 0, 0, 0.8)',
                         titleFont: { size: 11 },
-                        bodyFont: { size: 12, weight: 'bold' },
+                        bodyFont: { size: 11, weight: 'bold' },
                         padding: 10,
                         callbacks: {
-                            title: (items) => `${items[0].label}일 누적 지출`,
+                            title: (items) => `${items[0].label}일 누적액`,
                             label: (context) => {
-                                if (context.parsed.y !== null) {
-                                    // 👇 끝에 억지로 붙어있던 '원' 글자를 지워 '원원' 중복과 중국 모드 텍스트 꼬임을 해결했습니다!
+                                if (context.parsed.y !== null && context.parsed.y > 0) {
                                     return ` ${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
                                 }
                             },
@@ -523,6 +562,7 @@ window.renderChart = function () {
             },
         });
     } else {
+        // 👇 (기존의 모드 2 & 3: 도넛 차트 그리는 else 문은 그대로 유지)
         // ==========================================
         // 🍩 모드 2 & 3: 지출 / 수입 도넛 차트 그리기
         // ==========================================
