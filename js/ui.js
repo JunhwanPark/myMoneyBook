@@ -2441,3 +2441,46 @@ window.updateKrwGuide = () => {
         guideEl.classList.add('hidden');
     }
 };
+
+// ==========================================
+// 🌍 접속 지역(타임존) 기반 국가 모드 자동 설정
+// ==========================================
+window.initCountryByTimezone = () => {
+    try {
+        // 1. 브라우저/스마트폰에 설정된 타임존 가져오기 (예: 'Asia/Seoul', 'Asia/Shanghai')
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        // 2. 중국 본토 타임존인지 확인 (상해, 북경, 심천 모두 Asia/Shanghai 하나로 통일됨)
+        const isChina = tz === 'Asia/Shanghai' || tz === 'Asia/Urumqi';
+
+        // 3. 전역 상태 변수 업데이트
+        currentCountry = isChina ? 'CN' : 'KR';
+
+        // 4. 앱 상단의 토글 버튼 디자인과 테마를 타임존에 맞게 세팅 (데이터 로딩 없이 UI만!)
+        const btnKr = document.getElementById('btn-kr');
+        const btnCn = document.getElementById('btn-cn');
+
+        if (currentCountry === 'KR') {
+            document.body.classList.remove('theme-cn');
+            if (btnKr)
+                btnKr.className =
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
+            if (btnCn)
+                btnCn.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+        } else {
+            document.body.classList.add('theme-cn');
+            if (btnCn)
+                btnCn.className =
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
+            if (btnKr)
+                btnKr.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+        }
+
+        console.log(`🌍 현재 타임존: ${tz} -> ${currentCountry} 모드로 시작합니다.`);
+    } catch (e) {
+        console.warn('타임존 인식에 실패하여 기본 모드로 시작합니다.', e);
+    }
+};
+
+// HTML 문서(DOM)가 모두 그려지자마자 가장 먼저 타임존을 파악해서 세팅합니다.
+document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
