@@ -243,6 +243,8 @@ window.renderDailyList = (data, searchKeyword = '') => {
             const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
             const displaySign = amountNum < 0 ? '-' : '';
 
+            const krwValue = getKrwEquivalent(Math.abs(amountNum)); // 원화 환산액 계산
+
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
@@ -260,6 +262,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
                     </div>
                     <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                        ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                         ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                     </div>
                 </div>`
@@ -998,6 +1001,36 @@ window.openAddModal = () => {
         modal.classList.remove('opacity-0');
         document.getElementById('modal-content').classList.remove('translate-y-full');
     }, 10);
+
+    const amountInput = document.getElementById('input-amount');
+
+    // 💡 HTML에 가이드 텍스트 요소가 없으면, 입력창을 감싸는 껍데기를 만들고 우측에 텍스트를 띄웁니다!
+    if (!document.getElementById('krw-guide-text')) {
+        // 1. input을 감싸는 상대적(relative) 껍데기(div) 생성
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative flex items-center w-full';
+
+        // 2. 기존 input 자리에 껍데기를 넣고, input을 껍데기 안으로 쏙 집어넣음
+        amountInput.parentNode.insertBefore(wrapper, amountInput);
+        wrapper.appendChild(amountInput);
+
+        // 3. 타이핑한 숫자와 우측 글씨가 겹치지 않도록 input에 우측 여백(padding)을 넉넉히 줌
+        amountInput.classList.add('pr-[80px]');
+
+        // 4. 환산 텍스트를 생성하여 input 내 우측에 둥둥 띄움 (absolute)
+        const guide = document.createElement('span');
+        guide.id = 'krw-guide-text';
+        // pointer-events-none을 줘서, 파란 글씨를 터치해도 input이 정상적으로 선택되게 만듭니다.
+        guide.className =
+            'absolute right-3 text-[12px] text-blue-500 font-bold hidden pointer-events-none bg-transparent text-right truncate';
+        wrapper.appendChild(guide);
+
+        // 입력할 때마다 환산액 업데이트 리스너 등록
+        amountInput.addEventListener('input', window.updateKrwGuide);
+    }
+
+    // 모달 열 때 초기 실행
+    window.updateKrwGuide();
 };
 
 window.openEditModal = (id) => {
@@ -1041,6 +1074,36 @@ window.openEditModal = (id) => {
         modal.classList.remove('opacity-0');
         document.getElementById('modal-content').classList.remove('translate-y-full');
     }, 10);
+
+    const amountInput = document.getElementById('input-amount');
+
+    // 💡 HTML에 가이드 텍스트 요소가 없으면, 입력창을 감싸는 껍데기를 만들고 우측에 텍스트를 띄웁니다!
+    if (!document.getElementById('krw-guide-text')) {
+        // 1. input을 감싸는 상대적(relative) 껍데기(div) 생성
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative flex items-center w-full';
+
+        // 2. 기존 input 자리에 껍데기를 넣고, input을 껍데기 안으로 쏙 집어넣음
+        amountInput.parentNode.insertBefore(wrapper, amountInput);
+        wrapper.appendChild(amountInput);
+
+        // 3. 타이핑한 숫자와 우측 글씨가 겹치지 않도록 input에 우측 여백(padding)을 넉넉히 줌
+        amountInput.classList.add('pr-[80px]');
+
+        // 4. 환산 텍스트를 생성하여 input 내 우측에 둥둥 띄움 (absolute)
+        const guide = document.createElement('span');
+        guide.id = 'krw-guide-text';
+        // pointer-events-none을 줘서, 파란 글씨를 터치해도 input이 정상적으로 선택되게 만듭니다.
+        guide.className =
+            'absolute right-3 text-[12px] text-blue-500 font-bold hidden pointer-events-none bg-transparent text-right truncate';
+        wrapper.appendChild(guide);
+
+        // 입력할 때마다 환산액 업데이트 리스너 등록
+        amountInput.addEventListener('input', window.updateKrwGuide);
+    }
+
+    // 모달 열 때 초기 실행
+    window.updateKrwGuide();
 };
 
 window.closeAddModal = () => {
@@ -1269,6 +1332,8 @@ window.openWeeklyModal = function (clickedDateStr) {
             const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
             const displaySign = amountNum < 0 ? '-' : '';
 
+            const krwValue = getKrwEquivalent(Math.abs(amountNum));
+
             container.insertAdjacentHTML(
                 'beforeend',
                 `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
@@ -1286,6 +1351,7 @@ window.openWeeklyModal = function (clickedDateStr) {
                     </div>
                     <div class="text-right shrink-0 ml-3">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                        ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                         ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                     </div>
                 </div>`
@@ -1434,6 +1500,8 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
                 const iconBg = 'bg-red-100 text-red-600';
                 const displaySign = amountNum < 0 ? '-' : '';
 
+                const krwValue = getKrwEquivalent(Math.abs(amountNum));
+
                 container.insertAdjacentHTML(
                     'beforeend',
                     `
@@ -1452,6 +1520,7 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
                         </div>
                         <div class="text-right shrink-0 ml-3">
                             <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                            ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                             ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                         </div>
                     </div>
@@ -1566,6 +1635,8 @@ window.openMonthlyModal = function (type) {
                 const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
                 const displaySign = amountNum < 0 ? '-' : '';
 
+                const krwValue = getKrwEquivalent(Math.abs(amountNum));
+
                 container.insertAdjacentHTML(
                     'beforeend',
                     `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
@@ -1583,6 +1654,7 @@ window.openMonthlyModal = function (type) {
                         </div>
                         <div class="text-right shrink-0 ml-3">
                             <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                            ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                             ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                         </div>
                     </div>`
@@ -2049,6 +2121,8 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                 const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
                 const displaySign = amountNum < 0 ? '-' : '';
 
+                const krwValue = getKrwEquivalent(Math.abs(amountNum));
+
                 container.insertAdjacentHTML(
                     'beforeend',
                     `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
@@ -2066,6 +2140,7 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                         </div>
                         <div class="text-right shrink-0 ml-3">
                             <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formatMoney(Math.abs(amountNum))}</p>
+                            ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                             ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formatMoney(parsed.discount)}</p>` : ''}
                         </div>
                     </div>`
@@ -2328,3 +2403,41 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
         }
     });
 })();
+
+// ==========================================
+// 💡 CNY -> KRW 환산 금액 계산기 (수정본)
+// ==========================================
+window.getKrwEquivalent = (cnyAmount) => {
+    // 👇 window.currentCountry 대신 전역 변수 currentCountry를 직접 확인합니다!
+    if (currentCountry !== 'CN') return null;
+
+    // 로컬 스토리지에서 캐싱된 환율 가져오기 (없으면 기본값 185.0)
+    const savedRate = localStorage.getItem('cachedCnyRate');
+    const rate = savedRate ? parseFloat(savedRate.replace(/,/g, '')) : 185.0;
+
+    const krw = Math.round(Number(cnyAmount) * rate);
+    return krw.toLocaleString('ko-KR') + '원';
+};
+
+window.updateKrwGuide = () => {
+    const amountInput = document.getElementById('input-amount');
+    const guideEl = document.getElementById('krw-guide-text');
+    if (!amountInput || !guideEl) return;
+
+    // 👇 여기도 마찬가지로 window. 부분을 제거합니다!
+    if (currentCountry !== 'CN') {
+        guideEl.classList.add('hidden');
+        return;
+    }
+
+    const val = amountInput.value.replace(/,/g, '');
+    if (val && !isNaN(val)) {
+        const krw = getKrwEquivalent(val);
+        if (krw) {
+            guideEl.innerText = `약 ${krw}`;
+            guideEl.classList.remove('hidden');
+        }
+    } else {
+        guideEl.classList.add('hidden');
+    }
+};
