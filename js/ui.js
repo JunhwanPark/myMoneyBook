@@ -387,13 +387,40 @@ window.renderChart = function () {
     const existingChart = Chart.getChart(chartEl);
     if (existingChart) existingChart.destroy();
 
-    // ==========================================
-    // 📈 모드 1: 누적 지출/수입 추이 꺾은선 차트 그리기
-    // ==========================================
     if (mode === 'cumulative') {
+        // 💡 1. 상단 타이틀 우측 정렬 및 좌측 탭 찌그러짐 완벽 방지
         if (totalAmountEl) {
-            totalAmountEl.innerText = '지난달 vs 이번달 (수입/지출)';
-            totalAmountEl.className = 'text-sm font-bold text-gray-500';
+            const titleText = window.showCumulativeIncome
+                ? '지난달 vs 이번달 (수입/지출)'
+                : '지난달 vs 이번달 (지출)';
+            const titleColor = window.showCumulativeIncome ? 'text-gray-600' : 'text-red-500';
+
+            totalAmountEl.innerHTML = `<span class="text-sm font-bold ${titleColor} truncate">${titleText}</span>`;
+
+            // 👇 🚨 w-full을 지우고, 남은 공간만 유연하게 쓰는 flex-1과 텍스트 넘침 방지용 min-w-0 추가!
+            totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
+        }
+
+        // 💡 1-2. '수입 포함' 토글 버튼을 차트 영역(chart-wrapper) 내부 좌측 상단에 예쁘게 띄웁니다!
+        if (chartWrapper) {
+            chartWrapper.classList.add('relative'); // 자식 요소를 absolute로 띄우기 위해 필수 추가
+
+            // 기존에 만들어둔 토글이 있다면 먼저 지우기 (중복 생성 방지)
+            const oldToggle = document.getElementById('chart-income-toggle');
+            if (oldToggle) oldToggle.remove();
+
+            const isChecked = window.showCumulativeIncome ? 'checked' : '';
+
+            // 차트 캔버스 위에 반투명한 배경(backdrop-blur)으로 스티커처럼 오버레이!
+            chartWrapper.insertAdjacentHTML(
+                'beforeend',
+                `
+                <label id="chart-income-toggle" class="absolute top-2 left-2 z-10 flex items-center gap-1.5 cursor-pointer bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded-md border border-gray-200 shadow-sm transition active:scale-95">
+                    <input type="checkbox" ${isChecked} onchange="window.toggleCumIncome(this.checked)" class="w-3.5 h-3.5 text-blue-500 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                    <span class="text-[10px] ${window.showCumulativeIncome ? 'text-blue-600 font-bold' : 'text-gray-500 font-medium'} leading-none mt-px whitespace-nowrap">수입 포함</span>
+                </label>
+            `
+            );
         }
 
         let prevY = targetY;
@@ -407,15 +434,12 @@ window.renderChart = function () {
         const daysInMonth = new Date(targetY, targetM + 1, 0).getDate();
         const labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-        // 💡 지출 데이터 필터링
         const currentExpenses = globalData.filter(
             (d) => d.Type === 'expense' && d.Date?.startsWith(prefix)
         );
         const prevExpenses = globalData.filter(
             (d) => d.Type === 'expense' && d.Date?.startsWith(prevPrefix)
         );
-
-        // 💡 수입 데이터 필터링 (새로 추가됨)
         const currentIncomes = globalData.filter(
             (d) => d.Type === 'income' && d.Date?.startsWith(prefix)
         );
@@ -428,18 +452,16 @@ window.renderChart = function () {
         const currentIncCum = new Array(daysInMonth).fill(null);
         const prevIncCum = new Array(daysInMonth).fill(null);
 
-        let currentSum = 0;
-        let prevSum = 0;
-        let currentIncSum = 0;
-        let prevIncSum = 0;
-
+        let currentSum = 0,
+            prevSum = 0,
+            currentIncSum = 0,
+            prevIncSum = 0;
         const today = new Date();
         const isActualCurrentMonth =
             targetY === today.getFullYear() && targetM === today.getMonth();
         const todayDate = today.getDate();
         const daysInPrevMonth = new Date(prevY, prevM + 1, 0).getDate();
 
-        // 💡 하루씩 돌면서 지출과 수입을 동시에 누적 계산합니다.
         for (let i = 1; i <= daysInMonth; i++) {
             if (i <= daysInPrevMonth) {
                 const pDayStr = String(i).padStart(2, '0');
@@ -461,7 +483,6 @@ window.renderChart = function () {
                 currentIncSum += currentIncomes
                     .filter((d) => d.Date.substring(8, 10) === cDayStr)
                     .reduce((a, b) => a + Number(b.Amount), 0);
-
                 currentCum[i - 1] = currentSum;
                 currentIncCum[i - 1] = currentIncSum;
             }
@@ -470,64 +491,82 @@ window.renderChart = function () {
         if (chartWrapper) chartWrapper.style.display = 'flex';
         if (noDataEl) noDataEl.classList.add('hidden');
 
+        // 💡 2. 체크박스 상태에 따라 차트에 그릴 선(Dataset)을 동적으로 조립합니다.
+        const chartDatasets = [];
+
+        // 옵션이 켜져 있을 때만 수입 데이터(파란선)를 차트에 밀어 넣습니다.
+        if (window.showCumulativeIncome) {
+            chartDatasets.push({
+                label: '지난달 수입',
+                data: prevIncCum,
+                borderColor: '#93c5fd',
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                borderDash: [3, 3],
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                tension: 0.3,
+                hidden: true, // 복잡함 방지 위해 기본 숨김
+            });
+            chartDatasets.push({
+                label: '이번달 수입',
+                data: currentIncCum,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                borderWidth: 2.5,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                fill: true,
+                tension: 0.3,
+            });
+        }
+
+        // 지출 데이터(빨간선)는 무조건 들어갑니다.
+        chartDatasets.push({
+            label: '지난달 지출',
+            data: prevCum,
+            borderColor: '#d1d5db',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [3, 3],
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            tension: 0.3,
+        });
+        chartDatasets.push({
+            label: '이번달 지출',
+            data: currentCum,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+            borderWidth: 2.5,
+            pointHoverRadius: 5,
+            fill: true,
+            tension: 0.3,
+        });
+
+        // 차트 생성 (기존 data 속성의 배열을 chartDatasets 변수로 교체)
         new Chart(chartEl.getContext('2d'), {
             type: 'line',
             plugins: [ChartDataLabels],
             data: {
                 labels: labels,
-                datasets: [
-                    {
-                        label: '지난달 수입',
-                        data: prevIncCum,
-                        borderColor: '#93c5fd', // 연한 파란색
-                        backgroundColor: 'transparent',
-                        borderWidth: 1.5,
-                        borderDash: [3, 3],
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        tension: 0.3,
-                        hidden: true, // 복잡함을 줄이기 위해 처음엔 꺼둡니다 (클릭 시 켜짐)
-                    },
-                    {
-                        label: '지난달 지출',
-                        data: prevCum,
-                        borderColor: '#d1d5db', // 회색
-                        backgroundColor: 'transparent',
-                        borderWidth: 1.5,
-                        borderDash: [3, 3],
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        tension: 0.3,
-                    },
-                    {
-                        label: '이번달 수입',
-                        data: currentIncCum,
-                        borderColor: '#3b82f6', // 파란색
-                        backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                        borderWidth: 2.5,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        fill: true,
-                        tension: 0.3,
-                    },
-                    {
-                        label: '이번달 지출',
-                        data: currentCum,
-                        borderColor: '#ef4444', // 빨간색
-                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
-                        borderWidth: 2.5,
-                        pointRadius: 0,
-                        pointHoverRadius: 5,
-                        fill: true,
-                        tension: 0.3,
-                    },
-                ],
+                datasets: chartDatasets, // 👈 여기에 동적으로 조립된 배열을 넣습니다.
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: { padding: { top: 20, bottom: 0, left: 10, right: 10 } },
                 interaction: { mode: 'index', intersect: false },
+
+                // 👇 이 부분을 새로 추가해서 모든 도트(점)를 강제로 숨깁니다!
+                elements: {
+                    point: {
+                        radius: 0, // 평소에는 점을 아예 숨김
+                        hitRadius: 10, // 대신 손가락 터치 인식 범위는 넓게 확보
+                        hoverRadius: 5, // 터치(마우스 오버) 했을 때만 점이 뿅! 나타나게 함
+                    },
+                },
+
                 plugins: {
                     legend: {
                         display: true,
@@ -569,6 +608,11 @@ window.renderChart = function () {
         // ==========================================
         // 🍩 모드 2 & 3: 지출 / 수입 도넛 차트 그리기
         // ==========================================
+
+        // 💡 도넛 차트 탭으로 넘어오면 누적추이 전용 '수입 포함' 버튼을 깔끔하게 지워줍니다.
+        const oldToggle = document.getElementById('chart-income-toggle');
+        if (oldToggle) oldToggle.remove();
+
         const isExpense = mode === 'expense';
         const filteredData = globalData.filter(
             (d) => d.Type === mode && d.Date?.startsWith(prefix)
@@ -582,11 +626,11 @@ window.renderChart = function () {
             sum += Number(item.Amount);
         });
 
+        // 👇 바로 이 부분입니다! 누적추이 탭과 완전히 동일한 구조와 클래스(flex-1, mb-1 등)를 적용합니다.
         if (totalAmountEl) {
-            totalAmountEl.innerText = `총 ${formatMoney(sum)}`;
-            totalAmountEl.className = isExpense
-                ? 'text-sm font-bold text-red-500'
-                : 'text-sm font-bold text-blue-500';
+            const textColor = isExpense ? 'text-red-500' : 'text-blue-500';
+            totalAmountEl.innerHTML = `<span class="text-sm font-bold ${textColor} truncate">총 ${formatMoney(sum)}</span>`;
+            totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
         }
 
         if (!filteredData.length) {
@@ -893,20 +937,6 @@ window.updateMonthlyTotals = function () {
         }
     }
 
-    if (momExpenseEl) {
-        const diff = currentExpense - prevExpense;
-        if (prevExpense === 0 && currentExpense === 0) {
-            momExpenseEl.innerHTML = `<span class="text-gray-300">내역 없음</span>`;
-        } else if (diff > 0) {
-            momExpenseEl.innerHTML = `<span class="text-red-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_upward</span>${formatMoney(diff)}</span>`;
-        } else if (diff < 0) {
-            momExpenseEl.innerHTML = `<span class="text-blue-500 font-bold flex items-center justify-center gap-0.5"><span class="material-symbols-outlined text-[12px]">arrow_downward</span>${formatMoney(Math.abs(diff))}</span>`;
-        } else {
-            momExpenseEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
-        }
-    }
-
-    // (updateMonthlyTotals 함수 내부의 맨 아랫부분)
     if (momExpenseEl) {
         const diff = currentExpense - prevExpense;
         if (prevExpense === 0 && currentExpense === 0) {
@@ -2484,3 +2514,13 @@ window.initCountryByTimezone = () => {
 
 // HTML 문서(DOM)가 모두 그려지자마자 가장 먼저 타임존을 파악해서 세팅합니다.
 document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
+
+// ==========================================
+// 📈 누적추이 차트 수입 포함 여부 상태 관리
+// ==========================================
+window.showCumulativeIncome = false; // 기본값: 지출만 보기(false)
+
+window.toggleCumIncome = (checked) => {
+    window.showCumulativeIncome = checked;
+    renderChart(); // 상태를 바꾸고 차트를 즉시 다시 그립니다.
+};
