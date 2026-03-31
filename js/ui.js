@@ -1,4 +1,111 @@
 // ==========================================
+// 🌐 다국어(i18n) 번역 엔진 및 딕셔너리
+// ==========================================
+window.appLang = localStorage.getItem('appLang') || 'ko';
+
+window.changeLanguage = (lang) => {
+    localStorage.setItem('appLang', lang);
+    window.location.reload(); // 언어 변경 시 화면을 싹 지우고 새 언어로 다시 그립니다.
+};
+
+window.i18nDict = {
+    내역: '明细',
+    달력: '日历',
+    통계: '统计',
+    설정: '设置',
+    '월 내역': '月度明细',
+    '월 달력': '月度日历',
+    '월 수입': '月收入',
+    '월 지출': '月支出',
+    지출: '支出',
+    수입: '收入',
+    누적추이: '累计趋势',
+    '현재 계정': '当前账号',
+    '앱 스킨 (배경색)': '应用主题',
+    '기본 (White)': '默认 (白)',
+    '계절 (Season)': '季节',
+    '언어 설정 (Language)': '语言设置 (Language)',
+    '신용카드 관리': '信用卡管理',
+    '카테고리 관리': '分类管理',
+    '새 내역 추가': '添加新明细',
+    '내역 수정': '修改明细',
+    저장하기: '保存',
+    수정하기: '修改',
+    삭제: '删除',
+    추가: '添加',
+    '검색어를 입력하세요': '请输入搜索词',
+    '내역이 없습니다.': '没有明细。',
+    '검색 결과가 없습니다.': '没有搜索结果。',
+    '지난달 vs 이번달 (지출)': '上月 vs 本月 (支出)',
+    '지난달 vs 이번달 (수입/지출)': '上月 vs 本月 (收入/支出)',
+    '수입 포함': '包含收入',
+    총: '总计',
+    '카드별 결제액': '按信用卡结算额',
+    기준일: '基准日',
+    '1일~말일': '1日~月底',
+    '이번달 정산될 카드 내역이 없습니다.': '本月没有要结算的信用卡明细。',
+    '지난달과 동일': '与上月相同',
+    '내역 없음': '无明细',
+    '항목 이름': '项目名称',
+    '카테고리 선택': '选择分类',
+    금액: '金额',
+    결제: '支付',
+    할인: '折扣',
+    '할인 금액': '折扣金额',
+    '상세 메모 (선택 - 줄바꿈하여 길게 입력 가능)': '详细备注 (选填)',
+    현금: '现金',
+    카드: '信用卡',
+    미분류: '未分类',
+    '과거순 (1일 ➔ 말일)': '按时间正序 (1日 ➔ 月底)',
+    '최신순 (말일 ➔ 1일)': '按时间倒序 (月底 ➔ 1日)',
+    '동기화 중...': '同步中...',
+};
+
+// 동적으로 텍스트를 생성할 때 쓰는 번역 함수
+window.t = (koStr) => {
+    if (window.appLang === 'ko') return koStr;
+    return window.i18nDict[koStr] || koStr;
+};
+
+// 공통 날짜 포맷팅 유틸리티
+window.formatDateStr = (d) => {
+    const daysKo = ['일', '월', '화', '수', '목', '금', '토'];
+    const daysCn = ['日', '一', '二', '三', '四', '五', '六'];
+    if (window.appLang === 'cn') {
+        return `${d.getFullYear()}年 ${d.getMonth() + 1}月 ${d.getDate()}日 星期${daysCn[d.getDay()]}`;
+    }
+    return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${daysKo[d.getDay()]}요일`;
+};
+
+// 앱 로딩 시 정적 HTML 텍스트들을 일괄 번역하는 스크립트
+window.applyStaticTranslations = () => {
+    const langSelector = document.getElementById('lang-selector');
+    if (langSelector) langSelector.value = window.appLang;
+
+    if (window.appLang === 'ko') return;
+
+    // 1. DOM 내부의 일반 텍스트 노드 치환 (태그는 건드리지 않고 글자만 바꿈)
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    while ((node = walker.nextNode())) {
+        const text = node.nodeValue.trim();
+        if (window.i18nDict[text]) {
+            node.nodeValue = node.nodeValue.replace(text, window.i18nDict[text]);
+        }
+    }
+
+    // 2. Placeholder 및 Input Value 치환
+    document.querySelectorAll('input, textarea, option').forEach((el) => {
+        if (el.placeholder && window.i18nDict[el.placeholder])
+            el.placeholder = window.i18nDict[el.placeholder];
+        if (el.type === 'button' && el.value && window.i18nDict[el.value])
+            el.value = window.i18nDict[el.value];
+    });
+};
+
+document.addEventListener('DOMContentLoaded', window.applyStaticTranslations);
+
+// ==========================================
 // 🛡️ XSS 방어용 HTML 특수문자 치환 함수
 // ==========================================
 window.escapeHTML = function (str) {
@@ -14,7 +121,8 @@ window.escapeHTML = function (str) {
 window.updateMonthTitles = function () {
     const year = currentDisplayDate.getFullYear();
     const month = currentDisplayDate.getMonth() + 1;
-    const titleStr = `${year}년 ${month}월`;
+    // 중국어일 때는 "년 월" 대신 "年 月" 사용
+    const titleStr = window.appLang === 'cn' ? `${year}年 ${month}月` : `${year}년 ${month}월`;
 
     if (document.getElementById('daily-month-title'))
         document.getElementById('daily-month-title').innerText = titleStr;
@@ -208,7 +316,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
         <div class="flex justify-end mb-2 px-1">
             <button onclick="toggleListSortOrder()" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
                 <span class="material-symbols-outlined text-[14px]">swap_vert</span>
-                ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                ${window.listSortOrder === 'asc' ? t('과거순 (1일 ➔ 말일)') : t('최신순 (말일 ➔ 1일)')}
             </button>
         </div>
     `
@@ -216,8 +324,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
 
     sortedDates.forEach((dateStr) => {
         const d = new Date(dateStr);
-        const days = ['일', '월', '화', '수', '목', '금', '토'];
-        const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+        const displayDate = window.formatDateStr(d);
 
         container.insertAdjacentHTML(
             'beforeend',
@@ -1315,8 +1422,7 @@ window.closeCategoryModal = () => document.getElementById('category-modal').clas
 window.openWeeklyModal = function (clickedDateStr) {
     const targetDate = clickedDateStr.substring(0, 10);
     const d = new Date(targetDate);
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+    const displayDate = window.formatDateStr(d);
 
     const modal = document.getElementById('weekly-modal');
     const titleEl = modal.querySelector('h3');
@@ -1492,7 +1598,7 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
             <div class="flex justify-end mb-3 px-1">
                 <button onclick="window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc'; localStorage.setItem('listSortOrder', window.listSortOrder); openCardDetailModal('${cardName}', '${prefix}', '${mode}');" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
                     <span class="material-symbols-outlined text-[14px]">swap_vert</span>
-                    ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                    ${window.listSortOrder === 'asc' ? t('과거순 (1일 ➔ 말일)') : t('최신순 (말일 ➔ 1일)')}
                 </button>
             </div>
         `
@@ -1501,8 +1607,7 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
         // 💡 정렬된 날짜 순서대로 그룹 헤더와 내부 아이템들을 그려줍니다.
         sortedDates.forEach((dateStr) => {
             const d = new Date(dateStr);
-            const days = ['일', '월', '화', '수', '목', '금', '토'];
-            const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+            const displayDate = window.formatDateStr(d);
 
             // 날짜 구분선 (헤더) 렌더링
             container.insertAdjacentHTML(
@@ -1626,7 +1731,7 @@ window.openMonthlyModal = function (type) {
             <div class="flex justify-end mb-2 px-1">
                 <button onclick="window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc'; localStorage.setItem('listSortOrder', window.listSortOrder); openMonthlyModal('${type}');" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
                     <span class="material-symbols-outlined text-[14px]">swap_vert</span>
-                    ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                    ${window.listSortOrder === 'asc' ? t('과거순 (1일 ➔ 말일)') : t('최신순 (말일 ➔ 1일)')}
                 </button>
             </div>
         `
@@ -1634,8 +1739,7 @@ window.openMonthlyModal = function (type) {
 
         sortedDates.forEach((dateStr) => {
             const d = new Date(dateStr);
-            const days = ['일', '월', '화', '수', '목', '금', '토'];
-            const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+            const displayDate = window.formatDateStr(d);
 
             container.insertAdjacentHTML(
                 'beforeend',
@@ -2117,7 +2221,7 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
             <div class="flex justify-end mb-2 px-1">
                 <button onclick="window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc'; localStorage.setItem('listSortOrder', window.listSortOrder); openCategoryDetailModal('${categoryLabel}', '${type}', '${prefix}');" class="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-700 font-bold bg-white border border-gray-200 px-2 py-1.5 rounded-lg shadow-sm transition-all active:scale-95">
                     <span class="material-symbols-outlined text-[14px]">swap_vert</span>
-                    ${window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)'}
+                    ${window.listSortOrder === 'asc' ? t('과거순 (1일 ➔ 말일)') : t('최신순 (말일 ➔ 1일)')}
                 </button>
             </div>
         `
@@ -2125,8 +2229,7 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
 
         sortedDates.forEach((dateStr) => {
             const d = new Date(dateStr);
-            const days = ['일', '월', '화', '수', '목', '금', '토'];
-            const displayDate = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${days[d.getDay()]}요일`;
+            const displayDate = window.formatDateStr(d);
 
             container.insertAdjacentHTML(
                 'beforeend',
@@ -2446,7 +2549,7 @@ window.getKrwEquivalent = (cnyAmount) => {
     const rate = savedRate ? parseFloat(savedRate.replace(/,/g, '')) : 185.0;
 
     const krw = Math.round(Number(cnyAmount) * rate);
-    return krw.toLocaleString('ko-KR') + '원';
+    return krw.toLocaleString('ko-KR') + (window.appLang === 'cn' ? '韩元' : '원');
 };
 
 window.updateKrwGuide = () => {
@@ -2464,7 +2567,7 @@ window.updateKrwGuide = () => {
     if (val && !isNaN(val)) {
         const krw = getKrwEquivalent(val);
         if (krw) {
-            guideEl.innerText = `약 ${krw}`;
+            guideEl.innerText = window.appLang === 'cn' ? `约 ${krw}` : `약 ${krw}`;
             guideEl.classList.remove('hidden');
         }
     } else {
