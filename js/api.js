@@ -103,11 +103,52 @@ window.fetchExchangeRate = async () => {
 };
 
 // ==========================================
-// 기존 데이터 로드 함수 (국가별 신용카드 분리 및 무음 모드 적용)
+// 🚀 최적화된 데이터 로드 함수 (SWR 캐싱 패턴 적용)
 // ==========================================
 window.loadDailyRecords = async (isSilent = false) => {
-    // 💡 isSilent가 true일 때(백그라운드 싱크)는 로딩창을 띄우지 않습니다!
+    const cacheKey = `ledgerCache_${currentCountry}`; // 국가별 캐시 키 분리
+
+    // 💡 1. 앱을 켜자마자 로컬 스토리지에 캐시된 어제 데이터가 있다면 즉시 화면에 렌더링!
+    if (!isSilent) {
+        const cachedString = localStorage.getItem(cacheKey);
+        if (cachedString) {
+            try {
+                const result = JSON.parse(cachedString);
+                globalData = result.data || [];
+                globalCategories = (result.categories || []).filter(
+                    (c) => !c.Type.startsWith('card')
+                );
+                globalCards = (result.categories || [])
+                    .filter((c) => {
+                        if (currentCountry === 'KR')
+                            return c.Type === 'card' || c.Type === 'card_KR';
+                        if (currentCountry === 'CN') return c.Type === 'card_CN';
+                        return false;
+                    })
+                    .sort((a, b) => {
+                        const nameA = a.Label.split('|')[0];
+                        const nameB = b.Label.split('|')[0];
+                        return nameA.localeCompare(nameB);
+                    });
+
+                // 캐시 데이터로 즉시 화면 그리기 (0.1초 컷)
+                renderDailyList(globalData);
+                if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
+                updateMonthlyTotals();
+                const statsTab = document.getElementById('view-stats');
+                if (statsTab && statsTab.classList.contains('active')) renderChart();
+
+                // 이미 화면이 떴으므로, 이어지는 백그라운드 동기화는 무음(Silent) 모드로 강제 전환!
+                isSilent = true;
+            } catch (e) {
+                console.warn('캐시 데이터를 읽는 중 오류 발생:', e);
+            }
+        }
+    }
+
+    // 캐시가 아예 없는(앱 첫 실행) 경우에만 로딩 스피너를 띄웁니다.
     if (!isSilent) showLoader();
+
     try {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
@@ -115,10 +156,11 @@ window.loadDailyRecords = async (isSilent = false) => {
         const result = await res.json();
 
         if (result.status === 'success') {
+            // 💡 2. 통신에 성공하면 최신 데이터를 로컬 스토리지에 조용히 덮어씌워 둡니다 (다음 접속을 위해)
+            localStorage.setItem(cacheKey, JSON.stringify(result));
+
             globalData = result.data || [];
-
             globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
-
             globalCards = (result.categories || [])
                 .filter((c) => {
                     if (currentCountry === 'KR') return c.Type === 'card' || c.Type === 'card_KR';
@@ -131,10 +173,10 @@ window.loadDailyRecords = async (isSilent = false) => {
                     return nameA.localeCompare(nameB);
                 });
 
+            // 데이터가 변경되었을 수 있으니 화면을 다시 한번 살짝(Silent) 새로고침 합니다.
             renderDailyList(globalData);
             if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
             updateMonthlyTotals();
-
             const statsTab = document.getElementById('view-stats');
             if (statsTab && statsTab.classList.contains('active')) renderChart();
         }
