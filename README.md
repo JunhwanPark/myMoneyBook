@@ -1,0 +1,71 @@
+# 💳 변민삼박 가계부 (Serverless Family Ledger)
+
+구글 스프레드시트(Google Sheets)를 데이터베이스로 사용하고, GitHub Pages로 무료 호스팅되는 **초경량 서버리스 가계부 웹앱**입니다.
+복잡한 서버 구축 없이 누구나 포크(Fork)하여 자신만의 무료 가계부를 만들 수 있습니다.
+
+## ✨ 주요 기능
+
+- **Zero Cost:** 서버 유지비 0원 (GitHub Pages + Google Apps Script 활용)
+- **초고속 렌더링:** SWR(Stale-While-Revalidate) 로컬 캐싱 패턴 적용으로 초기 로딩 지연 시간 제로(0초)
+- **모바일 최적화:** 네이티브 앱 수준의 UI/UX 및 스와이프(Swipe) 제스처 지원
+- **글로벌 지원:** 타임존 기반 국가 모드(KRW/CNY) 자동 인식 및 다국어(한국어/중국어) 번역 엔진 탑재
+- **강력한 통계:** Chart.js 기반의 동적 도넛 차트 및 누적 추이 그래프 제공
+
+---
+
+## 🚀 시작하기 (How to Use)
+
+본 프로젝트를 포크하여 본인만의 가계부를 구축하려면 아래의 4단계를 순서대로 진행해 주세요.
+
+### 1️⃣ 저장소 포크 (Fork)
+
+1. 우측 상단의 `Fork` 버튼을 눌러 이 저장소를 본인의 GitHub 계정으로 복사합니다.
+
+### 2️⃣ 구글 로그인(OAuth) 클라이언트 ID 발급
+
+본인 앱에 본인만 로그인할 수 있도록 구글 인증을 설정합니다.
+
+1. [Google Cloud Console](https://console.cloud.google.com/)에 접속하여 새 프로젝트를 생성합니다.
+2. `API 및 서비스` > `사용자 인증 정보` 메뉴로 이동합니다.
+3. `사용자 인증 정보 만들기` > `OAuth 클라이언트 ID`를 선택합니다. (애플리케이션 유형: 웹 애플리케이션)
+4. **승인된 자바스크립트 원본(Authorized JavaScript origins)**에 본인의 GitHub Pages 주소를 추가합니다. (예: `https://[본인아이디].github.io`)
+5. 생성된 **클라이언트 ID**를 복사해 둡니다.
+6. 코드의 `index.html` 파일에서 `data-client_id` 속성값을 방금 발급받은 본인의 클라이언트 ID로 교체합니다.
+
+### 3️⃣ 백엔드 세팅 (Google Sheets & Apps Script)
+
+1. 구글 드라이브에서 새 **스프레드시트**를 만듭니다. (이곳이 데이터베이스가 됩니다.)
+2. 상단 메뉴에서 `확장 프로그램` > `Apps Script`를 클릭합니다.
+3. 이 저장소의 `backend/Code.js` (또는 `.gs`) 파일의 내용을 복사하여 Apps Script 에디터에 붙여넣습니다.
+4. (선택사항) 초기 시트 탭(예: 내역, 카드, 카테고리)을 스크립트 로직에 맞게 생성해 둡니다.
+5. 우측 상단의 `배포(Deploy)` > `새 배포`를 클릭합니다.
+    - 유형: **웹 앱(Web App)**
+    - 실행할 사용자: **나(Me)**
+    - 액세스 권한이 있는 사용자: **모든 사용자(Anyone)**
+6. 배포 후 생성된 **웹 앱 URL (GAS_URL)**을 복사합니다.
+7. 코드의 `js/config.js` 또는 API 호출 부분의 `GAS_URL` 변수값을 방금 복사한 본인의 URL로 교체합니다.
+
+### 4️⃣ 프론트엔드 배포 (GitHub Pages)
+
+1. 본인 GitHub 저장소의 `Settings` > `Pages` 메뉴로 이동합니다.
+2. Source를 `Deploy from a branch`로 설정하고, 브랜치를 `main`으로 선택한 뒤 저장합니다.
+3. 1~2분 후 생성되는 웹사이트 주소로 접속하면 본인만의 가계부가 실행됩니다!
+
+---
+
+## 🛠 고급 설정: 백엔드 코드 자동 배포 (CI/CD)
+
+GitHub 저장소에서 백엔드 코드를 수정하면 구글 서버(Apps Script)로 자동 덮어쓰기 되도록 설정할 수 있습니다.
+
+1. 로컬 PC에 Node.js를 설치하고 터미널에서 `npm install -g @google/clasp`를 실행합니다.
+2. `clasp login`을 통해 구글 계정을 연동합니다.
+3. PC에 생성된 인증 파일(`.clasprc.json`)의 내용을 복사합니다.
+4. GitHub 저장소 `Settings` > `Secrets and variables` > `Actions`에 `CLASPRC_JSON`이라는 이름으로 해당 내용을 저장합니다.
+5. `backend` 폴더 내의 `.clasp.json` 파일의 `scriptId`를 본인의 앱스 스크립트 ID로 변경합니다.
+6. 이제 `backend/` 폴더 내의 코드를 수정하고 Push하면 GitHub Actions가 자동으로 구글 서버에 배포합니다.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
