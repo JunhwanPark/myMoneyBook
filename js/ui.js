@@ -2542,17 +2542,13 @@ window.applySkin = () => {
 document.addEventListener('DOMContentLoaded', window.applySkin);
 
 // ==========================================
-// 👆 화면 스와이프(Swipe) 제스처로 탭 이동하기
+// 👆 화면 스와이프(Swipe) 제스처로 탭 이동하기 (자산 모드 완벽 호환)
 // ==========================================
 (function initSwipeNavigation() {
     let touchStartX = 0;
     let touchStartY = 0;
     let touchEndX = 0;
     let touchEndY = 0;
-
-    // 탭 순서와 이름 정의 (루프를 위해)
-    const tabOrder = ['daily', 'monthly', 'stats', 'settings'];
-    const tabNames = ['내역', '달력', '통계', '설정'];
 
     // 스와이프 이벤트를 감지할 메인 영역을 잡습니다.
     const mainArea = document.querySelector('main');
@@ -2587,6 +2583,17 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
             if (!activeTabSection) return;
 
             const activeTabId = activeTabSection.id.replace('view-', '');
+
+            // 💡 핵심: 현재 모드(LEDGER vs ASSETS)에 따라 스와이프할 탭의 종류와 순서를 다르게 세팅합니다!
+            let tabOrder = ['daily', 'monthly', 'stats', 'settings'];
+            let tabNames = ['내역', '달력', '통계', '설정'];
+            const navBtnIds = ['nav-btn-main', 'nav-btn-sub', 'nav-btn-stats', 'nav-btn-settings'];
+
+            if (window.currentAppMode === 'ASSETS') {
+                tabOrder = ['assets', 'assets-dividends', 'assets-stats', 'assets-settings'];
+                tabNames = ['예적금', '배당금', '통계', '설정'];
+            }
+
             let currentIndex = tabOrder.indexOf(activeTabId);
             if (currentIndex === -1) return;
 
@@ -2605,7 +2612,8 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
 
             const nextTabId = tabOrder[currentIndex];
             const nextTabName = tabNames[currentIndex];
-            const nextBtn = document.querySelector(`nav button[onclick*="'${nextTabId}'"]`);
+            // 💡 숨은 버그 픽스: onclick 문자열 매칭 대신, 고정된 ID로 하단 버튼을 정확히 타겟팅합니다.
+            const nextBtn = document.getElementById(navBtnIds[currentIndex]);
 
             if (nextTabId && nextBtn) {
                 // 방향(direction) 변수를 끝에 같이 넘겨줍니다!
@@ -2616,19 +2624,21 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
 })();
 
 // ==========================================
-// 💡 브라우저 뒤로 가기(History API) 자동 감지 엔진
+// 💡 브라우저 뒤로 가기(History API) 자동 감지 엔진 (자산 모달 추가)
 // ==========================================
 (function initModalHistoryManager() {
     window.modalStack = [];
-    window.isProgrammaticBack = false; // 앱 내부 버튼으로 닫을 때의 충돌 방지용 플래그
+    window.isProgrammaticBack = false;
 
-    // 우리 앱에서 사용하는 모든 팝업창(모달)의 ID 목록입니다.
+    // 💡 우리 앱에서 사용하는 모든 팝업창(모달)의 ID 목록입니다. (자산 모달 추가 완료!)
     const modalIds = [
         'add-modal',
         'card-modal',
         'category-modal',
         'weekly-modal',
         'card-detail-modal',
+        'deposit-modal', // 👈 예적금 입력 모달
+        'asset-config-modal', // 👈 자산 설정 모달
     ];
 
     // 💡 마법의 핵심: MutationObserver로 팝업들의 'hidden' 클래스 변화를 실시간으로 감시합니다.
@@ -2654,7 +2664,7 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
                         window.isProgrammaticBack = true;
                         history.back();
 
-                        // 약간의 시간차 후 플래그 해제 (아래의 popstate 이벤트가 오작동하지 않도록)
+                        // 약간의 시간차 후 플래그 해제
                         setTimeout(() => {
                             window.isProgrammaticBack = false;
                         }, 100);
@@ -2672,17 +2682,15 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
         });
     });
 
-    // 💡 스마트폰에서 진짜 '뒤로 가기' 제스처를 했을 때의 동작을 가로챕니다!
+    // 💡 스마트폰에서 진짜 '물리적 뒤로 가기' 제스처를 했을 때의 동작을 가로챕니다!
     window.addEventListener('popstate', (e) => {
-        // [X] 버튼을 눌러서 우리 코드가 강제로 지운 히스토리라면 무시합니다.
         if (window.isProgrammaticBack) return;
 
         // 화면에 열려있는 모달이 있다면? (앱이 꺼지는 대신 모달만 닫게 함)
         if (window.modalStack.length > 0) {
-            // 스택에서 가장 위에 있는(가장 마지막에 열린) 모달 ID를 꺼냄
             const topModalId = window.modalStack.pop();
 
-            // 각 모달의 고유 닫기 함수를 실행하여 화면에서 부드럽게 지움
+            // 💡 자산 모달 닫기 함수들도 분기에 연결해 줍니다!
             if (topModalId === 'add-modal' && typeof closeAddModal === 'function') closeAddModal();
             else if (topModalId === 'card-modal' && typeof closeCardModal === 'function')
                 closeCardModal();
@@ -2695,6 +2703,13 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
                 typeof closeCardDetailModal === 'function'
             )
                 closeCardDetailModal();
+            else if (topModalId === 'deposit-modal' && typeof closeDepositModal === 'function')
+                closeDepositModal(); // 👈 자산 입력 모달 닫기
+            else if (
+                topModalId === 'asset-config-modal' &&
+                typeof closeAssetConfigModal === 'function'
+            )
+                closeAssetConfigModal(); // 👈 자산 설정 모달 닫기
         }
     });
 })();
