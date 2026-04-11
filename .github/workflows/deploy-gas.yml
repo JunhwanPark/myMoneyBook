@@ -35,3 +35,4 @@ jobs:
               run: |
                   cd backend
                   clasp push -f
+                  clasp deploy -i "AKfycbxbFpQb3KzV2ObfUB22N0BmyVpy8EuxXF3G8BwfT-y5XRDkKZ7Gb0d3LOIE33kkthGhJA" -d "Auto deployed via GitHub Actions"
