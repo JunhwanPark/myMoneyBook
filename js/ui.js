@@ -2960,8 +2960,8 @@ window.renderAssetsList = () => {
                 'beforeend',
                 `
                 <div class="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm py-2 px-1 mt-4 first:mt-0">
-                    <span class="text-xs font-black text-primary flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                    <span class="text-sm font-black text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">calendar_today</span>
                         ${displayYear}년
                     </span>
                 </div>
@@ -2973,45 +2973,46 @@ window.renderAssetsList = () => {
         const isCanceled = d.상태 === '중도해지';
         const cardOpacity = isMatured || isCanceled ? 'opacity-60 grayscale-[50%]' : '';
 
-        let badge = `<span class="bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[9px] font-black">운용중</span>`;
+        // 💡 뱃지 크기 미세 조정 (9px -> 10px)
+        let badge = `<span class="bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[10px] font-black">운용중</span>`;
         if (isMatured)
-            badge = `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-black">만기완료</span>`;
+            badge = `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-black">만기완료</span>`;
         if (isCanceled)
-            badge = `<span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[9px] font-black">중도해지</span>`;
+            badge = `<span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[10px] font-black">중도해지</span>`;
 
         listContainer.insertAdjacentHTML(
             'beforeend',
             `
-            <div onclick="openDepositModal('${d.ID}')" class="bg-white p-3.5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2 cursor-pointer active:scale-[0.99] transition ${cardOpacity}">
+            <div onclick="openDepositModal('${d.ID}')" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2.5 cursor-pointer active:scale-[0.99] transition ${cardOpacity}">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-1.5">
-                        <span class="text-xs font-black text-gray-800">${d.은행}</span>
-                        <span class="text-[10px] text-gray-500 font-medium px-1 bg-gray-50 rounded">${d.종류}</span>
+                        <span class="text-sm font-black text-gray-800">${d.은행}</span>
+                        <span class="text-[11px] text-gray-500 font-medium px-1.5 py-0.5 bg-gray-50 rounded">${d.종류}</span>
                     </div>
                     ${badge}
                 </div>
                 <div class="flex justify-between items-end">
                     <div>
-                        <p class="text-[10px] text-gray-400 mb-0.5">${d.명의자} • ${calc.months}개월 • 이율 ${Number(d.이율).toFixed(2)}%</p>
-                        <p class="text-sm font-black text-gray-900">${Number(d.원금).toLocaleString('ko-KR')}원</p>
+                        <p class="text-xs text-gray-500 mb-1">${d.명의자} • ${calc.months}개월 • 이율 ${Number(d.이율).toFixed(2)}%</p>
+                        <p class="text-base font-black text-gray-900">${Number(d.원금).toLocaleString('ko-KR')}원</p>
                     </div>
                     <div class="text-right">
                         <div class="flex items-center justify-end gap-1.5 mb-1">
-                            <span class="text-[9px] text-gray-500 font-medium">세전이자</span>
+                            <span class="text-[10px] text-gray-500 font-medium">세전이자</span>
                             <span class="text-xs font-bold text-gray-600">+${Number(d.세전이자 || 0).toLocaleString('ko-KR')}원</span>
                         </div>
                         <div class="flex items-center justify-end gap-1.5">
-                            <span class="text-[10px] text-indigo-500 font-bold">세후이자</span>
-                            <span class="text-sm font-black text-indigo-600">+${Number(d.세후이자 || 0).toLocaleString('ko-KR')}원</span>
+                            <span class="text-xs text-indigo-500 font-bold">세후이자</span>
+                            <span class="text-[15px] font-black text-indigo-600">+${Number(d.세후이자 || 0).toLocaleString('ko-KR')}원</span>
                         </div>
                     </div>
                 </div>
-                <div class="text-[10px] text-gray-400 flex items-center justify-between border-t border-gray-50 pt-1.5 mt-1">
+                <div class="text-xs text-gray-400 flex items-center justify-between border-t border-gray-50 pt-2 mt-1">
                     <div class="flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[12px]">event</span>
+                        <span class="material-symbols-outlined text-[14px]">event</span>
                         ${d.가입일} ~ ${d.만기일}
                     </div>
-                    <span class="text-[9px] font-medium text-gray-300 px-1 border border-gray-100 rounded">${d.과세여부 || '과세'}</span>
+                    <span class="text-[10px] font-medium text-gray-400 px-1 border border-gray-100 rounded">${d.과세여부 || '과세'}</span>
                 </div>
             </div>
         `
@@ -3028,8 +3029,8 @@ window.renderAssetsList = () => {
             total += amount;
             rowsHtml += `
                 <div class="flex justify-between items-center py-1">
-                    <span class="text-xs font-bold text-gray-600">${owner}</span>
-                    <span class="text-xs font-bold text-indigo-500">${amount.toLocaleString('ko-KR')}원</span>
+                    <span class="text-sm font-bold text-gray-600">${owner}</span>
+                    <span class="text-sm font-bold text-indigo-500">${amount.toLocaleString('ko-KR')}원</span>
                 </div>
             `;
         }
@@ -3042,7 +3043,7 @@ window.renderAssetsList = () => {
                     <span class="text-sm font-black text-gray-800">${year}년 만기</span>
                     <span class="text-xs font-black text-gray-400">총합계: ${total.toLocaleString('ko-KR')}원</span>
                 </div>
-                <div class="bg-gray-50 p-2 rounded-lg mt-1 border border-gray-100">
+                <div class="bg-gray-50 p-2.5 rounded-lg mt-1 border border-gray-100">
                     ${rowsHtml}
                 </div>
             </div>
