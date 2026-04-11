@@ -2847,12 +2847,88 @@ window.renderAssetsList = () => {
     }
 
     const summary = {};
-    let maturedItemsCount = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 1. 정렬 로직 적용
+    // 💡 1. [신규] 전체 데이터 기반 만기 & 임박 카운트 계산
+    let maturedCount = 0;
+    let soonCount = 0;
+
+    window.globalDeposits.forEach((d) => {
+        if (d.상태 !== '만기' && d.상태 !== '중도해지') {
+            const end = new Date(d.만기일);
+            end.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (diffDays <= 0) maturedCount++;
+            else if (diffDays > 0 && diffDays <= 3) soonCount++;
+        }
+    });
+
+    // 💡 2. [신규] 알림 배너 렌더링 (클릭 시 필터링 적용)
+    let alertsHtml = '';
+    if (window.currentAssetFilter !== 'all') {
+        const filterTitle =
+            window.currentAssetFilter === 'matured' ? '만기 도래 상품' : '만기 임박 상품';
+        alertsHtml += `
+            <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-500 text-lg">filter_list</span>
+                    <p class="text-xs font-bold text-indigo-700">${filterTitle} 모아보기 중</p>
+                </div>
+                <button onclick="setAssetFilter('all')" class="text-[10px] bg-white border border-indigo-200 px-2 py-1 rounded text-indigo-600 font-bold active:bg-indigo-100 transition shadow-sm">필터 해제</button>
+            </div>
+        `;
+    } else {
+        if (maturedCount > 0) {
+            alertsHtml += `
+                <div onclick="setAssetFilter('matured')" class="cursor-pointer bg-red-50 border border-red-200 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm animate-pulse hover:bg-red-100 transition">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-red-500 text-lg">notifications_active</span>
+                        <p class="text-xs font-bold text-red-700">만기된 상품이 <span class="text-lg">${maturedCount}</span>건 있습니다!</p>
+                    </div>
+                    <span class="material-symbols-outlined text-red-400">chevron_right</span>
+                </div>
+            `;
+        }
+        if (soonCount > 0) {
+            alertsHtml += `
+                <div onclick="setAssetFilter('soon')" class="cursor-pointer bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm hover:bg-amber-100 transition">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-500 text-lg">schedule</span>
+                        <p class="text-xs font-bold text-amber-700">3일 내 만기 임박 상품이 <span class="text-lg">${soonCount}</span>건 있습니다.</p>
+                    </div>
+                    <span class="material-symbols-outlined text-amber-400">chevron_right</span>
+                </div>
+            `;
+        }
+    }
+    alertBox.innerHTML = alertsHtml;
+
+    // 💡 3. 정렬 및 필터 적용 로직
     let depositsToRender = [...window.globalDeposits];
+
+    // 필터링 처리
+    if (window.currentAssetFilter === 'matured') {
+        depositsToRender = depositsToRender.filter((d) => {
+            const end = new Date(d.만기일);
+            end.setHours(0, 0, 0, 0);
+            return (
+                d.상태 !== '만기' &&
+                d.상태 !== '중도해지' &&
+                Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) <= 0
+            );
+        });
+    } else if (window.currentAssetFilter === 'soon') {
+        depositsToRender = depositsToRender.filter((d) => {
+            const end = new Date(d.만기일);
+            end.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            return d.상태 !== '만기' && d.상태 !== '중도해지' && diffDays > 0 && diffDays <= 3;
+        });
+    }
+
+    // 정렬 처리
     if (window.currentAssetSort === 'end') {
         depositsToRender.sort((a, b) => new Date(b.만기일) - new Date(a.만기일));
     } else {
@@ -2861,21 +2937,18 @@ window.renderAssetsList = () => {
 
     let lastYear = null;
 
+    // 💡 4. 리스트 순회 및 렌더링
     depositsToRender.forEach((d) => {
         const calc = getDepositCalc(d);
         const owner = d.명의자 || '미상';
         const year = calc.year;
 
-        // 대시보드 집계 (연도별 통계용)
+        // 대시보드 통계 집계 (필터와 무관하게 전체 데이터로 유지하려면 globalDeposits 기준, 아니면 depositsToRender 기준)
+        // 여기서는 현재 뷰에 맞춰 depositsToRender 기준으로 집계합니다.
         if (!summary[year]) summary[year] = {};
         if (!summary[year][owner]) summary[year][owner] = 0;
         summary[year][owner] += calc.preTax;
 
-        // 만기 알림 체크
-        if (d.상태 !== '만기' && d.상태 !== '중도해지' && calc.end <= today) maturedItemsCount++;
-
-        // 💡 2. 연도별 묶음 구분선(Header) 추가 로직
-        // 정렬 기준에 맞는 연도를 추출합니다.
         const displayYear =
             window.currentAssetSort === 'end'
                 ? new Date(d.만기일).getFullYear()
@@ -2896,7 +2969,6 @@ window.renderAssetsList = () => {
             );
         }
 
-        // 3. 리스트 카드 렌더링
         const isMatured = d.상태 === '만기';
         const isCanceled = d.상태 === '중도해지';
         const cardOpacity = isMatured || isCanceled ? 'opacity-60 grayscale-[50%]' : '';
@@ -2946,24 +3018,10 @@ window.renderAssetsList = () => {
         );
     });
 
-    // 만기 알림 배너 및 통계 대시보드 렌더링 (기존 로직 유지)
-    if (maturedItemsCount > 0) {
-        alertBox.innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm animate-pulse">
-                <div class="flex items-center gap-2">
-                    <span class="material-symbols-outlined text-red-500 text-lg">notifications_active</span>
-                    <p class="text-xs font-bold text-red-700">만기된 상품이 <span class="text-lg">${maturedItemsCount}</span>건 있습니다!</p>
-                </div>
-            </div>
-        `;
-    }
-
     const sortedYears = Object.keys(summary).sort((a, b) => b - a);
     sortedYears.forEach((year) => {
         let rowsHtml = '';
         let total = 0;
-
-        // 💡 1. 가족 구성원(명의자)을 세전이자 합계가 큰 순서대로 소팅합니다.
         const sortedOwners = Object.entries(summary[year]).sort((a, b) => b[1] - a[1]);
 
         for (const [owner, amount] of sortedOwners) {
@@ -2992,7 +3050,6 @@ window.renderAssetsList = () => {
         );
     });
 
-    // 💡 3. 시각화 차트 렌더링 호출 (2단계에서 구현)
     renderAssetChart(summary);
 };
 
@@ -3086,18 +3143,17 @@ window.closeDepositModal = () => {
     setTimeout(() => modal.classList.add('hidden'), 300);
 };
 
-window.saveDeposit = async () => {
+window.saveDeposit = () => {
     const id = document.getElementById('dep-input-id').value;
     const payload = {
         action: id ? 'update_deposit' : 'create_deposit',
-        id: id,
+        id: id || 'temp_' + Date.now(),
         country: 'KR',
         startDate: document.getElementById('dep-input-start').value,
         endDate: document.getElementById('dep-input-end').value,
         depType: document.getElementById('dep-input-type').value,
         principal: document.getElementById('dep-input-principal').value.replace(/,/g, ''),
         rate: document.getElementById('dep-input-rate').value,
-        // 👇 페이로드에 taxType 추가!
         taxType: document.getElementById('dep-input-tax').value,
         preTax: document.getElementById('dep-input-pretax').value.replace(/,/g, ''),
         postTax: document.getElementById('dep-input-posttax').value.replace(/,/g, ''),
@@ -3106,7 +3162,6 @@ window.saveDeposit = async () => {
         status: document.getElementById('dep-input-status').value,
     };
 
-    // 필수값 검증에도 추가해 주면 좋습니다.
     if (
         !payload.startDate ||
         !payload.endDate ||
@@ -3120,16 +3175,48 @@ window.saveDeposit = async () => {
         return;
     }
 
-    if (typeof showLoader === 'function') showLoader();
-    try {
-        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (typeof loadDailyRecords === 'function') await loadDailyRecords();
-        closeDepositModal();
-    } catch (e) {
-        alert('저장에 실패했습니다.');
-    } finally {
-        if (typeof hideLoader === 'function') hideLoader();
+    // 🚀 1. 즉시 모달 닫기 (로딩 스피너 X)
+    closeDepositModal();
+
+    // 🚀 2. 낙관적 업데이트: 서버 응답을 기다리지 않고 화면에 먼저 그리기
+    const optimisticData = {
+        ID: payload.id,
+        가입일: payload.startDate,
+        만기일: payload.endDate,
+        종류: payload.depType,
+        원금: payload.principal,
+        이율: payload.rate,
+        과세여부: payload.taxType,
+        세전이자: payload.preTax,
+        세후이자: payload.postTax,
+        명의자: payload.owner,
+        은행: payload.bank,
+        상태: payload.status,
+    };
+
+    if (payload.action === 'create_deposit') {
+        window.globalDeposits.push(optimisticData);
+    } else {
+        const idx = window.globalDeposits.findIndex((d) => d.ID === payload.id);
+        if (idx > -1) {
+            window.globalDeposits.splice(idx, 1);
+            window.globalDeposits.push(optimisticData);
+        }
     }
+
+    // 변경된 데이터로 즉시 리스트 새로고침
+    if (typeof renderAssetsList === 'function') renderAssetsList();
+
+    // 🚀 3. 백그라운드 서버 동기화
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status === 'success') loadDailyRecords(true); // 성공 시 무음(Silent) 동기화
+        })
+        .catch((e) => {
+            alert('저장 중 네트워크 오류가 발생하여 이전 상태로 복구됩니다.');
+            loadDailyRecords(true);
+        });
 };
 
 // 💡 자산 전용 설정 모달 로직 (드래그 앤 드롭 순서 관리 추가)
@@ -3249,23 +3336,30 @@ window.deleteAssetConfig = async (catValue) => {
     }
 };
 
-window.deleteDeposit = async () => {
+window.deleteDeposit = () => {
     if (!confirm('이 상품을 삭제하시겠습니까?')) return;
     const id = document.getElementById('dep-input-id').value;
 
-    if (typeof showLoader === 'function') showLoader();
-    try {
-        await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'delete_deposit', id: id }),
+    // 🚀 1. 즉시 모달 닫기
+    closeDepositModal();
+
+    // 🚀 2. 낙관적 업데이트: 화면에서 즉시 제거
+    window.globalDeposits = window.globalDeposits.filter((d) => d.ID !== id);
+    if (typeof renderAssetsList === 'function') renderAssetsList();
+
+    // 🚀 3. 백그라운드 서버 동기화
+    fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_deposit', id: id }),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status === 'success') loadDailyRecords(true);
+        })
+        .catch((e) => {
+            alert('삭제 중 통신 오류가 발생하여 원상복구 되었습니다.');
+            loadDailyRecords(true);
         });
-        if (typeof loadDailyRecords === 'function') await loadDailyRecords();
-        closeDepositModal();
-    } catch (e) {
-        alert('삭제에 실패했습니다.');
-    } finally {
-        if (typeof hideLoader === 'function') hideLoader();
-    }
 };
 
 // 💡 예적금 리스트 정렬 상태 관리 (기본값: 만기일순)
@@ -3294,6 +3388,14 @@ window.setAssetSort = (type) => {
     }
 
     // 변경된 정렬 기준으로 리스트 다시 그리기
+    if (typeof renderAssetsList === 'function') renderAssetsList();
+};
+
+// 💡 예적금 리스트 필터 상태 관리
+window.currentAssetFilter = 'all';
+
+window.setAssetFilter = (filterType) => {
+    window.currentAssetFilter = filterType;
     if (typeof renderAssetsList === 'function') renderAssetsList();
 };
 
