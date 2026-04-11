@@ -2815,7 +2815,7 @@ window.getDepositCalc = (d) => {
 // 💡 2. 자산 탭 메인 화면 그리기
 window.renderAssetsList = () => {
     const listContainer = document.getElementById('assets-list-container');
-    const dashboard = document.getElementById('assets-stats-summary-dashboard'); // 👈 타겟 변경
+    const dashboard = document.getElementById('assets-stats-summary-dashboard');
     const alertBox = document.getElementById('maturity-alert-container');
     if (!listContainer || !dashboard) return;
 
@@ -2835,31 +2835,52 @@ window.renderAssetsList = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 👇 ✨ 새로 추가할 정렬 로직 (기존 globalDeposits를 복사해서 정렬합니다)
+    // 1. 정렬 로직 적용
     let depositsToRender = [...window.globalDeposits];
     if (window.currentAssetSort === 'end') {
-        // 만기일 기준 최신(미래) 날짜가 위로 오게 내림차순 정렬
         depositsToRender.sort((a, b) => new Date(b.만기일) - new Date(a.만기일));
     } else {
-        // 가입일 기준 최신 날짜가 위로 오게 내림차순 정렬
         depositsToRender.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
     }
 
-    // 💡 기존의 window.globalDeposits.forEach 대신 depositsToRender.forEach 로 변경!
+    let lastYear = null;
+
     depositsToRender.forEach((d) => {
         const calc = getDepositCalc(d);
         const owner = d.명의자 || '미상';
         const year = calc.year;
 
-        // 대시보드 합산 (세전이자)
+        // 대시보드 집계 (연도별 통계용)
         if (!summary[year]) summary[year] = {};
         if (!summary[year][owner]) summary[year][owner] = 0;
         summary[year][owner] += calc.preTax;
 
         // 만기 알림 체크
-        if (d.상태 !== '만기' && calc.end <= today) maturedItemsCount++;
+        if (d.상태 !== '만기' && d.상태 !== '중도해지' && calc.end <= today) maturedItemsCount++;
 
-        // 리스트 카드 렌더링
+        // 💡 2. 연도별 묶음 구분선(Header) 추가 로직
+        // 정렬 기준에 맞는 연도를 추출합니다.
+        const displayYear =
+            window.currentAssetSort === 'end'
+                ? new Date(d.만기일).getFullYear()
+                : new Date(d.가입일).getFullYear();
+
+        if (lastYear !== displayYear) {
+            lastYear = displayYear;
+            listContainer.insertAdjacentHTML(
+                'beforeend',
+                `
+                <div class="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm py-2 px-1 mt-4 first:mt-0">
+                    <span class="text-xs font-black text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                        ${displayYear}년
+                    </span>
+                </div>
+            `
+            );
+        }
+
+        // 3. 리스트 카드 렌더링
         const isMatured = d.상태 === '만기';
         const isCanceled = d.상태 === '중도해지';
         const cardOpacity = isMatured || isCanceled ? 'opacity-60 grayscale-[50%]' : '';
@@ -2883,24 +2904,27 @@ window.renderAssetsList = () => {
                 </div>
                 <div class="flex justify-between items-end">
                     <div>
-                        <p class="text-[10px] text-gray-400 mb-0.5">${d.명의자} • ${calc.months}개월 • 이율 ${d.이율}%</p>
-                        <p class="text-sm font-black text-gray-900">${calc.principal.toLocaleString('ko-KR')}원</p>
+                        <p class="text-[10px] text-gray-400 mb-0.5">${d.명의자} • ${calc.months}개월 • 이율 ${Number(d.이율).toFixed(2)}%</p>
+                        <p class="text-sm font-black text-gray-900">${Number(d.원금).toLocaleString('ko-KR')}원</p>
                     </div>
                     <div class="text-right">
                         <p class="text-[10px] text-indigo-400 font-bold mb-0.5">예상 세후이자</p>
-                        <p class="text-sm font-bold text-indigo-600">+${calc.postTax.toLocaleString('ko-KR')}원</p>
+                        <p class="text-sm font-bold text-indigo-600">+${Number(d.세후이자 || 0).toLocaleString('ko-KR')}원</p>
                     </div>
                 </div>
-                <div class="text-[10px] text-gray-400 flex items-center gap-1 border-t border-gray-50 pt-1.5 mt-1">
-                    <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-                    ${d.가입일} ~ ${d.만기일}
+                <div class="text-[10px] text-gray-400 flex items-center justify-between border-t border-gray-50 pt-1.5 mt-1">
+                    <div class="flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[12px]">event</span>
+                        ${d.가입일} ~ ${d.만기일}
+                    </div>
+                    <span class="text-[9px] font-medium text-gray-300 px-1 border border-gray-100 rounded">${d.과세여부 || '과세'}</span>
                 </div>
             </div>
         `
         );
     });
 
-    // 만기 알림 배너 띄우기
+    // 만기 알림 배너 및 통계 대시보드 렌더링 (기존 로직 유지)
     if (maturedItemsCount > 0) {
         alertBox.innerHTML = `
             <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm animate-pulse">
@@ -2912,7 +2936,6 @@ window.renderAssetsList = () => {
         `;
     }
 
-    // 대시보드 렌더링 (연도별 내림차순)
     const sortedYears = Object.keys(summary).sort((a, b) => b - a);
     sortedYears.forEach((year) => {
         let rowsHtml = '';
