@@ -271,8 +271,9 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         else setTimeout(() => calendar.render(), 10);
     } else if (tabId === 'stats') {
         renderChart();
-    } else if (tabId === 'assets') {
-        renderAssetsList(); // 👈 이 줄을 추가!
+    } else if (tabId === 'assets' || tabId === 'assets-stats') {
+        // 👈 assets-stats(자산 통계) 탭 조건 추가!
+        renderAssetsList();
     }
 };
 
@@ -2940,7 +2941,11 @@ window.renderAssetsList = () => {
     sortedYears.forEach((year) => {
         let rowsHtml = '';
         let total = 0;
-        for (const [owner, amount] of Object.entries(summary[year])) {
+
+        // 💡 1. 가족 구성원(명의자)을 세전이자 합계가 큰 순서대로 소팅합니다.
+        const sortedOwners = Object.entries(summary[year]).sort((a, b) => b[1] - a[1]);
+
+        for (const [owner, amount] of sortedOwners) {
             total += amount;
             rowsHtml += `
                 <div class="flex justify-between items-center py-1">
@@ -2949,12 +2954,13 @@ window.renderAssetsList = () => {
                 </div>
             `;
         }
+
         dashboard.insertAdjacentHTML(
             'beforeend',
             `
             <div class="pt-2 pb-1">
                 <div class="flex justify-between items-end mb-1">
-                    <span class="text-sm font-black text-gray-800">${year}년 만기 예정</span>
+                    <span class="text-sm font-black text-gray-800">${year}년 만기</span>
                     <span class="text-xs font-black text-gray-400">총합계: ${total.toLocaleString('ko-KR')}원</span>
                 </div>
                 <div class="bg-gray-50 p-2 rounded-lg mt-1 border border-gray-100">
@@ -2964,6 +2970,9 @@ window.renderAssetsList = () => {
         `
         );
     });
+
+    // 💡 3. 시각화 차트 렌더링 호출 (2단계에서 구현)
+    renderAssetChart(summary);
 };
 
 // 💡 3. 모달 열고 닫기 로직
@@ -3217,4 +3226,48 @@ window.setAssetSort = (type) => {
 
     // 변경된 정렬 기준으로 리스트 다시 그리기
     if (typeof renderAssetsList === 'function') renderAssetsList();
+};
+
+window.assetChartInstance = null;
+
+window.renderAssetChart = (summary) => {
+    const ctx = document.getElementById('assetInterestChart');
+    if (!ctx) return;
+
+    if (window.assetChartInstance) window.assetChartInstance.destroy();
+
+    const years = Object.keys(summary).sort(); // 2023, 2024, 2025...
+    const owners = [...new Set(years.flatMap((y) => Object.keys(summary[y])))];
+
+    // 가족 구성원별 색상 매핑 (정후, 지한 등 가족 구성원에 맞춰 배정)
+    const colorPalette = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444'];
+
+    const datasets = owners.map((owner, idx) => ({
+        label: owner,
+        data: years.map((year) => summary[year][owner] || 0),
+        backgroundColor: colorPalette[idx % colorPalette.length],
+        borderRadius: 4,
+    }));
+
+    window.assetChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: years, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: false }, // 그룹형 막대 차트
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: (v) => (v / 10000).toLocaleString() + '만' },
+                },
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, font: { size: 10, weight: 'bold' } },
+                },
+            },
+        },
+    });
 };
