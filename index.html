@@ -504,27 +504,31 @@
                 </section>
 
                 <section id="view-assets" class="tab-content">
-                    <div class="flex justify-between items-end mb-4">
-                        <h2 class="text-md font-semibold text-gray-700">예적금 자산</h2>
-                    </div>
-
+                    <h2 class="text-md font-semibold text-gray-700 mb-4">운용중인 예적금</h2>
                     <div id="maturity-alert-container"></div>
+                    <div id="assets-list-container" class="space-y-2 pb-4"></div>
+                </section>
 
+                <section id="view-assets-dividends" class="tab-content">
+                    <h2 class="text-md font-semibold text-gray-700 mb-4">배당금 관리</h2>
+                    <div class="flex flex-col items-center justify-center py-20 text-gray-400">
+                        <span class="material-symbols-outlined text-5xl mb-2">payments</span>
+                        <p class="text-sm">배당금 관리 기능 준비 중입니다.</p>
+                    </div>
+                </section>
+
+                <section id="view-assets-stats" class="tab-content">
+                    <h2 class="text-md font-semibold text-gray-700 mb-4">자산 분석</h2>
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5">
                         <h3 class="text-xs font-bold text-gray-500 mb-3 flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">monitoring</span
                             >연도별 세전이자 예상 현황
                         </h3>
                         <div
-                            id="assets-summary-dashboard"
+                            id="assets-stats-summary-dashboard"
                             class="space-y-3 divide-y divide-gray-50"
                         ></div>
                     </div>
-
-                    <div class="flex justify-between items-center mb-3 px-1">
-                        <h3 class="text-xs font-bold text-gray-500">운용중인 상품</h3>
-                    </div>
-                    <div id="assets-list-container" class="space-y-2 pb-4"></div>
                 </section>
 
                 <section id="view-settings" class="tab-content">
@@ -695,17 +699,19 @@
                     onclick="handleNavMain()"
                     class="nav-btn text-primary flex flex-col items-center flex-1 py-1 transition-all"
                 >
-                    <span class="material-symbols-outlined mb-1">list_alt</span
-                    ><span class="text-[10px]">내역</span>
+                    <span id="nav-icon-main" class="material-symbols-outlined mb-1">list_alt</span>
+                    <span id="nav-label-main" class="text-[10px]">내역</span>
                 </button>
 
                 <button
-                    id="nav-btn-monthly"
-                    onclick="switchTab('monthly', '달력', this)"
+                    id="nav-btn-sub"
+                    onclick="handleNavSub()"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1 transition-all"
                 >
-                    <span class="material-symbols-outlined mb-1">calendar_month</span
-                    ><span class="text-[10px]">달력</span>
+                    <span id="nav-icon-sub" class="material-symbols-outlined mb-1"
+                        >calendar_month</span
+                    >
+                    <span id="nav-label-sub" class="text-[10px]">달력</span>
                 </button>
 
                 <div class="flex-1 flex justify-center">
@@ -719,11 +725,11 @@
 
                 <button
                     id="nav-btn-stats"
-                    onclick="switchTab('stats', '통계', this)"
+                    onclick="handleNavStats()"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1 transition-all"
                 >
-                    <span class="material-symbols-outlined mb-1">pie_chart</span
-                    ><span class="text-[10px]">통계</span>
+                    <span class="material-symbols-outlined mb-1">pie_chart</span>
+                    <span id="nav-label-stats" class="text-[10px]">통계</span>
                 </button>
 
                 <button
@@ -731,8 +737,8 @@
                     onclick="handleNavSettings()"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1 transition-all"
                 >
-                    <span class="material-symbols-outlined mb-1">settings</span
-                    ><span class="text-[10px]">설정</span>
+                    <span class="material-symbols-outlined mb-1">settings</span>
+                    <span class="text-[10px]">설정</span>
                 </button>
             </nav>
         </div>

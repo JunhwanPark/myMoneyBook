@@ -77,8 +77,20 @@ window.handleMainPlusClick = () => {
 
 window.handleNavMain = () => {
     const btn = document.getElementById('nav-btn-main');
-    if (window.currentAppMode === 'ASSETS') switchTab('assets', '자산내역', btn);
+    if (window.currentAppMode === 'ASSETS') switchTab('assets', '예적금', btn);
     else switchTab('daily', '내역', btn);
+};
+
+window.handleNavSub = () => {
+    const btn = document.getElementById('nav-btn-sub');
+    if (window.currentAppMode === 'ASSETS') switchTab('assets-dividends', '배당금', btn);
+    else switchTab('monthly', '달력', btn);
+};
+
+window.handleNavStats = () => {
+    const btn = document.getElementById('nav-btn-stats');
+    if (window.currentAppMode === 'ASSETS') switchTab('assets-stats', '자산통계', btn);
+    else switchTab('stats', '통계', btn);
 };
 
 window.handleNavSettings = () => {
@@ -269,7 +281,7 @@ window.switchCountry = function (mode) {
     const btnCn = document.getElementById('btn-cn');
     const btnAssets = document.getElementById('btn-assets');
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    const badge = document.getElementById('exchange-rate-badge'); // 👈 환율 뱃지 가져오기
+    const badge = document.getElementById('exchange-rate-badge');
 
     // 1. 모든 상단 버튼의 불을 끕니다.
     if (btnKr)
@@ -282,73 +294,91 @@ window.switchCountry = function (mode) {
         btnAssets.className =
             'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
 
-    // 💰 자산 모드를 선택했을 때
+    // ==========================================
+    // 💰 자산 (ASSETS) 모드를 선택했을 때
+    // ==========================================
     if (mode === 'ASSETS') {
         window.currentAppMode = 'ASSETS';
-        document.getElementById('nav-btn-monthly')?.classList.add('hidden');
-        document.getElementById('nav-btn-stats')?.classList.add('hidden');
-        if (badge) badge.classList.add('hidden');
+        if (badge) badge.classList.add('hidden'); // 환율 뱃지 숨김
 
+        // 💡 1) 하단 네비게이션 아이콘 & 텍스트를 자산 전용으로 변경
+        document.getElementById('nav-icon-main').innerText = 'savings';
+        document.getElementById('nav-label-main').innerText = '예적금';
+        document.getElementById('nav-icon-sub').innerText = 'payments';
+        document.getElementById('nav-label-sub').innerText = '배당금';
+        document.getElementById('nav-label-stats').innerText = '통계';
+
+        // 💡 2) 초록색 자산 테마 입히기
         document.body.classList.remove('theme-cn');
         document.body.classList.add('theme-assets');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981');
 
+        // 상단 '자산' 버튼에 불 켜기
         if (btnAssets)
             btnAssets.className =
                 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
 
+        // 💡 3) 기존 화면 모두 숨기고 자산 리스트 화면 띄우기
         document
             .querySelectorAll('.tab-content')
             .forEach((el) => el.classList.remove('active', 'slide-in-right', 'slide-in-left'));
         document.getElementById('view-assets').classList.add('active', 'slide-in-right');
 
-        // 👇 이 부분이 기존에 있던 버튼 불 끄기 로직입니다.
+        // 💡 4) 하단 버튼 색상 초기화 후 '예적금(main)' 버튼만 초록색 불 켜기
         document.querySelectorAll('.nav-btn').forEach((btn) => {
             btn.classList.remove('text-primary');
             btn.classList.add('text-gray-400');
         });
-
-        // ✨ [새로 추가할 부분] 끄자마자 '내역' 버튼만 다시 불(text-primary)을 켜줍니다!
         const mainNavBtn = document.getElementById('nav-btn-main');
         if (mainNavBtn) mainNavBtn.classList.replace('text-gray-400', 'text-primary');
 
-        renderAssetsList();
+        renderAssetsList(); // 예적금 데이터 그리기
         return;
     }
 
+    // ==========================================
     // 🇰🇷/🇨🇳 국가(가계부) 모드를 선택했을 때
+    // ==========================================
     window.currentAppMode = 'LEDGER';
-    document.getElementById('nav-btn-monthly')?.classList.remove('hidden');
-    document.getElementById('nav-btn-stats')?.classList.remove('hidden');
-    document.body.classList.remove('theme-assets'); // 자산 테마 벗기기
+    document.body.classList.remove('theme-assets'); // 초록색 테마 벗기기
 
+    // 💡 1) 하단 네비게이션 아이콘 & 텍스트를 가계부 전용으로 원상복구
+    document.getElementById('nav-icon-main').innerText = 'list_alt';
+    document.getElementById('nav-label-main').innerText = '내역';
+    document.getElementById('nav-icon-sub').innerText = 'calendar_month';
+    document.getElementById('nav-label-sub').innerText = '달력';
+    document.getElementById('nav-label-stats').innerText = '통계';
+
+    // 💡 2) 국가가 진짜로 변경되었을 때만 데이터 다시 불러오기
     if (currentCountry !== mode) {
         currentCountry = mode;
         loadDailyRecords();
     } else {
-        // 국가가 안바뀌었는데(이미 CN) 자산모드에서 돌아온 거라면 환율 뱃지를 다시 살려줌
+        // 이미 중국 모드인데 자산에서 돌아왔다면 환율 뱃지 복구
         if (mode === 'CN' && typeof fetchExchangeRate === 'function') fetchExchangeRate();
     }
 
+    // 💡 3) 선택한 국가에 맞는 파란색/빨간색 테마 입히기
     if (mode === 'KR') {
         document.body.classList.remove('theme-cn');
-        if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5'); // 파란색
+        if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
         if (btnKr)
             btnKr.className =
                 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
-        if (badge) badge.classList.add('hidden'); // 한국 모드 확실히 숨김
+        if (badge) badge.classList.add('hidden'); // 한국 모드는 환율 뱃지 숨김
     } else {
         document.body.classList.add('theme-cn');
-        if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444'); // 빨간색
+        if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
         if (btnCn)
             btnCn.className =
                 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
     }
 
+    // 💡 4) 자산 모드에서 탈출한 경우, 가계부의 '내역' 탭으로 강제 이동시켜 자연스럽게 복구
     const activeTab = document.querySelector('.tab-content.active');
-    if (activeTab && activeTab.id === 'view-assets') {
-        const dailyBtn = document.querySelector('.nav-btn');
-        switchTab('daily', '내역', dailyBtn);
+    if (activeTab && activeTab.id.startsWith('view-assets')) {
+        const mainNavBtn = document.getElementById('nav-btn-main');
+        switchTab('daily', '내역', mainNavBtn);
     }
 };
 
@@ -2785,7 +2815,7 @@ window.getDepositCalc = (d) => {
 // 💡 2. 자산 탭 메인 화면 그리기
 window.renderAssetsList = () => {
     const listContainer = document.getElementById('assets-list-container');
-    const dashboard = document.getElementById('assets-summary-dashboard');
+    const dashboard = document.getElementById('assets-stats-summary-dashboard'); // 👈 타겟 변경
     const alertBox = document.getElementById('maturity-alert-container');
     if (!listContainer || !dashboard) return;
 
