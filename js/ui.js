@@ -2835,8 +2835,18 @@ window.renderAssetsList = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 데이터 집계 및 그리기 준비
-    window.globalDeposits.forEach((d) => {
+    // 👇 ✨ 새로 추가할 정렬 로직 (기존 globalDeposits를 복사해서 정렬합니다)
+    let depositsToRender = [...window.globalDeposits];
+    if (window.currentAssetSort === 'end') {
+        // 만기일 기준 최신(미래) 날짜가 위로 오게 내림차순 정렬
+        depositsToRender.sort((a, b) => new Date(b.만기일) - new Date(a.만기일));
+    } else {
+        // 가입일 기준 최신 날짜가 위로 오게 내림차순 정렬
+        depositsToRender.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
+    }
+
+    // 💡 기존의 window.globalDeposits.forEach 대신 depositsToRender.forEach 로 변경!
+    depositsToRender.forEach((d) => {
         const calc = getDepositCalc(d);
         const owner = d.명의자 || '미상';
         const year = calc.year;
@@ -3155,4 +3165,33 @@ window.deleteDeposit = async () => {
     } finally {
         if (typeof hideLoader === 'function') hideLoader();
     }
+};
+
+// 💡 예적금 리스트 정렬 상태 관리 (기본값: 만기일순)
+window.currentAssetSort = 'end';
+
+window.setAssetSort = (type) => {
+    window.currentAssetSort = type;
+    const btnEnd = document.getElementById('btn-sort-end');
+    const btnStart = document.getElementById('btn-sort-start');
+
+    // 버튼 스타일 (스위치 애니메이션 효과) 변경
+    if (type === 'end') {
+        if (btnEnd)
+            btnEnd.className =
+                'px-2 py-1 text-[10px] font-bold bg-white text-gray-800 rounded-md shadow-sm transition-all';
+        if (btnStart)
+            btnStart.className =
+                'px-2 py-1 text-[10px] font-bold text-gray-400 rounded-md transition-all';
+    } else {
+        if (btnStart)
+            btnStart.className =
+                'px-2 py-1 text-[10px] font-bold bg-white text-gray-800 rounded-md shadow-sm transition-all';
+        if (btnEnd)
+            btnEnd.className =
+                'px-2 py-1 text-[10px] font-bold text-gray-400 rounded-md transition-all';
+    }
+
+    // 변경된 정렬 기준으로 리스트 다시 그리기
+    if (typeof renderAssetsList === 'function') renderAssetsList();
 };

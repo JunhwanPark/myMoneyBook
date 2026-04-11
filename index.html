@@ -504,7 +504,26 @@
                 </section>
 
                 <section id="view-assets" class="tab-content">
-                    <h2 class="text-md font-semibold text-gray-700 mb-4">운용중인 예적금</h2>
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-md font-semibold text-gray-700">운용중인 예적금</h2>
+                        <div class="flex gap-1 bg-gray-100 p-0.5 rounded-lg shrink-0">
+                            <button
+                                id="btn-sort-end"
+                                onclick="setAssetSort('end')"
+                                class="px-2 py-1 text-[10px] font-bold bg-white text-gray-800 rounded-md shadow-sm transition-all"
+                            >
+                                만기일순
+                            </button>
+                            <button
+                                id="btn-sort-start"
+                                onclick="setAssetSort('start')"
+                                class="px-2 py-1 text-[10px] font-bold text-gray-400 rounded-md transition-all"
+                            >
+                                가입일순
+                            </button>
+                        </div>
+                    </div>
+
                     <div id="maturity-alert-container"></div>
                     <div id="assets-list-container" class="space-y-2 pb-4"></div>
                 </section>
