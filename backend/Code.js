@@ -43,8 +43,40 @@ function doGet(e) {
             }
         }
 
+        // 💡 3. [신규] 예적금(Deposits) 데이터 가져오기 (기존 로직과 완전히 분리)
+        const depositSheet = ss.getSheetByName('Deposits');
+        let depositData = [];
+        if (depositSheet) {
+            const depValues = depositSheet.getDataRange().getValues();
+            if (depValues.length > 1) {
+                const headers = depValues[0];
+                const rows = depValues.slice(1);
+                depositData = rows.map((row) => {
+                    let obj = {};
+                    headers.forEach((header, index) => {
+                        if (row[index] instanceof Date)
+                            obj[header] = Utilities.formatDate(
+                                row[index],
+                                Session.getScriptTimeZone(),
+                                'yyyy-MM-dd'
+                            );
+                        else obj[header] = row[index];
+                    });
+                    return obj;
+                });
+                // 예적금은 가입일 최신순으로 기본 정렬하여 내려보냅니다.
+                depositData.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
+            }
+        }
+
+        // 응답 JSON에 deposits 항목을 추가해서 리턴합니다.
         return ContentService.createTextOutput(
-            JSON.stringify({ status: 'success', data: jsonData, categories: catData })
+            JSON.stringify({
+                status: 'success',
+                data: jsonData,
+                categories: catData,
+                deposits: depositData,
+            })
         ).setMimeType(ContentService.MimeType.JSON);
     } catch (error) {
         return ContentService.createTextOutput(
@@ -57,7 +89,7 @@ function doPost(e) {
     try {
         const payload = JSON.parse(e.postData.contents);
         const action = payload.action || 'create';
-        const country = payload.country || 'KR'; // 저장할 국가
+        const country = payload.country || 'KR';
         const ss = SpreadsheetApp.getActiveSpreadsheet();
 
         // 1. 카테고리 추가/삭제 (항상 공통 Category 시트)
@@ -80,7 +112,78 @@ function doPost(e) {
             ).setMimeType(ContentService.MimeType.JSON);
         }
 
-        // 2. 가계부 내역 CRUD (국가별 시트 타겟팅)
+        // 💡 2. [신규] 예적금(Deposits) 전용 CRUD 로직 (조기 리턴으로 기존 로직 보호)
+        if (
+            action === 'create_deposit' ||
+            action === 'update_deposit' ||
+            action === 'delete_deposit'
+        ) {
+            const depSheet = ss.getSheetByName('Deposits');
+
+            if (action === 'create_deposit') {
+                const id = Utilities.getUuid();
+                depSheet.appendRow([
+                    id,
+                    payload.startDate, // B: 가입일
+                    payload.endDate, // C: 만기일
+                    payload.depType, // D: 종류
+                    payload.principal, // E: 원금
+                    payload.rate, // F: 이율
+                    payload.taxType, // G: 과세여부
+                    payload.owner, // H: 명의자
+                    payload.bank, // I: 은행
+                    payload.status || '', // J: 상태
+                ]);
+                return ContentService.createTextOutput(
+                    JSON.stringify({ status: 'success' })
+                ).setMimeType(ContentService.MimeType.JSON);
+            }
+
+            const data = depSheet.getDataRange().getValues();
+            let rowIndex = -1;
+            for (let i = 1; i < data.length; i++) {
+                if (data[i][0] === payload.id) {
+                    rowIndex = i + 1;
+                    break;
+                }
+            }
+
+            if (rowIndex > -1) {
+                if (action === 'delete_deposit') {
+                    depSheet.deleteRow(rowIndex);
+                    return ContentService.createTextOutput(
+                        JSON.stringify({ status: 'success' })
+                    ).setMimeType(ContentService.MimeType.JSON);
+                }
+
+                if (action === 'update_deposit') {
+                    // 기존 행 복사
+                    var rowValues = depSheet
+                        .getRange(rowIndex, 1, 1, depSheet.getLastColumn())
+                        .getValues()[0];
+
+                    // 값 갈아끼우기
+                    rowValues[1] = payload.startDate;
+                    rowValues[2] = payload.endDate;
+                    rowValues[3] = payload.depType;
+                    rowValues[4] = payload.principal;
+                    rowValues[5] = payload.rate;
+                    rowValues[6] = payload.taxType;
+                    rowValues[7] = payload.owner;
+                    rowValues[8] = payload.bank;
+                    rowValues[9] = payload.status;
+
+                    // 기존 줄 삭제 후 최신 데이터 추가
+                    depSheet.deleteRow(rowIndex);
+                    depSheet.appendRow(rowValues);
+                }
+            }
+            return ContentService.createTextOutput(
+                JSON.stringify({ status: 'success' })
+            ).setMimeType(ContentService.MimeType.JSON);
+        }
+
+        // 3. 기존 가계부 내역 CRUD (국가별 시트 타겟팅) - 절대 건드리지 않음
         const sheet = ss.getSheetByName('Data_' + country);
 
         if (action === 'create') {
@@ -117,21 +220,15 @@ function doPost(e) {
         }
 
         if (action === 'update') {
-            // 1. 기존 행의 데이터를 배열로 싹 복사해옵니다. (ID나 수정되지 않는 열을 보존하기 위함)
             var rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+            rowValues[1] = payload.date;
+            rowValues[3] = payload.type;
+            rowValues[4] = payload.category;
+            rowValues[5] = payload.amount;
+            rowValues[6] = payload.memo;
+            rowValues[7] = new Date();
 
-            // 2. 수정된 값들로 배열 내용을 갈아끼웁니다. (배열은 0부터 시작하므로 열 번호에서 -1을 합니다)
-            rowValues[1] = payload.date; // 2열
-            rowValues[3] = payload.type; // 4열
-            rowValues[4] = payload.category; // 5열
-            rowValues[5] = payload.amount; // 6열
-            rowValues[6] = payload.memo; // 7열
-            rowValues[7] = new Date(); // 8열 (수정일시)
-
-            // 3. 기존에 있던 줄(행)을 시트에서 완전히 삭제합니다.
             sheet.deleteRow(rowIndex);
-
-            // 4. 갈아끼워진 최신 데이터를 시트의 맨 아랫줄에 통째로 추가합니다!
             sheet.appendRow(rowValues);
 
             return ContentService.createTextOutput(
