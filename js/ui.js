@@ -2639,6 +2639,7 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
         'card-detail-modal',
         'deposit-modal', // 👈 예적금 입력 모달
         'asset-config-modal', // 👈 자산 설정 모달
+        'asset-owner-detail-modal',
     ];
 
     // 💡 마법의 핵심: MutationObserver로 팝업들의 'hidden' 클래스 변화를 실시간으로 감시합니다.
@@ -2710,6 +2711,11 @@ document.addEventListener('DOMContentLoaded', window.applySkin);
                 typeof closeAssetConfigModal === 'function'
             )
                 closeAssetConfigModal(); // 👈 자산 설정 모달 닫기
+            else if (
+                topModalId === 'asset-owner-detail-modal' &&
+                typeof closeOwnerAssetDetail === 'function'
+            )
+                closeOwnerAssetDetail(); // 👈 명의자 상세 내역 모달 닫기
         }
     });
 })();
@@ -2919,13 +2925,17 @@ window.renderAssetsList = () => {
             ownerSummaryBox.innerHTML =
                 '<p class="text-xs text-gray-400 col-span-2 text-center py-4 font-medium">운용중인 자산이 없습니다.</p>';
         } else {
+            // (renderAssetsList 함수 내부 수정)
             sortedOwners.forEach(([owner, data]) => {
                 const total = data.principal + data.postTax;
                 ownerSummaryBox.insertAdjacentHTML(
                     'beforeend',
                     `
-                    <div class="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex flex-col shadow-sm">
-                        <span class="text-[11px] font-black text-gray-500 mb-2 border-b border-gray-200 pb-1">${owner}</span>
+                    <div onclick="openOwnerAssetDetail('${owner}')" class="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex flex-col shadow-sm cursor-pointer hover:bg-gray-100 active:scale-[0.98] transition">
+                        <span class="text-[11px] font-black text-gray-500 mb-2 border-b border-gray-200 pb-1 flex justify-between items-center">
+                            ${owner}
+                            <span class="material-symbols-outlined text-[12px] text-gray-400">arrow_forward_ios</span>
+                        </span>
                         <div class="flex flex-col gap-1">
                             <span class="text-[14px] font-black text-slate-800 tracking-tight">${total.toLocaleString('ko-KR')}원</span>
                             <div class="flex flex-col text-[10px] text-gray-400 leading-tight">
@@ -3504,4 +3514,100 @@ window.renderAssetChart = (summary) => {
             },
         },
     });
+};
+
+// 💡 특정 명의자의 운용 자산 상세 조회
+window.openOwnerAssetDetail = (owner) => {
+    const container = document.getElementById('owner-detail-list-container');
+    const title = document.getElementById('owner-detail-title');
+    const summaryBar = document.getElementById('owner-detail-stat-bar');
+    if (!container || !title) return;
+
+    title.innerText = `${owner} 님의 자산 현황`;
+    container.innerHTML = '';
+
+    // 1. 해당 명의자의 '운용중'인 항목만 필터링
+    const filtered = window.globalDeposits.filter(
+        (d) => d.명의자 === owner && d.상태 !== '만기' && d.상태 !== '중도해지'
+    );
+
+    let pSum = 0,
+        iSum = 0;
+
+    if (filtered.length === 0) {
+        container.innerHTML =
+            '<p class="text-center text-gray-400 py-20 text-sm">운용중인 자산이 없습니다.</p>';
+        summaryBar.innerHTML = '';
+    } else {
+        // 만기일 빠른 순으로 정렬
+        filtered.sort((a, b) => new Date(a.만기일) - new Date(b.만기일));
+
+        filtered.forEach((d) => {
+            const calc = getDepositCalc(d);
+            pSum += Number(d.원금);
+            iSum += Number(d.세후이자);
+
+            container.insertAdjacentHTML(
+                'beforeend',
+                `
+                <div onclick="openDepositModal('${d.ID}')" class="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-2 transition active:scale-[0.99]">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-black text-gray-800">${d.은행}</span>
+                        <span class="text-[10px] text-green-600 font-black bg-green-50 px-1.5 py-0.5 rounded">운용중</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-xs text-gray-500">
+                            ${d.종류} • ${calc.months}개월 • ${Number(d.이율).toFixed(2)}%
+                            <p class="text-base font-black text-slate-800 mt-1">${Number(d.원금).toLocaleString('ko-KR')}원</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-indigo-500 font-bold">세후이자</p>
+                            <p class="text-sm font-black text-indigo-600">+${Number(d.세후이자).toLocaleString('ko-KR')}원</p>
+                        </div>
+                    </div>
+                    <div class="text-[11px] text-gray-400 pt-2 border-t border-gray-100 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px]">event</span>${d.가입일} ~ ${d.만기일}
+                    </div>
+                </div>
+            `
+            );
+        });
+
+        // 상단 요약 바 렌더링
+        summaryBar.innerHTML = `
+            <div class="bg-indigo-600 rounded-2xl p-4 text-white shadow-lg">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[11px] font-bold opacity-80 text-white/90">총 운용 자산</span>
+                    <span class="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-full">${filtered.length}건</span>
+                </div>
+                <div class="text-xl font-black mb-3 tracking-tight">${(pSum + iSum).toLocaleString('ko-KR')}원</div>
+                <div class="grid grid-cols-2 gap-2 text-[10px]">
+                    <div class="bg-black/10 rounded-lg p-2">
+                        <span class="opacity-70 block mb-0.5 text-white/90">총 원금</span>
+                        <span class="font-bold text-white">${pSum.toLocaleString('ko-KR')}원</span>
+                    </div>
+                    <div class="bg-black/10 rounded-lg p-2">
+                        <span class="opacity-70 block mb-0.5 text-white/90">총 세후이자</span>
+                        <span class="font-bold text-indigo-200">+${iSum.toLocaleString('ko-KR')}원</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    const modal = document.getElementById('asset-owner-detail-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        document
+            .getElementById('asset-owner-detail-modal-content')
+            .classList.remove('translate-y-full');
+    }, 10);
+};
+
+window.closeOwnerAssetDetail = () => {
+    const modal = document.getElementById('asset-owner-detail-modal');
+    modal.classList.add('opacity-0');
+    document.getElementById('asset-owner-detail-modal-content').classList.add('translate-y-full');
+    setTimeout(() => modal.classList.add('hidden'), 300);
 };

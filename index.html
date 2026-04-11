@@ -1297,6 +1297,31 @@
             </div>
         </div>
 
+        <div
+            id="asset-owner-detail-modal"
+            class="hidden fixed inset-0 bg-black/40 z-[58] flex items-end justify-center transition-opacity opacity-0"
+        >
+            <div
+                id="asset-owner-detail-modal-content"
+                class="bg-white w-full h-[80vh] rounded-t-3xl p-6 transform translate-y-full transition-transform flex flex-col shadow-2xl"
+            >
+                <div class="flex justify-between items-center mb-4 shrink-0">
+                    <div>
+                        <h3 class="text-lg font-bold" id="owner-detail-title">명의자 상세 내역</h3>
+                        <p class="text-xs text-gray-500" id="owner-detail-summary-text"></p>
+                    </div>
+                    <button onclick="closeOwnerAssetDetail()" class="text-gray-400 p-1">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <div id="owner-detail-stat-bar" class="mb-4 shrink-0"></div>
+                <div
+                    id="owner-detail-list-container"
+                    class="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-6"
+                ></div>
+            </div>
+        </div>
+
         <script src="js/config.js"></script>
         <script src="js/utils.js"></script>
         <script src="js/api.js"></script>
