@@ -112,7 +112,7 @@ function doPost(e) {
             ).setMimeType(ContentService.MimeType.JSON);
         }
 
-        // 💡 2. [신규] 예적금(Deposits) 전용 CRUD 로직 (조기 리턴으로 기존 로직 보호)
+        // 💡 2. [신규] 예적금(Deposits) 전용 CRUD 로직
         if (
             action === 'create_deposit' ||
             action === 'update_deposit' ||
@@ -129,10 +129,12 @@ function doPost(e) {
                     payload.depType, // D: 종류
                     payload.principal, // E: 원금
                     payload.rate, // F: 이율
-                    payload.taxType, // G: 과세여부
-                    payload.owner, // H: 명의자
-                    payload.bank, // I: 은행
-                    payload.status || '', // J: 상태
+                    payload.taxType, // G: 과세여부 (복구됨!)
+                    payload.preTax, // H: 세전이자
+                    payload.postTax, // I: 세후이자
+                    payload.owner, // J: 명의자
+                    payload.bank, // K: 은행
+                    payload.status || '', // L: 상태
                 ]);
                 return ContentService.createTextOutput(
                     JSON.stringify({ status: 'success' })
@@ -157,23 +159,22 @@ function doPost(e) {
                 }
 
                 if (action === 'update_deposit') {
-                    // 기존 행 복사
                     var rowValues = depSheet
                         .getRange(rowIndex, 1, 1, depSheet.getLastColumn())
                         .getValues()[0];
 
-                    // 값 갈아끼우기
                     rowValues[1] = payload.startDate;
                     rowValues[2] = payload.endDate;
                     rowValues[3] = payload.depType;
                     rowValues[4] = payload.principal;
                     rowValues[5] = payload.rate;
-                    rowValues[6] = payload.taxType;
-                    rowValues[7] = payload.owner;
-                    rowValues[8] = payload.bank;
-                    rowValues[9] = payload.status;
+                    rowValues[6] = payload.taxType; // G: 과세여부 추가
+                    rowValues[7] = payload.preTax; // H: 세전이자
+                    rowValues[8] = payload.postTax; // I: 세후이자
+                    rowValues[9] = payload.owner;
+                    rowValues[10] = payload.bank;
+                    rowValues[11] = payload.status;
 
-                    // 기존 줄 삭제 후 최신 데이터 추가
                     depSheet.deleteRow(rowIndex);
                     depSheet.appendRow(rowValues);
                 }

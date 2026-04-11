@@ -2763,29 +2763,21 @@ window.toggleCumIncome = (checked) => {
 // 💰 예적금(자산) 탭 전용 렌더링 및 기능
 // ==========================================
 
-// 💡 1. 엑셀 수식 기반 이자 계산기
+// 💡 1. 계산기 (자동 계산 제거, DB 값 매핑)
 window.getDepositCalc = (d) => {
     const start = new Date(d.가입일);
     const end = new Date(d.만기일);
-
-    // 정확한 가입 개월 수 계산
     let months =
         (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-    if (end.getDate() < start.getDate()) months--; // 일자가 모자라면 1개월 차감
+    if (end.getDate() < start.getDate()) months--;
     if (months <= 0) months = 0;
 
     const principal = Number(d.원금) || 0;
     const rate = Number(d.이율) || 0;
 
-    // 세전이자 = 원금 * 이율 * (가입기간/12)
-    let preTax = Math.floor(principal * (rate / 100) * (months / 12));
-
-    // 세후이자 계산 (엑셀 수식 완벽 적용)
-    let postTax = preTax;
-    const taxType = d.과세여부;
-    if (taxType === '과세')
-        postTax = Math.floor(preTax * 0.846); // 15.4% 공제
-    else if (taxType === '세금우대') postTax = Math.floor(preTax * 0.986); // 1.4% 공제
+    // DB에 저장된 값을 그대로 꺼내옵니다.
+    const preTax = Number(d.세전이자) || 0;
+    const postTax = Number(d.세후이자) || 0;
 
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
@@ -2918,7 +2910,6 @@ window.openDepositModal = (id = null) => {
     document.getElementById('dep-delete-btn').classList.add('hidden');
     document.getElementById('deposit-modal-title').innerText = '새 상품 추가';
 
-    // 💡 동적 리스트 불러오기
     const renderSelect = (elId, type, placeholder) => {
         const el = document.getElementById(elId);
         const options = globalCategories.filter((c) => c.Type === type);
@@ -2930,6 +2921,7 @@ window.openDepositModal = (id = null) => {
     renderSelect('dep-input-bank', 'asset_bank', '은행 선택 (설정에서 추가)');
     renderSelect('dep-input-owner', 'asset_owner', '명의자 선택');
     renderSelect('dep-input-type', 'asset_type', '종류 선택');
+    renderSelect('dep-input-tax', 'asset_tax', '과세 기준 선택');
 
     if (id) {
         const d = window.globalDeposits.find((item) => item.ID === id);
@@ -2938,13 +2930,21 @@ window.openDepositModal = (id = null) => {
             document.getElementById('dep-input-id').value = d.ID;
             document.getElementById('dep-input-start').value = d.가입일;
             document.getElementById('dep-input-end').value = d.만기일;
-            document.getElementById('dep-input-tax').value = d.과세여부;
-            document.getElementById('dep-input-principal').value = Number(d.원금).toLocaleString(
-                'ko-KR'
-            );
-            document.getElementById('dep-input-rate').value = d.이율;
 
-            // 저장된 값으로 드롭다운 세팅 (리스트에 없어도 일단 세팅)
+            // 콤마 및 소수점 포맷팅을 적용해서 폼에 뿌려줍니다.
+            document.getElementById('dep-input-principal').value = Number(
+                d.원금 || 0
+            ).toLocaleString('ko-KR');
+            document.getElementById('dep-input-pretax').value = Number(
+                d.세전이자 || 0
+            ).toLocaleString('ko-KR');
+            document.getElementById('dep-input-posttax').value = Number(
+                d.세후이자 || 0
+            ).toLocaleString('ko-KR');
+            document.getElementById('dep-input-rate').value = d.이율
+                ? Number(d.이율).toFixed(2)
+                : '';
+
             if (d.은행)
                 document.getElementById('dep-input-bank').innerHTML +=
                     `<option value="${d.은행}" selected>${d.은행}</option>`;
@@ -2954,6 +2954,9 @@ window.openDepositModal = (id = null) => {
             if (d.종류)
                 document.getElementById('dep-input-type').innerHTML +=
                     `<option value="${d.종류}" selected>${d.종류}</option>`;
+            if (d.과세여부)
+                document.getElementById('dep-input-tax').innerHTML +=
+                    `<option value="${d.과세여부}" selected>${d.과세여부}</option>`;
             if (d.상태) document.getElementById('dep-input-status').value = d.상태;
 
             document.getElementById('dep-delete-btn').classList.remove('hidden');
@@ -2975,7 +2978,6 @@ window.closeDepositModal = () => {
     setTimeout(() => modal.classList.add('hidden'), 300);
 };
 
-// 💡 4. 예적금 통신 로직 (저장 및 삭제)
 window.saveDeposit = async () => {
     const id = document.getElementById('dep-input-id').value;
     const payload = {
@@ -2987,21 +2989,26 @@ window.saveDeposit = async () => {
         depType: document.getElementById('dep-input-type').value,
         principal: document.getElementById('dep-input-principal').value.replace(/,/g, ''),
         rate: document.getElementById('dep-input-rate').value,
+        // 👇 페이로드에 taxType 추가!
         taxType: document.getElementById('dep-input-tax').value,
+        preTax: document.getElementById('dep-input-pretax').value.replace(/,/g, ''),
+        postTax: document.getElementById('dep-input-posttax').value.replace(/,/g, ''),
         owner: document.getElementById('dep-input-owner').value,
         bank: document.getElementById('dep-input-bank').value,
-        status: document.getElementById('dep-input-status').value, // 👈 checkbox에서 select 값으로 수정
+        status: document.getElementById('dep-input-status').value,
     };
 
+    // 필수값 검증에도 추가해 주면 좋습니다.
     if (
         !payload.startDate ||
         !payload.endDate ||
         !payload.principal ||
         !payload.bank ||
         !payload.owner ||
-        !payload.depType
+        !payload.depType ||
+        !payload.taxType
     ) {
-        alert('은행, 명의자, 종류 등 필수 항목을 선택해 주세요.');
+        alert('과세여부를 포함한 필수 항목을 모두 선택해 주세요.');
         return;
     }
 
