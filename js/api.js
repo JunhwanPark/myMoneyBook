@@ -139,6 +139,13 @@ window.loadDailyRecords = async (isSilent = false) => {
                 const statsTab = document.getElementById('view-stats');
                 if (statsTab && statsTab.classList.contains('active')) renderChart();
 
+                if (
+                    window.currentAppMode === 'ASSETS' &&
+                    typeof window.renderAssetsList === 'function'
+                ) {
+                    window.renderAssetsList();
+                }
+
                 // 이미 화면이 떴으므로, 이어지는 백그라운드 동기화는 무음(Silent) 모드로 강제 전환!
                 isSilent = true;
             } catch (e) {
@@ -181,6 +188,13 @@ window.loadDailyRecords = async (isSilent = false) => {
             updateMonthlyTotals();
             const statsTab = document.getElementById('view-stats');
             if (statsTab && statsTab.classList.contains('active')) renderChart();
+
+            if (
+                window.currentAppMode === 'ASSETS' &&
+                typeof window.renderAssetsList === 'function'
+            ) {
+                window.renderAssetsList();
+            }
         }
     } catch (error) {
         console.error('데이터 로드 중 에러 발생:', error);
