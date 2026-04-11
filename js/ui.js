@@ -75,6 +75,18 @@ window.handleMainPlusClick = () => {
     }
 };
 
+window.handleNavMain = () => {
+    const btn = document.getElementById('nav-btn-main');
+    if (window.currentAppMode === 'ASSETS') switchTab('assets', '자산내역', btn);
+    else switchTab('daily', '내역', btn);
+};
+
+window.handleNavSettings = () => {
+    const btn = document.getElementById('nav-btn-settings');
+    if (window.currentAppMode === 'ASSETS') switchTab('assets-settings', '자산설정', btn);
+    else switchTab('settings', '설정', btn);
+};
+
 // 동적으로 텍스트를 생성할 때 쓰는 번역 함수
 window.t = (koStr) => {
     if (window.appLang === 'ko') return koStr;
@@ -156,7 +168,8 @@ window.changeGlobalMonth = (offset) => {
 
 window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
     // 💡 자산 모드에서 탈출할 때 원래 테마(KR/CN)로 색상 복구!
-    if (window.currentAppMode === 'ASSETS' && tabId !== 'assets') {
+    // 👇 수정됨: tabId가 'assets'로 시작하지 않을 때만 탈출로 간주합니다! (assets, assets-settings 모두 무사 통과)
+    if (window.currentAppMode === 'ASSETS' && !tabId.startsWith('assets')) {
         window.currentAppMode = 'LEDGER';
         document.body.classList.remove('theme-assets');
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
@@ -164,7 +177,7 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         const btnKr = document.getElementById('btn-kr');
         const btnCn = document.getElementById('btn-cn');
         const btnAssets = document.getElementById('btn-assets');
-        const badge = document.getElementById('exchange-rate-badge'); // 👈 환율 뱃지 가져오기
+        const badge = document.getElementById('exchange-rate-badge');
 
         if (btnAssets)
             btnAssets.className =
@@ -175,14 +188,14 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
                     'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
             document.body.classList.remove('theme-cn');
             if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
-            if (badge) badge.classList.add('hidden'); // KR이면 뱃지 숨김
+            if (badge) badge.classList.add('hidden');
         } else {
             if (btnCn)
                 btnCn.className =
                     'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
             document.body.classList.add('theme-cn');
             if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
-            if (typeof fetchExchangeRate === 'function') fetchExchangeRate(); // 👈 CN이면 환율 뱃지 복구!
+            if (typeof fetchExchangeRate === 'function') fetchExchangeRate();
         }
     }
 
@@ -272,12 +285,13 @@ window.switchCountry = function (mode) {
     // 💰 자산 모드를 선택했을 때
     if (mode === 'ASSETS') {
         window.currentAppMode = 'ASSETS';
-        if (badge) badge.classList.add('hidden'); // 👈 자산 모드일 땐 무조건 환율 숨김!
+        document.getElementById('nav-btn-monthly')?.classList.add('hidden');
+        document.getElementById('nav-btn-stats')?.classList.add('hidden');
+        if (badge) badge.classList.add('hidden');
 
-        // 기존 테마 지우고 초록색 자산 테마 입히기!
         document.body.classList.remove('theme-cn');
         document.body.classList.add('theme-assets');
-        if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981'); // 스마트폰 상단바 초록색
+        if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981');
 
         if (btnAssets)
             btnAssets.className =
@@ -288,10 +302,15 @@ window.switchCountry = function (mode) {
             .forEach((el) => el.classList.remove('active', 'slide-in-right', 'slide-in-left'));
         document.getElementById('view-assets').classList.add('active', 'slide-in-right');
 
+        // 👇 이 부분이 기존에 있던 버튼 불 끄기 로직입니다.
         document.querySelectorAll('.nav-btn').forEach((btn) => {
             btn.classList.remove('text-primary');
             btn.classList.add('text-gray-400');
         });
+
+        // ✨ [새로 추가할 부분] 끄자마자 '내역' 버튼만 다시 불(text-primary)을 켜줍니다!
+        const mainNavBtn = document.getElementById('nav-btn-main');
+        if (mainNavBtn) mainNavBtn.classList.replace('text-gray-400', 'text-primary');
 
         renderAssetsList();
         return;
@@ -299,6 +318,8 @@ window.switchCountry = function (mode) {
 
     // 🇰🇷/🇨🇳 국가(가계부) 모드를 선택했을 때
     window.currentAppMode = 'LEDGER';
+    document.getElementById('nav-btn-monthly')?.classList.remove('hidden');
+    document.getElementById('nav-btn-stats')?.classList.remove('hidden');
     document.body.classList.remove('theme-assets'); // 자산 테마 벗기기
 
     if (currentCountry !== mode) {
@@ -2808,11 +2829,14 @@ window.renderAssetsList = () => {
 
         // 리스트 카드 렌더링
         const isMatured = d.상태 === '만기';
-        const cardOpacity = isMatured ? 'opacity-60 grayscale-[50%]' : '';
-        const badge = isMatured
-            ? `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-black">만기완료</span>`
-            : // 👇 파란색(blue) 대신 초록색(green)으로 깔맞춤!
-              `<span class="bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[9px] font-black">운용중</span>`;
+        const isCanceled = d.상태 === '중도해지';
+        const cardOpacity = isMatured || isCanceled ? 'opacity-60 grayscale-[50%]' : '';
+
+        let badge = `<span class="bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[9px] font-black">운용중</span>`;
+        if (isMatured)
+            badge = `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-black">만기완료</span>`;
+        if (isCanceled)
+            badge = `<span class="bg-red-100 text-red-600 px-1.5 py-0.5 rounded text-[9px] font-black">중도해지</span>`;
 
         listContainer.insertAdjacentHTML(
             'beforeend',
@@ -2894,22 +2918,44 @@ window.openDepositModal = (id = null) => {
     document.getElementById('dep-delete-btn').classList.add('hidden');
     document.getElementById('deposit-modal-title').innerText = '새 상품 추가';
 
+    // 💡 동적 리스트 불러오기
+    const renderSelect = (elId, type, placeholder) => {
+        const el = document.getElementById(elId);
+        const options = globalCategories.filter((c) => c.Type === type);
+        el.innerHTML = `<option value="">${placeholder}</option>`;
+        options.forEach((c) =>
+            el.insertAdjacentHTML('beforeend', `<option value="${c.Label}">${c.Label}</option>`)
+        );
+    };
+    renderSelect('dep-input-bank', 'asset_bank', '은행 선택 (설정에서 추가)');
+    renderSelect('dep-input-owner', 'asset_owner', '명의자 선택');
+    renderSelect('dep-input-type', 'asset_type', '종류 선택');
+
     if (id) {
         const d = window.globalDeposits.find((item) => item.ID === id);
         if (d) {
             document.getElementById('deposit-modal-title').innerText = '상품 정보 수정';
             document.getElementById('dep-input-id').value = d.ID;
-            document.getElementById('dep-input-bank').value = d.은행;
-            document.getElementById('dep-input-owner').value = d.명의자;
             document.getElementById('dep-input-start').value = d.가입일;
             document.getElementById('dep-input-end').value = d.만기일;
-            document.getElementById('dep-input-type').value = d.종류;
             document.getElementById('dep-input-tax').value = d.과세여부;
             document.getElementById('dep-input-principal').value = Number(d.원금).toLocaleString(
                 'ko-KR'
             );
             document.getElementById('dep-input-rate').value = d.이율;
-            document.getElementById('dep-input-status').checked = d.상태 === '만기';
+
+            // 저장된 값으로 드롭다운 세팅 (리스트에 없어도 일단 세팅)
+            if (d.은행)
+                document.getElementById('dep-input-bank').innerHTML +=
+                    `<option value="${d.은행}" selected>${d.은행}</option>`;
+            if (d.명의자)
+                document.getElementById('dep-input-owner').innerHTML +=
+                    `<option value="${d.명의자}" selected>${d.명의자}</option>`;
+            if (d.종류)
+                document.getElementById('dep-input-type').innerHTML +=
+                    `<option value="${d.종류}" selected>${d.종류}</option>`;
+            if (d.상태) document.getElementById('dep-input-status').value = d.상태;
+
             document.getElementById('dep-delete-btn').classList.remove('hidden');
         }
     }
@@ -2935,7 +2981,7 @@ window.saveDeposit = async () => {
     const payload = {
         action: id ? 'update_deposit' : 'create_deposit',
         id: id,
-        country: 'KR', // API 형식 유지용
+        country: 'KR',
         startDate: document.getElementById('dep-input-start').value,
         endDate: document.getElementById('dep-input-end').value,
         depType: document.getElementById('dep-input-type').value,
@@ -2944,23 +2990,114 @@ window.saveDeposit = async () => {
         taxType: document.getElementById('dep-input-tax').value,
         owner: document.getElementById('dep-input-owner').value,
         bank: document.getElementById('dep-input-bank').value,
-        status: document.getElementById('dep-input-status').checked ? '만기' : '',
+        status: document.getElementById('dep-input-status').value, // 👈 checkbox에서 select 값으로 수정
     };
 
-    if (!payload.startDate || !payload.endDate || !payload.principal || !payload.bank) {
-        alert('필수 항목을 모두 입력해 주세요.');
+    if (
+        !payload.startDate ||
+        !payload.endDate ||
+        !payload.principal ||
+        !payload.bank ||
+        !payload.owner ||
+        !payload.depType
+    ) {
+        alert('은행, 명의자, 종류 등 필수 항목을 선택해 주세요.');
         return;
     }
 
     if (typeof showLoader === 'function') showLoader();
     try {
         await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        if (typeof loadDailyRecords === 'function') await loadDailyRecords(); // 화면 새로고침
+        if (typeof loadDailyRecords === 'function') await loadDailyRecords();
         closeDepositModal();
     } catch (e) {
         alert('저장에 실패했습니다.');
     } finally {
         if (typeof hideLoader === 'function') hideLoader();
+    }
+};
+
+// 💡 자산 전용 설정 모달 로직 (기존 카테고리 API 재사용)
+window.currentAssetConfigType = '';
+
+window.openAssetConfigModal = (type, title) => {
+    window.currentAssetConfigType = type;
+    document.getElementById('asset-config-title').innerText = title;
+    document.getElementById('new-asset-config-label').value = '';
+
+    const container = document.getElementById('asset-config-list-container');
+    container.innerHTML = '';
+
+    const items = globalCategories.filter((c) => c.Type === type);
+    if (items.length === 0) {
+        container.innerHTML =
+            '<li class="py-4 text-center text-gray-500 text-sm">등록된 항목이 없습니다.</li>';
+    } else {
+        items.forEach((c) => {
+            container.insertAdjacentHTML(
+                'beforeend',
+                `
+                <li class="py-2.5 flex justify-between items-center gap-2">
+                    <span class="text-sm font-medium text-gray-800">${c.Label}</span>
+                    <button onclick="deleteAssetConfig('${c.Value}')" class="text-gray-400 hover:text-red-500 transition p-1">
+                        <span class="material-symbols-outlined text-sm">delete</span>
+                    </button>
+                </li>
+            `
+            );
+        });
+    }
+
+    const modal = document.getElementById('asset-config-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+};
+
+window.closeAssetConfigModal = () =>
+    document.getElementById('asset-config-modal').classList.add('hidden');
+
+window.addAssetConfig = async () => {
+    const label = document.getElementById('new-asset-config-label').value.trim();
+    if (!label) return alert('이름을 입력해주세요.');
+    showLoader();
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'add_category',
+                catType: window.currentAssetConfigType,
+                catLabel: label,
+            }),
+        });
+        await loadDailyRecords();
+        openAssetConfigModal(
+            window.currentAssetConfigType,
+            document.getElementById('asset-config-title').innerText
+        );
+    } catch (e) {
+        alert('에러');
+    } finally {
+        hideLoader();
+    }
+};
+
+window.deleteAssetConfig = async (catValue) => {
+    if (!confirm('삭제하시겠습니까?')) return;
+    showLoader();
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete_category', catValue }),
+        });
+        await loadDailyRecords();
+        openAssetConfigModal(
+            window.currentAssetConfigType,
+            document.getElementById('asset-config-title').innerText
+        );
+    } catch (e) {
+        alert('에러');
+    } finally {
+        hideLoader();
     }
 };
 
