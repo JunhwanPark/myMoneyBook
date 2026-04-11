@@ -3005,7 +3005,22 @@ window.openDepositModal = (id = null) => {
 
     const renderSelect = (elId, type, placeholder) => {
         const el = document.getElementById(elId);
-        const options = globalCategories.filter((c) => c.Type === type);
+
+        // 💡 해당 타입의 저장된 순서를 가져와서 정렬 로직 추가!
+        const orderKey = 'assetOrder_' + type;
+        const savedOrder = JSON.parse(localStorage.getItem(orderKey)) || [];
+
+        const options = globalCategories
+            .filter((c) => c.Type === type)
+            .sort((a, b) => {
+                const idxA = savedOrder.indexOf(a.Value);
+                const idxB = savedOrder.indexOf(b.Value);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                return a.Label.localeCompare(b.Label);
+            });
+
         el.innerHTML = `<option value="">${placeholder}</option>`;
         options.forEach((c) =>
             el.insertAdjacentHTML('beforeend', `<option value="${c.Label}">${c.Label}</option>`)
@@ -3117,7 +3132,7 @@ window.saveDeposit = async () => {
     }
 };
 
-// 💡 자산 전용 설정 모달 로직 (기존 카테고리 API 재사용)
+// 💡 자산 전용 설정 모달 로직 (드래그 앤 드롭 순서 관리 추가)
 window.currentAssetConfigType = '';
 
 window.openAssetConfigModal = (type, title) => {
@@ -3128,7 +3143,22 @@ window.openAssetConfigModal = (type, title) => {
     const container = document.getElementById('asset-config-list-container');
     container.innerHTML = '';
 
-    const items = globalCategories.filter((c) => c.Type === type);
+    // 1. 해당 타입의 저장된 순서를 불러옵니다. (없으면 빈 배열)
+    const orderKey = 'assetOrder_' + type;
+    const savedOrder = JSON.parse(localStorage.getItem(orderKey)) || [];
+
+    // 2. 항목들을 가져와서 사용자 정의 순서대로 정렬합니다.
+    const items = [...globalCategories]
+        .filter((c) => c.Type === type)
+        .sort((a, b) => {
+            const idxA = savedOrder.indexOf(a.Value);
+            const idxB = savedOrder.indexOf(b.Value);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.Label.localeCompare(b.Label);
+        });
+
     if (items.length === 0) {
         container.innerHTML =
             '<li class="py-4 text-center text-gray-500 text-sm">등록된 항목이 없습니다.</li>';
@@ -3137,16 +3167,34 @@ window.openAssetConfigModal = (type, title) => {
             container.insertAdjacentHTML(
                 'beforeend',
                 `
-                <li class="py-2.5 flex justify-between items-center gap-2">
-                    <span class="text-sm font-medium text-gray-800">${c.Label}</span>
-                    <button onclick="deleteAssetConfig('${c.Value}')" class="text-gray-400 hover:text-red-500 transition p-1">
-                        <span class="material-symbols-outlined text-sm">delete</span>
-                    </button>
+                <li class="py-2.5 flex justify-between items-center gap-2 bg-white" data-id="${c.Value}">
+                    <div class="flex items-center gap-2 overflow-hidden flex-1">
+                        <span class="material-symbols-outlined text-gray-400 cursor-grab active:cursor-grabbing hover:text-gray-600 drag-handle text-[18px] p-1">menu</span>
+                        <span class="text-sm font-medium text-gray-800 truncate">${c.Label}</span>
+                    </div>
+                    <div class="flex gap-1 shrink-0">
+                        <button onclick="deleteAssetConfig('${c.Value}')" class="text-gray-400 hover:text-red-500 transition p-1">
+                            <span class="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                    </div>
                 </li>
             `
             );
         });
     }
+
+    // 3. SortableJS 드래그 엔진 활성화
+    if (window.assetSortable) window.assetSortable.destroy();
+    window.assetSortable = new Sortable(container, {
+        handle: '.drag-handle',
+        animation: 150,
+        ghostClass: 'bg-gray-50',
+        onEnd: function () {
+            // 드래그가 끝나면 바뀐 순서를 해당 타입별로 localStorage에 저장!
+            const newOrder = Array.from(container.children).map((li) => li.getAttribute('data-id'));
+            localStorage.setItem(orderKey, JSON.stringify(newOrder));
+        },
+    });
 
     const modal = document.getElementById('asset-config-modal');
     modal.classList.remove('hidden');
