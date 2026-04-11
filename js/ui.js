@@ -61,6 +61,20 @@ window.i18nDict = {
     '동기화 중...': '同步中...',
 };
 
+// ==========================================
+// 💡 작업 공간(모드) 상태 및 스마트 [+] 버튼
+// ==========================================
+window.currentAppMode = 'LEDGER'; // 기본값은 가계부(LEDGER) 모드
+
+window.handleMainPlusClick = () => {
+    // 자산 모드일 때는 예적금 모달을, 평소에는 일반 가계부 추가 모달을 띄웁니다!
+    if (window.currentAppMode === 'ASSETS') {
+        openDepositModal();
+    } else {
+        openAddModal();
+    }
+};
+
 // 동적으로 텍스트를 생성할 때 쓰는 번역 함수
 window.t = (koStr) => {
     if (window.appLang === 'ko') return koStr;
@@ -141,6 +155,37 @@ window.changeGlobalMonth = (offset) => {
 };
 
 window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
+    // 💡 자산 모드에서 탈출할 때 원래 테마(KR/CN)로 색상 복구!
+    if (window.currentAppMode === 'ASSETS' && tabId !== 'assets') {
+        window.currentAppMode = 'LEDGER';
+        document.body.classList.remove('theme-assets');
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+
+        const btnKr = document.getElementById('btn-kr');
+        const btnCn = document.getElementById('btn-cn');
+        const btnAssets = document.getElementById('btn-assets');
+        const badge = document.getElementById('exchange-rate-badge'); // 👈 환율 뱃지 가져오기
+
+        if (btnAssets)
+            btnAssets.className =
+                'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
+        if (currentCountry === 'KR') {
+            if (btnKr)
+                btnKr.className =
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
+            document.body.classList.remove('theme-cn');
+            if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
+            if (badge) badge.classList.add('hidden'); // KR이면 뱃지 숨김
+        } else {
+            if (btnCn)
+                btnCn.className =
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
+            document.body.classList.add('theme-cn');
+            if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
+            if (typeof fetchExchangeRate === 'function') fetchExchangeRate(); // 👈 CN이면 환율 뱃지 복구!
+        }
+    }
+
     const searchInput = document.getElementById('search-input');
     const clearBtn = document.getElementById('search-clear-btn');
 
@@ -201,24 +246,89 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         else setTimeout(() => calendar.render(), 10);
     } else if (tabId === 'stats') {
         renderChart();
+    } else if (tabId === 'assets') {
+        renderAssetsList(); // 👈 이 줄을 추가!
     }
 };
 
-window.switchCountry = function (country) {
-    if (currentCountry === country) return;
-    currentCountry = country;
+window.switchCountry = function (mode) {
     const btnKr = document.getElementById('btn-kr');
     const btnCn = document.getElementById('btn-cn');
-    if (country === 'KR') {
+    const btnAssets = document.getElementById('btn-assets');
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    const badge = document.getElementById('exchange-rate-badge'); // 👈 환율 뱃지 가져오기
+
+    // 1. 모든 상단 버튼의 불을 끕니다.
+    if (btnKr)
+        btnKr.className =
+            'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
+    if (btnCn)
+        btnCn.className =
+            'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
+    if (btnAssets)
+        btnAssets.className =
+            'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
+
+    // 💰 자산 모드를 선택했을 때
+    if (mode === 'ASSETS') {
+        window.currentAppMode = 'ASSETS';
+        if (badge) badge.classList.add('hidden'); // 👈 자산 모드일 땐 무조건 환율 숨김!
+
+        // 기존 테마 지우고 초록색 자산 테마 입히기!
         document.body.classList.remove('theme-cn');
-        btnKr.className = 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
-        btnCn.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+        document.body.classList.add('theme-assets');
+        if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981'); // 스마트폰 상단바 초록색
+
+        if (btnAssets)
+            btnAssets.className =
+                'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
+
+        document
+            .querySelectorAll('.tab-content')
+            .forEach((el) => el.classList.remove('active', 'slide-in-right', 'slide-in-left'));
+        document.getElementById('view-assets').classList.add('active', 'slide-in-right');
+
+        document.querySelectorAll('.nav-btn').forEach((btn) => {
+            btn.classList.remove('text-primary');
+            btn.classList.add('text-gray-400');
+        });
+
+        renderAssetsList();
+        return;
+    }
+
+    // 🇰🇷/🇨🇳 국가(가계부) 모드를 선택했을 때
+    window.currentAppMode = 'LEDGER';
+    document.body.classList.remove('theme-assets'); // 자산 테마 벗기기
+
+    if (currentCountry !== mode) {
+        currentCountry = mode;
+        loadDailyRecords();
+    } else {
+        // 국가가 안바뀌었는데(이미 CN) 자산모드에서 돌아온 거라면 환율 뱃지를 다시 살려줌
+        if (mode === 'CN' && typeof fetchExchangeRate === 'function') fetchExchangeRate();
+    }
+
+    if (mode === 'KR') {
+        document.body.classList.remove('theme-cn');
+        if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5'); // 파란색
+        if (btnKr)
+            btnKr.className =
+                'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
+        if (badge) badge.classList.add('hidden'); // 한국 모드 확실히 숨김
     } else {
         document.body.classList.add('theme-cn');
-        btnCn.className = 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
-        btnKr.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+        if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444'); // 빨간색
+        if (btnCn)
+            btnCn.className =
+                'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
     }
-    loadDailyRecords();
+
+    const activeTab = document.querySelector('.tab-content.active');
+    if (activeTab && activeTab.id === 'view-assets') {
+        const dailyBtn = document.querySelector('.nav-btn');
+        switchTab('daily', '내역', dailyBtn);
+    }
 };
 
 // ==========================================
@@ -2626,4 +2736,249 @@ window.showCumulativeIncome = false; // 기본값: 지출만 보기(false)
 window.toggleCumIncome = (checked) => {
     window.showCumulativeIncome = checked;
     renderChart(); // 상태를 바꾸고 차트를 즉시 다시 그립니다.
+};
+
+// ==========================================
+// 💰 예적금(자산) 탭 전용 렌더링 및 기능
+// ==========================================
+
+// 💡 1. 엑셀 수식 기반 이자 계산기
+window.getDepositCalc = (d) => {
+    const start = new Date(d.가입일);
+    const end = new Date(d.만기일);
+
+    // 정확한 가입 개월 수 계산
+    let months =
+        (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    if (end.getDate() < start.getDate()) months--; // 일자가 모자라면 1개월 차감
+    if (months <= 0) months = 0;
+
+    const principal = Number(d.원금) || 0;
+    const rate = Number(d.이율) || 0;
+
+    // 세전이자 = 원금 * 이율 * (가입기간/12)
+    let preTax = Math.floor(principal * (rate / 100) * (months / 12));
+
+    // 세후이자 계산 (엑셀 수식 완벽 적용)
+    let postTax = preTax;
+    const taxType = d.과세여부;
+    if (taxType === '과세')
+        postTax = Math.floor(preTax * 0.846); // 15.4% 공제
+    else if (taxType === '세금우대') postTax = Math.floor(preTax * 0.986); // 1.4% 공제
+
+    return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
+};
+
+// 💡 2. 자산 탭 메인 화면 그리기
+window.renderAssetsList = () => {
+    const listContainer = document.getElementById('assets-list-container');
+    const dashboard = document.getElementById('assets-summary-dashboard');
+    const alertBox = document.getElementById('maturity-alert-container');
+    if (!listContainer || !dashboard) return;
+
+    listContainer.innerHTML = '';
+    dashboard.innerHTML = '';
+    alertBox.innerHTML = '';
+
+    if (!window.globalDeposits || window.globalDeposits.length === 0) {
+        listContainer.innerHTML =
+            '<p class="text-center text-gray-400 py-10 text-sm">등록된 예적금이 없습니다.</p>';
+        dashboard.innerHTML = '<p class="text-center text-gray-400 text-xs">데이터가 없습니다.</p>';
+        return;
+    }
+
+    const summary = {};
+    let maturedItemsCount = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 데이터 집계 및 그리기 준비
+    window.globalDeposits.forEach((d) => {
+        const calc = getDepositCalc(d);
+        const owner = d.명의자 || '미상';
+        const year = calc.year;
+
+        // 대시보드 합산 (세전이자)
+        if (!summary[year]) summary[year] = {};
+        if (!summary[year][owner]) summary[year][owner] = 0;
+        summary[year][owner] += calc.preTax;
+
+        // 만기 알림 체크
+        if (d.상태 !== '만기' && calc.end <= today) maturedItemsCount++;
+
+        // 리스트 카드 렌더링
+        const isMatured = d.상태 === '만기';
+        const cardOpacity = isMatured ? 'opacity-60 grayscale-[50%]' : '';
+        const badge = isMatured
+            ? `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] font-black">만기완료</span>`
+            : // 👇 파란색(blue) 대신 초록색(green)으로 깔맞춤!
+              `<span class="bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[9px] font-black">운용중</span>`;
+
+        listContainer.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div onclick="openDepositModal('${d.ID}')" class="bg-white p-3.5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2 cursor-pointer active:scale-[0.99] transition ${cardOpacity}">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-black text-gray-800">${d.은행}</span>
+                        <span class="text-[10px] text-gray-500 font-medium px-1 bg-gray-50 rounded">${d.종류}</span>
+                    </div>
+                    ${badge}
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <p class="text-[10px] text-gray-400 mb-0.5">${d.명의자} • ${calc.months}개월 • 이율 ${d.이율}%</p>
+                        <p class="text-sm font-black text-gray-900">${calc.principal.toLocaleString('ko-KR')}원</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-indigo-400 font-bold mb-0.5">예상 세후이자</p>
+                        <p class="text-sm font-bold text-indigo-600">+${calc.postTax.toLocaleString('ko-KR')}원</p>
+                    </div>
+                </div>
+                <div class="text-[10px] text-gray-400 flex items-center gap-1 border-t border-gray-50 pt-1.5 mt-1">
+                    <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                    ${d.가입일} ~ ${d.만기일}
+                </div>
+            </div>
+        `
+        );
+    });
+
+    // 만기 알림 배너 띄우기
+    if (maturedItemsCount > 0) {
+        alertBox.innerHTML = `
+            <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm animate-pulse">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-red-500 text-lg">notifications_active</span>
+                    <p class="text-xs font-bold text-red-700">만기된 상품이 <span class="text-lg">${maturedItemsCount}</span>건 있습니다!</p>
+                </div>
+            </div>
+        `;
+    }
+
+    // 대시보드 렌더링 (연도별 내림차순)
+    const sortedYears = Object.keys(summary).sort((a, b) => b - a);
+    sortedYears.forEach((year) => {
+        let rowsHtml = '';
+        let total = 0;
+        for (const [owner, amount] of Object.entries(summary[year])) {
+            total += amount;
+            rowsHtml += `
+                <div class="flex justify-between items-center py-1">
+                    <span class="text-xs font-bold text-gray-600">${owner}</span>
+                    <span class="text-xs font-bold text-indigo-500">${amount.toLocaleString('ko-KR')}원</span>
+                </div>
+            `;
+        }
+        dashboard.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div class="pt-2 pb-1">
+                <div class="flex justify-between items-end mb-1">
+                    <span class="text-sm font-black text-gray-800">${year}년 만기 예정</span>
+                    <span class="text-xs font-black text-gray-400">총합계: ${total.toLocaleString('ko-KR')}원</span>
+                </div>
+                <div class="bg-gray-50 p-2 rounded-lg mt-1 border border-gray-100">
+                    ${rowsHtml}
+                </div>
+            </div>
+        `
+        );
+    });
+};
+
+// 💡 3. 모달 열고 닫기 로직
+window.openDepositModal = (id = null) => {
+    const form = document.getElementById('deposit-form');
+    form.reset();
+    document.getElementById('dep-delete-btn').classList.add('hidden');
+    document.getElementById('deposit-modal-title').innerText = '새 상품 추가';
+
+    if (id) {
+        const d = window.globalDeposits.find((item) => item.ID === id);
+        if (d) {
+            document.getElementById('deposit-modal-title').innerText = '상품 정보 수정';
+            document.getElementById('dep-input-id').value = d.ID;
+            document.getElementById('dep-input-bank').value = d.은행;
+            document.getElementById('dep-input-owner').value = d.명의자;
+            document.getElementById('dep-input-start').value = d.가입일;
+            document.getElementById('dep-input-end').value = d.만기일;
+            document.getElementById('dep-input-type').value = d.종류;
+            document.getElementById('dep-input-tax').value = d.과세여부;
+            document.getElementById('dep-input-principal').value = Number(d.원금).toLocaleString(
+                'ko-KR'
+            );
+            document.getElementById('dep-input-rate').value = d.이율;
+            document.getElementById('dep-input-status').checked = d.상태 === '만기';
+            document.getElementById('dep-delete-btn').classList.remove('hidden');
+        }
+    }
+
+    const modal = document.getElementById('deposit-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        document.getElementById('deposit-modal-content').classList.remove('translate-y-full');
+    }, 10);
+};
+
+window.closeDepositModal = () => {
+    const modal = document.getElementById('deposit-modal');
+    modal.classList.add('opacity-0');
+    document.getElementById('deposit-modal-content').classList.add('translate-y-full');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+};
+
+// 💡 4. 예적금 통신 로직 (저장 및 삭제)
+window.saveDeposit = async () => {
+    const id = document.getElementById('dep-input-id').value;
+    const payload = {
+        action: id ? 'update_deposit' : 'create_deposit',
+        id: id,
+        country: 'KR', // API 형식 유지용
+        startDate: document.getElementById('dep-input-start').value,
+        endDate: document.getElementById('dep-input-end').value,
+        depType: document.getElementById('dep-input-type').value,
+        principal: document.getElementById('dep-input-principal').value.replace(/,/g, ''),
+        rate: document.getElementById('dep-input-rate').value,
+        taxType: document.getElementById('dep-input-tax').value,
+        owner: document.getElementById('dep-input-owner').value,
+        bank: document.getElementById('dep-input-bank').value,
+        status: document.getElementById('dep-input-status').checked ? '만기' : '',
+    };
+
+    if (!payload.startDate || !payload.endDate || !payload.principal || !payload.bank) {
+        alert('필수 항목을 모두 입력해 주세요.');
+        return;
+    }
+
+    if (typeof showLoader === 'function') showLoader();
+    try {
+        await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+        if (typeof loadDailyRecords === 'function') await loadDailyRecords(); // 화면 새로고침
+        closeDepositModal();
+    } catch (e) {
+        alert('저장에 실패했습니다.');
+    } finally {
+        if (typeof hideLoader === 'function') hideLoader();
+    }
+};
+
+window.deleteDeposit = async () => {
+    if (!confirm('이 상품을 삭제하시겠습니까?')) return;
+    const id = document.getElementById('dep-input-id').value;
+
+    if (typeof showLoader === 'function') showLoader();
+    try {
+        await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete_deposit', id: id }),
+        });
+        if (typeof loadDailyRecords === 'function') await loadDailyRecords();
+        closeDepositModal();
+    } catch (e) {
+        alert('삭제에 실패했습니다.');
+    } finally {
+        if (typeof hideLoader === 'function') hideLoader();
+    }
 };

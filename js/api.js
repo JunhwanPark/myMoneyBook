@@ -115,6 +115,7 @@ window.loadDailyRecords = async (isSilent = false) => {
             try {
                 const result = JSON.parse(cachedString);
                 globalData = result.data || [];
+                window.globalDeposits = result.deposits || [];
                 globalCategories = (result.categories || []).filter(
                     (c) => !c.Type.startsWith('card')
                 );
@@ -160,6 +161,7 @@ window.loadDailyRecords = async (isSilent = false) => {
             localStorage.setItem(cacheKey, JSON.stringify(result));
 
             globalData = result.data || [];
+            window.globalDeposits = result.deposits || [];
             globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
             globalCards = (result.categories || [])
                 .filter((c) => {
