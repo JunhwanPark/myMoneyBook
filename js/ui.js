@@ -3516,6 +3516,13 @@ window.renderAssetChart = (summary) => {
     });
 };
 
+window.currentOwnerAssetSort = 'end'; // 기본값: 만기일순
+
+window.setOwnerAssetSort = (owner, type) => {
+    window.currentOwnerAssetSort = type;
+    window.openOwnerAssetDetail(owner); // 정렬 변경 후 다시 그리기
+};
+
 // 💡 특정 명의자의 운용 자산 상세 조회
 window.openOwnerAssetDetail = (owner) => {
     const container = document.getElementById('owner-detail-list-container');
@@ -3526,7 +3533,20 @@ window.openOwnerAssetDetail = (owner) => {
     title.innerText = `${owner} 님의 자산 현황`;
     container.innerHTML = '';
 
-    // 1. 해당 명의자의 '운용중'인 항목만 필터링
+    // 💡 1. 정렬 버튼 스타일 업데이트
+    const btnEnd = document.getElementById('btn-owner-sort-end');
+    const btnStart = document.getElementById('btn-owner-sort-start');
+    if (btnEnd && btnStart) {
+        const activeClass = 'bg-white text-gray-800 shadow-sm';
+        const inactiveClass = 'text-gray-400';
+
+        btnEnd.className = `px-2 py-1 text-[9px] font-bold rounded-md transition-all ${window.currentOwnerAssetSort === 'end' ? activeClass : inactiveClass}`;
+        btnStart.className = `px-2 py-1 text-[9px] font-bold rounded-md transition-all ${window.currentOwnerAssetSort === 'start' ? activeClass : inactiveClass}`;
+
+        btnEnd.onclick = () => window.setOwnerAssetSort(owner, 'end');
+        btnStart.onclick = () => window.setOwnerAssetSort(owner, 'start');
+    }
+
     const filtered = window.globalDeposits.filter(
         (d) => d.명의자 === owner && d.상태 !== '만기' && d.상태 !== '중도해지'
     );
@@ -3539,13 +3559,39 @@ window.openOwnerAssetDetail = (owner) => {
             '<p class="text-center text-gray-400 py-20 text-sm">운용중인 자산이 없습니다.</p>';
         summaryBar.innerHTML = '';
     } else {
-        // 만기일 빠른 순으로 정렬
-        filtered.sort((a, b) => new Date(a.만기일) - new Date(b.만기일));
+        // 💡 2. 선택된 기준에 따라 정렬 (최신/미래 날짜가 위로)
+        if (window.currentOwnerAssetSort === 'end') {
+            filtered.sort((a, b) => new Date(b.만기일) - new Date(a.만기일));
+        } else {
+            filtered.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
+        }
+
+        let lastYear = null;
 
         filtered.forEach((d) => {
             const calc = getDepositCalc(d);
             pSum += Number(d.원금);
             iSum += Number(d.세후이자);
+
+            // 💡 3. 연도별 묶음 표시 (Year Header)
+            const displayYear =
+                window.currentOwnerAssetSort === 'end'
+                    ? new Date(d.만기일).getFullYear()
+                    : new Date(d.가입일).getFullYear();
+
+            if (lastYear !== displayYear) {
+                lastYear = displayYear;
+                container.insertAdjacentHTML(
+                    'beforeend',
+                    `
+                    <div class="sticky top-0 z-10 bg-white/95 backdrop-blur-sm py-2 px-1 mt-4 first:mt-0">
+                        <span class="text-xs font-black text-primary flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">calendar_today</span>${displayYear}년
+                        </span>
+                    </div>
+                `
+                );
+            }
 
             container.insertAdjacentHTML(
                 'beforeend',
@@ -3573,7 +3619,6 @@ window.openOwnerAssetDetail = (owner) => {
             );
         });
 
-        // 상단 요약 바 렌더링
         summaryBar.innerHTML = `
             <div class="bg-indigo-600 rounded-2xl p-4 text-white shadow-lg">
                 <div class="flex justify-between items-center mb-1">

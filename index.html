@@ -1308,7 +1308,23 @@
                 <div class="flex justify-between items-center mb-4 shrink-0">
                     <div>
                         <h3 class="text-lg font-bold" id="owner-detail-title">명의자 상세 내역</h3>
-                        <p class="text-xs text-gray-500" id="owner-detail-summary-text"></p>
+                        <div
+                            id="owner-detail-sort-controls"
+                            class="flex gap-1 bg-gray-100 p-0.5 rounded-lg mt-2 w-fit"
+                        >
+                            <button
+                                id="btn-owner-sort-end"
+                                class="px-2 py-1 text-[9px] font-bold rounded-md transition-all"
+                            >
+                                만기일순
+                            </button>
+                            <button
+                                id="btn-owner-sort-start"
+                                class="px-2 py-1 text-[9px] font-bold rounded-md transition-all"
+                            >
+                                가입일순
+                            </button>
+                        </div>
                     </div>
                     <button onclick="closeOwnerAssetDetail()" class="text-gray-400 p-1">
                         <span class="material-symbols-outlined">close</span>
