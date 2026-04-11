@@ -2828,16 +2828,22 @@ window.getDepositCalc = (d) => {
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
 
-// 💡 2. 자산 탭 메인 화면 그리기
+// 💡 2. 자산 탭 메인 화면 그리기 (가독성 및 상세 내역 개선 버전)
 window.renderAssetsList = () => {
     const listContainer = document.getElementById('assets-list-container');
     const dashboard = document.getElementById('assets-stats-summary-dashboard');
     const alertBox = document.getElementById('maturity-alert-container');
+
+    const totalSummaryBox = document.getElementById('assets-total-summary');
+    const ownerSummaryBox = document.getElementById('assets-stats-owner-summary');
+
     if (!listContainer || !dashboard) return;
 
     listContainer.innerHTML = '';
     dashboard.innerHTML = '';
     alertBox.innerHTML = '';
+    if (totalSummaryBox) totalSummaryBox.innerHTML = '';
+    if (ownerSummaryBox) ownerSummaryBox.innerHTML = '';
 
     if (!window.globalDeposits || window.globalDeposits.length === 0) {
         listContainer.innerHTML =
@@ -2850,9 +2856,13 @@ window.renderAssetsList = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 💡 1. [신규] 전체 데이터 기반 만기 & 임박 카운트 계산
     let maturedCount = 0;
     let soonCount = 0;
+    let totalOperatingPrincipal = 0;
+    let totalOperatingPostTax = 0;
+
+    // 💡 명의자별 원금과 이자를 각각 관리하기 위한 객체
+    const ownerDetails = {};
 
     window.globalDeposits.forEach((d) => {
         if (d.상태 !== '만기' && d.상태 !== '중도해지') {
@@ -2862,10 +2872,75 @@ window.renderAssetsList = () => {
 
             if (diffDays <= 0) maturedCount++;
             else if (diffDays > 0 && diffDays <= 3) soonCount++;
+
+            const principal = Number(d.원금) || 0;
+            const postTax = Number(d.세후이자) || 0;
+            const owner = d.명의자 || '미상';
+
+            totalOperatingPrincipal += principal;
+            totalOperatingPostTax += postTax;
+
+            // 명의자별 합산 로직 (원금/이자 분리)
+            if (!ownerDetails[owner]) ownerDetails[owner] = { principal: 0, postTax: 0 };
+            ownerDetails[owner].principal += principal;
+            ownerDetails[owner].postTax += postTax;
         }
     });
 
-    // 💡 2. [신규] 알림 배너 렌더링 (클릭 시 필터링 적용)
+    // 💡 [개선] 전체 운용 합계 배너 (폰트 색상 및 배경 가독성 수정)
+    if (totalSummaryBox && totalOperatingPrincipal > 0) {
+        const totalEstimated = totalOperatingPrincipal + totalOperatingPostTax;
+        totalSummaryBox.innerHTML = `
+            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm active:scale-[0.99] transition-transform">
+                <p class="text-emerald-700 text-xs font-bold mb-1.5 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[14px]">account_balance</span>총 예상 수령액 (원금+세후이자)
+                </p>
+                <p class="text-3xl font-black text-slate-900 mb-4 tracking-tight">${totalEstimated.toLocaleString('ko-KR')}원</p>
+                <div class="flex justify-between text-[11px] bg-white/60 border border-emerald-100 rounded-xl p-3">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-emerald-600/70 font-medium">총 납입원금</span>
+                        <span class="font-bold text-slate-700">${totalOperatingPrincipal.toLocaleString('ko-KR')}원</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5 text-right">
+                        <span class="text-emerald-600/70 font-medium">총 세후이자</span>
+                        <span class="font-bold text-emerald-600">+${totalOperatingPostTax.toLocaleString('ko-KR')}원</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // 💡 [개선] 명의자별 요약 현황 (원금/이자 분리 표현)
+    if (ownerSummaryBox) {
+        const sortedOwners = Object.entries(ownerDetails).sort(
+            (a, b) => b[1].principal + b[1].postTax - (a[1].principal + a[1].postTax)
+        );
+        if (sortedOwners.length === 0) {
+            ownerSummaryBox.innerHTML =
+                '<p class="text-xs text-gray-400 col-span-2 text-center py-4 font-medium">운용중인 자산이 없습니다.</p>';
+        } else {
+            sortedOwners.forEach(([owner, data]) => {
+                const total = data.principal + data.postTax;
+                ownerSummaryBox.insertAdjacentHTML(
+                    'beforeend',
+                    `
+                    <div class="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex flex-col shadow-sm">
+                        <span class="text-[11px] font-black text-gray-500 mb-2 border-b border-gray-200 pb-1">${owner}</span>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[14px] font-black text-slate-800 tracking-tight">${total.toLocaleString('ko-KR')}원</span>
+                            <div class="flex flex-col text-[10px] text-gray-400 leading-tight">
+                                <span>원금: ${data.principal.toLocaleString('ko-KR')}</span>
+                                <span class="text-indigo-500 font-bold">이자: +${data.postTax.toLocaleString('ko-KR')}</span>
+                            </div>
+                        </div>
+                    </div>
+                `
+                );
+            });
+        }
+    }
+
+    // (알림 배너 로직)
     let alertsHtml = '';
     if (window.currentAssetFilter !== 'all') {
         const filterTitle =
@@ -2905,10 +2980,8 @@ window.renderAssetsList = () => {
     }
     alertBox.innerHTML = alertsHtml;
 
-    // 💡 3. 정렬 및 필터 적용 로직
+    // (정렬 및 리스트 필터링)
     let depositsToRender = [...window.globalDeposits];
-
-    // 필터링 처리
     if (window.currentAssetFilter === 'matured') {
         depositsToRender = depositsToRender.filter((d) => {
             const end = new Date(d.만기일);
@@ -2928,23 +3001,19 @@ window.renderAssetsList = () => {
         });
     }
 
-    // 정렬 처리
     if (window.currentAssetSort === 'end') {
         depositsToRender.sort((a, b) => new Date(b.만기일) - new Date(a.만기일));
     } else {
         depositsToRender.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
     }
 
+    // (리스트 카드 렌더링 루프)
     let lastYear = null;
-
-    // 💡 4. 리스트 순회 및 렌더링
     depositsToRender.forEach((d) => {
         const calc = getDepositCalc(d);
         const owner = d.명의자 || '미상';
         const year = calc.year;
 
-        // 대시보드 통계 집계 (필터와 무관하게 전체 데이터로 유지하려면 globalDeposits 기준, 아니면 depositsToRender 기준)
-        // 여기서는 현재 뷰에 맞춰 depositsToRender 기준으로 집계합니다.
         if (!summary[year]) summary[year] = {};
         if (!summary[year][owner]) summary[year][owner] = 0;
         summary[year][owner] += calc.preTax;
@@ -2961,8 +3030,7 @@ window.renderAssetsList = () => {
                 `
                 <div class="sticky top-0 z-10 bg-gray-50/95 backdrop-blur-sm py-2 px-1 mt-4 first:mt-0">
                     <span class="text-sm font-black text-primary flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">calendar_today</span>
-                        ${displayYear}년
+                        <span class="material-symbols-outlined text-[16px]">calendar_today</span>${displayYear}년
                     </span>
                 </div>
             `
@@ -2972,8 +3040,6 @@ window.renderAssetsList = () => {
         const isMatured = d.상태 === '만기';
         const isCanceled = d.상태 === '중도해지';
         const cardOpacity = isMatured || isCanceled ? 'opacity-60 grayscale-[50%]' : '';
-
-        // 💡 뱃지 크기 미세 조정 (9px -> 10px)
         let badge = `<span class="bg-green-100 text-green-600 px-1.5 py-0.5 rounded text-[10px] font-black">운용중</span>`;
         if (isMatured)
             badge = `<span class="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-black">만기완료</span>`;
@@ -3009,8 +3075,7 @@ window.renderAssetsList = () => {
                 </div>
                 <div class="text-xs text-gray-400 flex items-center justify-between border-t border-gray-50 pt-2 mt-1">
                     <div class="flex items-center gap-1">
-                        <span class="material-symbols-outlined text-[14px]">event</span>
-                        ${d.가입일} ~ ${d.만기일}
+                        <span class="material-symbols-outlined text-[14px]">event</span>${d.가입일} ~ ${d.만기일}
                     </div>
                     <span class="text-[10px] font-medium text-gray-400 px-1 border border-gray-100 rounded">${d.과세여부 || '과세'}</span>
                 </div>
@@ -3019,12 +3084,12 @@ window.renderAssetsList = () => {
         );
     });
 
+    // (연도별 통계 대시보드 렌더링)
     const sortedYears = Object.keys(summary).sort((a, b) => b - a);
     sortedYears.forEach((year) => {
         let rowsHtml = '';
         let total = 0;
         const sortedOwners = Object.entries(summary[year]).sort((a, b) => b[1] - a[1]);
-
         for (const [owner, amount] of sortedOwners) {
             total += amount;
             rowsHtml += `
@@ -3034,7 +3099,6 @@ window.renderAssetsList = () => {
                 </div>
             `;
         }
-
         dashboard.insertAdjacentHTML(
             'beforeend',
             `
@@ -3043,9 +3107,7 @@ window.renderAssetsList = () => {
                     <span class="text-sm font-black text-gray-800">${year}년 만기</span>
                     <span class="text-xs font-black text-gray-400">총합계: ${total.toLocaleString('ko-KR')}원</span>
                 </div>
-                <div class="bg-gray-50 p-2.5 rounded-lg mt-1 border border-gray-100">
-                    ${rowsHtml}
-                </div>
+                <div class="bg-gray-50 p-2.5 rounded-lg mt-1 border border-gray-100">${rowsHtml}</div>
             </div>
         `
         );

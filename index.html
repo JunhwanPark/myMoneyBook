@@ -524,6 +524,8 @@
                         </div>
                     </div>
 
+                    <div id="assets-total-summary" class="mb-4"></div>
+
                     <div id="maturity-alert-container"></div>
                     <div id="assets-list-container" class="space-y-2 pb-4"></div>
                 </section>
@@ -541,12 +543,11 @@
 
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5">
                         <h3 class="text-xs font-bold text-gray-500 mb-3 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]">bar_chart</span
-                            >연도별 가족 이자 수익 비교
+                            <span class="material-symbols-outlined text-[14px]"
+                                >account_balance_wallet</span
+                            >명의자별 운용 자산 (원금+세후이자)
                         </h3>
-                        <div class="h-64">
-                            <canvas id="assetInterestChart"></canvas>
-                        </div>
+                        <div id="assets-stats-owner-summary" class="grid grid-cols-2 gap-2"></div>
                     </div>
 
                     <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5">
