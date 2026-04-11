@@ -2909,8 +2909,14 @@ window.renderAssetsList = () => {
                         <p class="text-sm font-black text-gray-900">${Number(d.원금).toLocaleString('ko-KR')}원</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[10px] text-indigo-400 font-bold mb-0.5">예상 세후이자</p>
-                        <p class="text-sm font-bold text-indigo-600">+${Number(d.세후이자 || 0).toLocaleString('ko-KR')}원</p>
+                        <div class="flex items-center justify-end gap-1.5 mb-1">
+                            <span class="text-[9px] text-gray-500 font-medium">세전이자</span>
+                            <span class="text-xs font-bold text-gray-600">+${Number(d.세전이자 || 0).toLocaleString('ko-KR')}원</span>
+                        </div>
+                        <div class="flex items-center justify-end gap-1.5">
+                            <span class="text-[10px] text-indigo-500 font-bold">세후이자</span>
+                            <span class="text-sm font-black text-indigo-600">+${Number(d.세후이자 || 0).toLocaleString('ko-KR')}원</span>
+                        </div>
                     </div>
                 </div>
                 <div class="text-[10px] text-gray-400 flex items-center justify-between border-t border-gray-50 pt-1.5 mt-1">
