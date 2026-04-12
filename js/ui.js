@@ -2834,7 +2834,7 @@ window.getDepositCalc = (d) => {
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
 
-// 💡 2. 자산 탭 메인 화면 그리기 (누락 복구 및 최종 완성본)
+// 💡 2. 자산 탭 메인 화면 그리기 (가로 스크롤 & 아코디언 UX 적용 완료)
 window.renderAssetsList = () => {
     const listContainer = document.getElementById('assets-list-container');
     const dashboard = document.getElementById('assets-stats-summary-dashboard');
@@ -2844,7 +2844,6 @@ window.renderAssetsList = () => {
 
     if (!listContainer || !dashboard || !ownerSummaryBox) return;
 
-    // 영역 초기화
     listContainer.innerHTML = '';
     dashboard.innerHTML = '';
     alertBox.innerHTML = '';
@@ -2863,20 +2862,16 @@ window.renderAssetsList = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let maturedCount = 0;
-    let soonCount = 0;
-    let totalP = 0; // 총 원금
-    let totalI = 0; // 총 세후이자
+    let maturedCount = 0,
+        soonCount = 0,
+        totalP = 0,
+        totalI = 0;
 
-    // ==========================================
-    // 💡 1. 전역 데이터 분석 및 집계
-    // ==========================================
     window.globalDeposits.forEach((d) => {
         const calc = getDepositCalc(d);
         const owner = d.명의자 || '미상';
         const mYear = calc.year;
 
-        // 연도별 통계 (차트/대시보드용)
         if (!yearlyStats[mYear]) yearlyStats[mYear] = {};
         if (!yearlyStats[mYear][owner]) yearlyStats[mYear][owner] = 0;
         yearlyStats[mYear][owner] += calc.preTax;
@@ -2891,7 +2886,6 @@ window.renderAssetsList = () => {
             totalP += calc.principal;
             totalI += calc.postTax;
 
-            // 명의자별 연도별 세전이자 상세 집계
             if (!ownerDetails[owner])
                 ownerDetails[owner] = { principal: 0, postTax: 0, yearlyPre: {} };
             ownerDetails[owner].principal += calc.principal;
@@ -2901,11 +2895,6 @@ window.renderAssetsList = () => {
         }
     });
 
-    // ==========================================
-    // 💡 2. 상단 요약 배너 및 통계 카드 렌더링
-    // ==========================================
-
-    // [예적금 탭] 총 예상 수령액 배너
     if (totalSummaryBox && totalP > 0) {
         const totalEstimated = totalP + totalI;
         totalSummaryBox.innerHTML = `
@@ -2928,13 +2917,12 @@ window.renderAssetsList = () => {
         `;
     }
 
-    // [통계 탭] 명의자별 요약 카드 렌더링
     const sortedOwners = Object.entries(ownerDetails).sort(
         (a, b) => b[1].principal + b[1].postTax - (a[1].principal + a[1].postTax)
     );
     if (sortedOwners.length === 0) {
         ownerSummaryBox.innerHTML =
-            '<p class="text-xs text-gray-400 text-center py-4 font-medium">운용중인 자산이 없습니다.</p>';
+            '<p class="text-xs text-gray-400 text-center py-4 font-medium w-full">운용중인 자산이 없습니다.</p>';
     } else {
         sortedOwners.forEach(([owner, data]) => {
             let yearlyHtml = '';
@@ -2943,15 +2931,16 @@ window.renderAssetsList = () => {
                 .forEach((y) => {
                     yearlyHtml += `
                     <div class="flex justify-between items-center text-[10px] mt-1">
-                        <span class="text-gray-400">${y}년 만기 세전</span>
+                        <span class="text-gray-400">${y}년 만기</span>
                         <span class="font-bold text-indigo-500">+${data.yearlyPre[y].toLocaleString('ko-KR')}원</span>
                     </div>`;
                 });
 
+            // 💡 [변경] w-[85%] shrink-0 snap-center를 적용하여 가로로 넘겨보는 카드(Carousel)로 만들었습니다.
             ownerSummaryBox.insertAdjacentHTML(
                 'beforeend',
                 `
-                <div onclick="openOwnerAssetDetail('${owner}')" class="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transition">
+                <div onclick="openOwnerAssetDetail('${owner}')" class="w-[85%] shrink-0 snap-center bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transition">
                     <div class="flex justify-between items-start mb-3 border-b border-gray-200 pb-2">
                         <span class="text-xs font-black text-gray-600 flex items-center gap-1">${owner} <span class="material-symbols-outlined text-[12px] text-gray-400">arrow_forward_ios</span></span>
                         <span class="text-[14px] font-black text-slate-800">${(data.principal + data.postTax).toLocaleString('ko-KR')}원</span>
@@ -2967,9 +2956,6 @@ window.renderAssetsList = () => {
         });
     }
 
-    // ==========================================
-    // 💡 3. 알림 배너 및 리스트 필터/정렬
-    // ==========================================
     let alertsHtml = '';
     if (window.currentAssetFilter !== 'all') {
         const filterTitle =
@@ -2985,26 +2971,10 @@ window.renderAssetsList = () => {
         `;
     } else {
         if (maturedCount > 0) {
-            alertsHtml += `
-                <div onclick="setAssetFilter('matured')" class="cursor-pointer bg-red-50 border border-red-200 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm animate-pulse hover:bg-red-100 transition">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-red-500 text-lg">notifications_active</span>
-                        <p class="text-xs font-bold text-red-700">만기된 상품이 <span class="text-lg">${maturedCount}</span>건 있습니다!</p>
-                    </div>
-                    <span class="material-symbols-outlined text-red-400">chevron_right</span>
-                </div>
-            `;
+            alertsHtml += `<div onclick="setAssetFilter('matured')" class="cursor-pointer bg-red-50 border border-red-200 rounded-xl p-3 mb-2 flex items-center justify-between shadow-sm animate-pulse hover:bg-red-100 transition"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-red-500 text-lg">notifications_active</span><p class="text-xs font-bold text-red-700">만기된 상품이 <span class="text-lg">${maturedCount}</span>건 있습니다!</p></div><span class="material-symbols-outlined text-red-400">chevron_right</span></div>`;
         }
         if (soonCount > 0) {
-            alertsHtml += `
-                <div onclick="setAssetFilter('soon')" class="cursor-pointer bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm hover:bg-amber-100 transition">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-amber-500 text-lg">schedule</span>
-                        <p class="text-xs font-bold text-amber-700">3일 내 만기 임박 상품이 <span class="text-lg">${soonCount}</span>건 있습니다.</p>
-                    </div>
-                    <span class="material-symbols-outlined text-amber-400">chevron_right</span>
-                </div>
-            `;
+            alertsHtml += `<div onclick="setAssetFilter('soon')" class="cursor-pointer bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center justify-between shadow-sm hover:bg-amber-100 transition"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-amber-500 text-lg">schedule</span><p class="text-xs font-bold text-amber-700">3일 내 만기 임박 상품이 <span class="text-lg">${soonCount}</span>건 있습니다.</p></div><span class="material-symbols-outlined text-amber-400">chevron_right</span></div>`;
         }
     }
     alertBox.innerHTML = alertsHtml;
@@ -3035,11 +3005,7 @@ window.renderAssetsList = () => {
         depositsToRender.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
     }
 
-    // ==========================================
-    // 💡 4. 예적금 리스트 카드 렌더링 루프 (이 부분이 통째로 빠져있었습니다!)
-    // ==========================================
     let lastYear = null;
-
     depositsToRender.forEach((d) => {
         const calc = getDepositCalc(d);
         const displayYear =
@@ -3109,10 +3075,10 @@ window.renderAssetsList = () => {
     });
 
     // ==========================================
-    // 💡 5. [통계 탭] 연도별 통계 대시보드 및 차트 렌더링
+    // 💡 5. [통계 탭] 연도별 통계 아코디언(접기/펴기) 적용
     // ==========================================
     const sortedYears = Object.keys(yearlyStats).sort((a, b) => b - a);
-    sortedYears.forEach((year) => {
+    sortedYears.forEach((year, index) => {
         let rowsHtml = '';
         let total = 0;
         const sortedOwners = Object.entries(yearlyStats[year]).sort((a, b) => b[1] - a[1]);
@@ -3120,28 +3086,37 @@ window.renderAssetsList = () => {
         for (const [owner, amount] of sortedOwners) {
             total += amount;
             rowsHtml += `
-                <div class="flex justify-between items-center py-1">
+                <div class="flex justify-between items-center py-1.5">
                     <span class="text-sm font-bold text-gray-600">${owner}</span>
-                    <span class="text-sm font-bold text-indigo-500">${amount.toLocaleString('ko-KR')}원</span>
+                    <span class="text-sm font-bold text-indigo-500">+${amount.toLocaleString('ko-KR')}원</span>
                 </div>
             `;
         }
 
+        // 💡 가장 최신 연도(index 0)만 열어두고, 나머지는 'hidden'으로 접어둡니다.
+        const isHidden = index === 0 ? '' : 'hidden';
+        const isRotated = index === 0 ? 'rotate-180' : '';
+
+        // 💡 화살표 아이콘과 onclick 이벤트를 통해 아코디언 기능을 구현했습니다.
         dashboard.insertAdjacentHTML(
             'beforeend',
             `
-            <div class="pt-2 pb-1">
-                <div class="flex justify-between items-end mb-1">
+            <div class="pt-2 pb-2 border-b border-gray-100 last:border-0">
+                <button onclick="document.getElementById('acc-${year}').classList.toggle('hidden'); document.getElementById('icon-${year}').classList.toggle('rotate-180');" class="w-full flex justify-between items-center focus:outline-none py-1 active:opacity-70 transition">
                     <span class="text-sm font-black text-gray-800">${year}년 만기</span>
-                    <span class="text-xs font-black text-gray-400">총합계: ${total.toLocaleString('ko-KR')}원</span>
+                    <div class="flex items-center gap-1">
+                        <span class="text-[11px] font-black text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">총합계: ${total.toLocaleString('ko-KR')}원</span>
+                        <span id="icon-${year}" class="material-symbols-outlined text-gray-400 text-[18px] transition-transform duration-200 ${isRotated}">expand_more</span>
+                    </div>
+                </button>
+                <div id="acc-${year}" class="bg-gray-50 p-3 rounded-lg mt-2 transition-all ${isHidden}">
+                    ${rowsHtml}
                 </div>
-                <div class="bg-gray-50 p-2.5 rounded-lg mt-1 border border-gray-100">${rowsHtml}</div>
             </div>
         `
         );
     });
 
-    // 마지막으로 차트 그리기
     if (typeof renderAssetChart === 'function') renderAssetChart(yearlyStats);
 };
 
