@@ -2834,22 +2834,22 @@ window.getDepositCalc = (d) => {
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
 
-// 💡 2. 자산 탭 메인 화면 그리기 (가독성 및 상세 내역 개선 버전)
+// 💡 2. 자산 탭 메인 화면 그리기 (누락 복구 및 최종 완성본)
 window.renderAssetsList = () => {
     const listContainer = document.getElementById('assets-list-container');
     const dashboard = document.getElementById('assets-stats-summary-dashboard');
     const alertBox = document.getElementById('maturity-alert-container');
-
     const totalSummaryBox = document.getElementById('assets-total-summary');
     const ownerSummaryBox = document.getElementById('assets-stats-owner-summary');
 
-    if (!listContainer || !dashboard) return;
+    if (!listContainer || !dashboard || !ownerSummaryBox) return;
 
+    // 영역 초기화
     listContainer.innerHTML = '';
     dashboard.innerHTML = '';
     alertBox.innerHTML = '';
     if (totalSummaryBox) totalSummaryBox.innerHTML = '';
-    if (ownerSummaryBox) ownerSummaryBox.innerHTML = '';
+    ownerSummaryBox.innerHTML = '';
 
     if (!window.globalDeposits || window.globalDeposits.length === 0) {
         listContainer.innerHTML =
@@ -2858,44 +2858,56 @@ window.renderAssetsList = () => {
         return;
     }
 
-    const summary = {};
+    const yearlyStats = {};
+    const ownerDetails = {};
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     let maturedCount = 0;
     let soonCount = 0;
-    let totalOperatingPrincipal = 0;
-    let totalOperatingPostTax = 0;
+    let totalP = 0; // 총 원금
+    let totalI = 0; // 총 세후이자
 
-    // 💡 명의자별 원금과 이자를 각각 관리하기 위한 객체
-    const ownerDetails = {};
-
+    // ==========================================
+    // 💡 1. 전역 데이터 분석 및 집계
+    // ==========================================
     window.globalDeposits.forEach((d) => {
-        if (d.상태 !== '만기' && d.상태 !== '중도해지') {
-            const end = new Date(d.만기일);
-            end.setHours(0, 0, 0, 0);
-            const diffDays = Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const calc = getDepositCalc(d);
+        const owner = d.명의자 || '미상';
+        const mYear = calc.year;
 
+        // 연도별 통계 (차트/대시보드용)
+        if (!yearlyStats[mYear]) yearlyStats[mYear] = {};
+        if (!yearlyStats[mYear][owner]) yearlyStats[mYear][owner] = 0;
+        yearlyStats[mYear][owner] += calc.preTax;
+
+        if (d.상태 !== '만기' && d.상태 !== '중도해지') {
+            const diffDays = Math.round(
+                (calc.end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+            );
             if (diffDays <= 0) maturedCount++;
             else if (diffDays > 0 && diffDays <= 3) soonCount++;
 
-            const principal = Number(d.원금) || 0;
-            const postTax = Number(d.세후이자) || 0;
-            const owner = d.명의자 || '미상';
+            totalP += calc.principal;
+            totalI += calc.postTax;
 
-            totalOperatingPrincipal += principal;
-            totalOperatingPostTax += postTax;
-
-            // 명의자별 합산 로직 (원금/이자 분리)
-            if (!ownerDetails[owner]) ownerDetails[owner] = { principal: 0, postTax: 0 };
-            ownerDetails[owner].principal += principal;
-            ownerDetails[owner].postTax += postTax;
+            // 명의자별 연도별 세전이자 상세 집계
+            if (!ownerDetails[owner])
+                ownerDetails[owner] = { principal: 0, postTax: 0, yearlyPre: {} };
+            ownerDetails[owner].principal += calc.principal;
+            ownerDetails[owner].postTax += calc.postTax;
+            if (!ownerDetails[owner].yearlyPre[mYear]) ownerDetails[owner].yearlyPre[mYear] = 0;
+            ownerDetails[owner].yearlyPre[mYear] += calc.preTax;
         }
     });
 
-    // 💡 [개선] 전체 운용 합계 배너 (폰트 색상 및 배경 가독성 수정)
-    if (totalSummaryBox && totalOperatingPrincipal > 0) {
-        const totalEstimated = totalOperatingPrincipal + totalOperatingPostTax;
+    // ==========================================
+    // 💡 2. 상단 요약 배너 및 통계 카드 렌더링
+    // ==========================================
+
+    // [예적금 탭] 총 예상 수령액 배너
+    if (totalSummaryBox && totalP > 0) {
+        const totalEstimated = totalP + totalI;
         totalSummaryBox.innerHTML = `
             <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 shadow-sm active:scale-[0.99] transition-transform">
                 <p class="text-emerald-700 text-xs font-bold mb-1.5 flex items-center gap-1">
@@ -2905,52 +2917,59 @@ window.renderAssetsList = () => {
                 <div class="flex justify-between text-[11px] bg-white/60 border border-emerald-100 rounded-xl p-3">
                     <div class="flex flex-col gap-0.5">
                         <span class="text-emerald-600/70 font-medium">총 납입원금</span>
-                        <span class="font-bold text-slate-700">${totalOperatingPrincipal.toLocaleString('ko-KR')}원</span>
+                        <span class="font-bold text-slate-700">${totalP.toLocaleString('ko-KR')}원</span>
                     </div>
                     <div class="flex flex-col gap-0.5 text-right">
                         <span class="text-emerald-600/70 font-medium">총 세후이자</span>
-                        <span class="font-bold text-emerald-600">+${totalOperatingPostTax.toLocaleString('ko-KR')}원</span>
+                        <span class="font-bold text-emerald-600">+${totalI.toLocaleString('ko-KR')}원</span>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    // 💡 [개선] 명의자별 요약 현황 (원금/이자 분리 표현)
-    if (ownerSummaryBox) {
-        const sortedOwners = Object.entries(ownerDetails).sort(
-            (a, b) => b[1].principal + b[1].postTax - (a[1].principal + a[1].postTax)
-        );
-        if (sortedOwners.length === 0) {
-            ownerSummaryBox.innerHTML =
-                '<p class="text-xs text-gray-400 col-span-2 text-center py-4 font-medium">운용중인 자산이 없습니다.</p>';
-        } else {
-            // (renderAssetsList 함수 내부 수정)
-            sortedOwners.forEach(([owner, data]) => {
-                const total = data.principal + data.postTax;
-                ownerSummaryBox.insertAdjacentHTML(
-                    'beforeend',
-                    `
-                    <div onclick="openOwnerAssetDetail('${owner}')" class="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex flex-col shadow-sm cursor-pointer hover:bg-gray-100 active:scale-[0.98] transition">
-                        <span class="text-[11px] font-black text-gray-500 mb-2 border-b border-gray-200 pb-1 flex justify-between items-center">
-                            ${owner}
-                            <span class="material-symbols-outlined text-[12px] text-gray-400">arrow_forward_ios</span>
-                        </span>
-                        <div class="flex flex-col gap-1">
-                            <span class="text-[14px] font-black text-slate-800 tracking-tight">${total.toLocaleString('ko-KR')}원</span>
-                            <div class="flex flex-col text-[10px] text-gray-400 leading-tight">
-                                <span>원금: ${data.principal.toLocaleString('ko-KR')}</span>
-                                <span class="text-indigo-500 font-bold">이자: +${data.postTax.toLocaleString('ko-KR')}</span>
-                            </div>
-                        </div>
-                    </div>
+    // [통계 탭] 명의자별 요약 카드 렌더링
+    const sortedOwners = Object.entries(ownerDetails).sort(
+        (a, b) => b[1].principal + b[1].postTax - (a[1].principal + a[1].postTax)
+    );
+    if (sortedOwners.length === 0) {
+        ownerSummaryBox.innerHTML =
+            '<p class="text-xs text-gray-400 text-center py-4 font-medium">운용중인 자산이 없습니다.</p>';
+    } else {
+        sortedOwners.forEach(([owner, data]) => {
+            let yearlyHtml = '';
+            Object.keys(data.yearlyPre)
+                .sort()
+                .forEach((y) => {
+                    yearlyHtml += `
+                    <div class="flex justify-between items-center text-[10px] mt-1">
+                        <span class="text-gray-400">${y}년 만기 세전</span>
+                        <span class="font-bold text-indigo-500">+${data.yearlyPre[y].toLocaleString('ko-KR')}원</span>
+                    </div>`;
+                });
+
+            ownerSummaryBox.insertAdjacentHTML(
+                'beforeend',
                 `
-                );
-            });
-        }
+                <div onclick="openOwnerAssetDetail('${owner}')" class="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transition">
+                    <div class="flex justify-between items-start mb-3 border-b border-gray-200 pb-2">
+                        <span class="text-xs font-black text-gray-600 flex items-center gap-1">${owner} <span class="material-symbols-outlined text-[12px] text-gray-400">arrow_forward_ios</span></span>
+                        <span class="text-[14px] font-black text-slate-800">${(data.principal + data.postTax).toLocaleString('ko-KR')}원</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-2">
+                        <div class="text-[10px] text-gray-400">원금: ${data.principal.toLocaleString('ko-KR')}원</div>
+                        <div class="text-[10px] text-indigo-400 text-right font-bold">이자: +${data.postTax.toLocaleString('ko-KR')}원</div>
+                    </div>
+                    <div class="bg-white/50 rounded-lg p-2 mt-2">${yearlyHtml}</div>
+                </div>
+            `
+            );
+        });
     }
 
-    // (알림 배너 로직)
+    // ==========================================
+    // 💡 3. 알림 배너 및 리스트 필터/정렬
+    // ==========================================
     let alertsHtml = '';
     if (window.currentAssetFilter !== 'all') {
         const filterTitle =
@@ -2990,7 +3009,6 @@ window.renderAssetsList = () => {
     }
     alertBox.innerHTML = alertsHtml;
 
-    // (정렬 및 리스트 필터링)
     let depositsToRender = [...window.globalDeposits];
     if (window.currentAssetFilter === 'matured') {
         depositsToRender = depositsToRender.filter((d) => {
@@ -3017,17 +3035,13 @@ window.renderAssetsList = () => {
         depositsToRender.sort((a, b) => new Date(b.가입일) - new Date(a.가입일));
     }
 
-    // (리스트 카드 렌더링 루프)
+    // ==========================================
+    // 💡 4. 예적금 리스트 카드 렌더링 루프 (이 부분이 통째로 빠져있었습니다!)
+    // ==========================================
     let lastYear = null;
+
     depositsToRender.forEach((d) => {
         const calc = getDepositCalc(d);
-        const owner = d.명의자 || '미상';
-        const year = calc.year;
-
-        if (!summary[year]) summary[year] = {};
-        if (!summary[year][owner]) summary[year][owner] = 0;
-        summary[year][owner] += calc.preTax;
-
         const displayYear =
             window.currentAssetSort === 'end'
                 ? new Date(d.만기일).getFullYear()
@@ -3094,12 +3108,15 @@ window.renderAssetsList = () => {
         );
     });
 
-    // (연도별 통계 대시보드 렌더링)
-    const sortedYears = Object.keys(summary).sort((a, b) => b - a);
+    // ==========================================
+    // 💡 5. [통계 탭] 연도별 통계 대시보드 및 차트 렌더링
+    // ==========================================
+    const sortedYears = Object.keys(yearlyStats).sort((a, b) => b - a);
     sortedYears.forEach((year) => {
         let rowsHtml = '';
         let total = 0;
-        const sortedOwners = Object.entries(summary[year]).sort((a, b) => b[1] - a[1]);
+        const sortedOwners = Object.entries(yearlyStats[year]).sort((a, b) => b[1] - a[1]);
+
         for (const [owner, amount] of sortedOwners) {
             total += amount;
             rowsHtml += `
@@ -3109,6 +3126,7 @@ window.renderAssetsList = () => {
                 </div>
             `;
         }
+
         dashboard.insertAdjacentHTML(
             'beforeend',
             `
@@ -3123,7 +3141,8 @@ window.renderAssetsList = () => {
         );
     });
 
-    renderAssetChart(summary);
+    // 마지막으로 차트 그리기
+    if (typeof renderAssetChart === 'function') renderAssetChart(yearlyStats);
 };
 
 // 💡 3. 모달 열고 닫기 로직
