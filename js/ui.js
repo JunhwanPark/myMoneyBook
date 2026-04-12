@@ -1,67 +1,4 @@
 // ==========================================
-// 🌐 다국어(i18n) 번역 엔진 및 딕셔너리
-// ==========================================
-window.appLang = localStorage.getItem('appLang') || 'ko';
-
-window.changeLanguage = (lang) => {
-    localStorage.setItem('appLang', lang);
-    window.location.reload(); // 언어 변경 시 화면을 싹 지우고 새 언어로 다시 그립니다.
-};
-
-window.i18nDict = {
-    내역: '明细',
-    달력: '日历',
-    통계: '统计',
-    설정: '设置',
-    '월 내역': '月度明细',
-    '월 달력': '月度日历',
-    '월 수입': '月收入',
-    '월 지출': '月支出',
-    지출: '支出',
-    수입: '收入',
-    누적추이: '累计趋势',
-    '현재 계정': '当前账号',
-    '앱 스킨 (배경색)': '应用主题',
-    '기본 (White)': '默认 (白)',
-    '계절 (Season)': '季节',
-    '언어 설정 (Language)': '语言设置 (Language)',
-    '신용카드 관리': '信用卡管理',
-    '카테고리 관리': '分类管理',
-    '새 내역 추가': '添加新明细',
-    '내역 수정': '修改明细',
-    저장하기: '保存',
-    수정하기: '修改',
-    삭제: '删除',
-    추가: '添加',
-    '검색어를 입력하세요': '请输入搜索词',
-    '내역이 없습니다.': '没有明细。',
-    '검색 결과가 없습니다.': '没有搜索结果。',
-    '지난달 vs 이번달 (지출)': '上月 vs 本月 (支出)',
-    '지난달 vs 이번달 (수입/지출)': '上月 vs 本月 (收入/支出)',
-    '수입 포함': '包含收入',
-    총: '总计',
-    '카드별 결제액': '按信用卡结算额',
-    기준일: '基准日',
-    '1일~말일': '1日~月底',
-    '이번달 정산될 카드 내역이 없습니다.': '本月没有要结算的信用卡明细。',
-    '지난달과 동일': '与上月相同',
-    '내역 없음': '无明细',
-    '항목 이름': '项目名称',
-    '카테고리 선택': '选择分类',
-    금액: '金额',
-    결제: '支付',
-    할인: '折扣',
-    '할인 금액': '折扣金额',
-    '상세 메모 (선택 - 줄바꿈하여 길게 입력 가능)': '详细备注 (选填)',
-    현금: '现金',
-    카드: '信用卡',
-    미분류: '未分类',
-    '과거순 (1일 ➔ 말일)': '按时间正序 (1日 ➔ 月底)',
-    '최신순 (말일 ➔ 1일)': '按时间倒序 (月底 ➔ 1日)',
-    '동기화 중...': '同步中...',
-};
-
-// ==========================================
 // 💡 작업 공간(모드) 상태 및 스마트 [+] 버튼
 // ==========================================
 window.currentAppMode = 'LEDGER'; // 기본값은 가계부(LEDGER) 모드
@@ -101,47 +38,14 @@ window.handleNavSettings = () => {
 
 // 동적으로 텍스트를 생성할 때 쓰는 번역 함수
 window.t = (koStr) => {
-    if (window.appLang === 'ko') return koStr;
-    return window.i18nDict[koStr] || koStr;
+    return koStr; // 번역 없이 무조건 한국어 그대로 반환!
 };
 
 // 공통 날짜 포맷팅 유틸리티
 window.formatDateStr = (d) => {
     const daysKo = ['일', '월', '화', '수', '목', '금', '토'];
-    const daysCn = ['日', '一', '二', '三', '四', '五', '六'];
-    if (window.appLang === 'cn') {
-        return `${d.getFullYear()}年 ${d.getMonth() + 1}月 ${d.getDate()}日 星期${daysCn[d.getDay()]}`;
-    }
     return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${daysKo[d.getDay()]}요일`;
 };
-
-// 앱 로딩 시 정적 HTML 텍스트들을 일괄 번역하는 스크립트
-window.applyStaticTranslations = () => {
-    const langSelector = document.getElementById('lang-selector');
-    if (langSelector) langSelector.value = window.appLang;
-
-    if (window.appLang === 'ko') return;
-
-    // 1. DOM 내부의 일반 텍스트 노드 치환 (태그는 건드리지 않고 글자만 바꿈)
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-    let node;
-    while ((node = walker.nextNode())) {
-        const text = node.nodeValue.trim();
-        if (window.i18nDict[text]) {
-            node.nodeValue = node.nodeValue.replace(text, window.i18nDict[text]);
-        }
-    }
-
-    // 2. Placeholder 및 Input Value 치환
-    document.querySelectorAll('input, textarea, option').forEach((el) => {
-        if (el.placeholder && window.i18nDict[el.placeholder])
-            el.placeholder = window.i18nDict[el.placeholder];
-        if (el.type === 'button' && el.value && window.i18nDict[el.value])
-            el.value = window.i18nDict[el.value];
-    });
-};
-
-document.addEventListener('DOMContentLoaded', window.applyStaticTranslations);
 
 // ==========================================
 // 🛡️ XSS 방어용 HTML 특수문자 치환 함수
@@ -159,8 +63,7 @@ window.escapeHTML = function (str) {
 window.updateMonthTitles = function () {
     const year = currentDisplayDate.getFullYear();
     const month = currentDisplayDate.getMonth() + 1;
-    // 중국어일 때는 "년 월" 대신 "年 月" 사용
-    const titleStr = window.appLang === 'cn' ? `${year}年 ${month}月` : `${year}년 ${month}월`;
+    const titleStr = `${year}년 ${month}월`; // 무조건 한국어 포맷 사용
 
     if (document.getElementById('daily-month-title'))
         document.getElementById('daily-month-title').innerText = titleStr;
@@ -2498,48 +2401,6 @@ window.goToCurrentMonth = () => {
         renderChart();
     }
 };
-
-// ==========================================
-// 🎨 앱 스킨(배경색) 제어 함수
-// ==========================================
-window.changeSkin = (skin) => {
-    localStorage.setItem('appSkin', skin); // 스마트폰에 설정 저장
-    applySkin(); // 즉시 스킨 적용
-};
-
-window.applySkin = () => {
-    const skin = localStorage.getItem('appSkin') || 'default';
-    const selectEl = document.getElementById('skin-selector');
-    if (selectEl) selectEl.value = skin;
-
-    const body = document.body;
-    if (skin === 'season') {
-        body.classList.add('theme-season');
-        const month = new Date().getMonth() + 1; // 오늘 날짜 기준 월(1~12)
-        let seasonBg = '#ffffff';
-
-        // 가장 예쁘고 가독성을 해치지 않는 Tailwind 50단계 파스텔톤 컬러 적용!
-        if (month >= 3 && month <= 5) {
-            seasonBg = '#fff1f2'; // 봄 🌸 (연한 벚꽃 핑크 - rose-50)
-        } else if (month >= 6 && month <= 8) {
-            seasonBg = '#f0f9ff'; // 여름 🍉 (시원한 바다 파랑 - sky-50)
-        } else if (month >= 9 && month <= 11) {
-            seasonBg = '#fffbeb'; // 가을 🍁 (따뜻한 단풍 베이지 - amber-50)
-        } else {
-            seasonBg = '#f8fafc'; // 겨울 ❄️ (포근한 눈꽃 회색 - slate-50)
-        }
-
-        // 전체 앱의 배경색 변수(CSS 마법)를 해당 계절색으로 교체!
-        document.documentElement.style.setProperty('--season-bg', seasonBg);
-    } else {
-        // 기본(White) 모드일 경우 원래대로 복구
-        body.classList.remove('theme-season');
-        document.documentElement.style.removeProperty('--season-bg');
-    }
-};
-
-// 💡 앱 로딩 시 마지막으로 저장된 스킨을 잊지 않고 불러옵니다.
-document.addEventListener('DOMContentLoaded', window.applySkin);
 
 // ==========================================
 // 👆 화면 스와이프(Swipe) 제스처로 탭 이동하기 (자산 모드 완벽 호환)
