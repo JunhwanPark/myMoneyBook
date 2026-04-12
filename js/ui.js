@@ -2834,7 +2834,14 @@ window.getDepositCalc = (d) => {
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
 
-// 💡 2. 자산 탭 메인 화면 그리기 (가로 스크롤 & 아코디언 UX 적용 완료)
+// 💡 미니 탭 상태 관리를 위한 전역 변수 및 함수
+window.currentOwnerStatTab = null;
+window.setOwnerStatTab = (owner) => {
+    window.currentOwnerStatTab = owner;
+    if (typeof renderAssetsList === 'function') renderAssetsList();
+};
+
+// 💡 2. 자산 탭 메인 화면 그리기 (미니 탭 높이 고정 UX 적용)
 window.renderAssetsList = () => {
     const listContainer = document.getElementById('assets-list-container');
     const dashboard = document.getElementById('assets-stats-summary-dashboard');
@@ -2920,40 +2927,61 @@ window.renderAssetsList = () => {
     const sortedOwners = Object.entries(ownerDetails).sort(
         (a, b) => b[1].principal + b[1].postTax - (a[1].principal + a[1].postTax)
     );
+
     if (sortedOwners.length === 0) {
         ownerSummaryBox.innerHTML =
             '<p class="text-xs text-gray-400 text-center py-4 font-medium w-full">운용중인 자산이 없습니다.</p>';
     } else {
-        sortedOwners.forEach(([owner, data]) => {
-            let yearlyHtml = '';
-            Object.keys(data.yearlyPre)
-                .sort()
-                .forEach((y) => {
-                    yearlyHtml += `
-                    <div class="flex justify-between items-center text-[10px] mt-1">
-                        <span class="text-gray-400">${y}년 만기</span>
-                        <span class="font-bold text-indigo-500">+${data.yearlyPre[y].toLocaleString('ko-KR')}원</span>
-                    </div>`;
-                });
+        if (!window.currentOwnerStatTab || !ownerDetails[window.currentOwnerStatTab]) {
+            window.currentOwnerStatTab = sortedOwners[0][0];
+        }
 
-            // 💡 [변경] w-[85%] shrink-0 snap-center를 적용하여 가로로 넘겨보는 카드(Carousel)로 만들었습니다.
-            ownerSummaryBox.insertAdjacentHTML(
-                'beforeend',
-                `
-                <div onclick="openOwnerAssetDetail('${owner}')" class="w-[85%] shrink-0 snap-center bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transition">
-                    <div class="flex justify-between items-start mb-3 border-b border-gray-200 pb-2">
-                        <span class="text-xs font-black text-gray-600 flex items-center gap-1">${owner} <span class="material-symbols-outlined text-[12px] text-gray-400">arrow_forward_ios</span></span>
-                        <span class="text-[14px] font-black text-slate-800">${(data.principal + data.postTax).toLocaleString('ko-KR')}원</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4 mb-2">
-                        <div class="text-[10px] text-gray-400">원금: ${data.principal.toLocaleString('ko-KR')}원</div>
-                        <div class="text-[10px] text-indigo-400 text-right font-bold">이자: +${data.postTax.toLocaleString('ko-KR')}원</div>
-                    </div>
-                    <div class="bg-white/50 rounded-lg p-2 mt-2">${yearlyHtml}</div>
-                </div>
-            `
-            );
+        let tabsHtml = `<div class="flex bg-gray-100 rounded-lg p-1 mb-3">`;
+        sortedOwners.forEach(([owner, _]) => {
+            const isActive = window.currentOwnerStatTab === owner;
+            const activeClass = isActive
+                ? 'bg-white text-gray-800 shadow-sm font-bold'
+                : 'text-gray-400 hover:text-gray-600 font-medium';
+            tabsHtml += `<button onclick="setOwnerStatTab('${owner}')" class="flex-1 py-1.5 text-[11px] rounded-md transition-all ${activeClass}">${owner}</button>`;
         });
+        tabsHtml += `</div>`;
+
+        const selectedData = ownerDetails[window.currentOwnerStatTab];
+
+        // 💡 [핵심] 글로벌 최대 만기 연도를 구하고, 고정된 3개의 슬롯을 생성합니다.
+        const allYearsInStats = Object.keys(yearlyStats).map(Number);
+        const maxYear =
+            allYearsInStats.length > 0 ? Math.max(...allYearsInStats) : new Date().getFullYear();
+        const fixedYears = [maxYear, maxYear - 1, maxYear - 2];
+
+        let yearlyHtml = '';
+        fixedYears.forEach((y) => {
+            const amt = selectedData.yearlyPre[y] || 0;
+            const amtText = amt > 0 ? `+${amt.toLocaleString('ko-KR')}` : '0';
+            const textColor = amt > 0 ? 'text-indigo-500' : 'text-gray-300 font-normal';
+
+            yearlyHtml += `
+                <div class="flex justify-between items-center text-[10px] mt-1">
+                    <span class="text-gray-400">${y}년 만기 세전</span>
+                    <span class="font-bold ${textColor}">${amtText}원</span>
+                </div>`;
+        });
+
+        const contentHtml = `
+            <div onclick="openOwnerAssetDetail('${window.currentOwnerStatTab}')" class="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-sm cursor-pointer active:scale-[0.98] transition">
+                <div class="flex justify-between items-start mb-3 border-b border-gray-200 pb-2">
+                    <span class="text-xs font-black text-gray-600 flex items-center gap-1">${window.currentOwnerStatTab} <span class="material-symbols-outlined text-[12px] text-gray-400">arrow_forward_ios</span></span>
+                    <span class="text-[14px] font-black text-slate-800">${(selectedData.principal + selectedData.postTax).toLocaleString('ko-KR')}원</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-2">
+                    <div class="text-[10px] text-gray-400">원금: ${selectedData.principal.toLocaleString('ko-KR')}원</div>
+                    <div class="text-[10px] text-indigo-400 text-right font-bold">이자: +${selectedData.postTax.toLocaleString('ko-KR')}원</div>
+                </div>
+                <div class="bg-white/50 rounded-lg p-2 mt-2">${yearlyHtml}</div>
+            </div>
+        `;
+
+        ownerSummaryBox.innerHTML = tabsHtml + contentHtml;
     }
 
     let alertsHtml = '';
@@ -3074,9 +3102,6 @@ window.renderAssetsList = () => {
         );
     });
 
-    // ==========================================
-    // 💡 5. [통계 탭] 연도별 통계 아코디언(접기/펴기) 적용
-    // ==========================================
     const sortedYears = Object.keys(yearlyStats).sort((a, b) => b - a);
     sortedYears.forEach((year, index) => {
         let rowsHtml = '';
@@ -3093,11 +3118,9 @@ window.renderAssetsList = () => {
             `;
         }
 
-        // 💡 가장 최신 연도(index 0)만 열어두고, 나머지는 'hidden'으로 접어둡니다.
         const isHidden = index === 0 ? '' : 'hidden';
         const isRotated = index === 0 ? 'rotate-180' : '';
 
-        // 💡 화살표 아이콘과 onclick 이벤트를 통해 아코디언 기능을 구현했습니다.
         dashboard.insertAdjacentHTML(
             'beforeend',
             `
