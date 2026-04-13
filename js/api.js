@@ -204,7 +204,31 @@ window.loadDailyRecords = async (isSilent = false) => {
     }
 };
 
-window.saveRecord = () => {
+window.saveRecord = async (e) => {
+    // 폼 제출 시 새로고침 등 기본 이벤트 방지 (필요 시)
+    if (e) e.preventDefault();
+
+    const saveBtn = document.getElementById('save-btn');
+
+    // 🛡️ 방어 1단계: 중복 클릭 및 다중 요청 원천 차단
+    if (saveBtn && saveBtn.disabled) return;
+
+    const originalBtnText = saveBtn ? saveBtn.innerText : '저장';
+    if (saveBtn) {
+        saveBtn.disabled = true; // 버튼 잠금
+        saveBtn.innerText = '저장 중...';
+        saveBtn.classList.add('opacity-50', 'cursor-not-allowed'); // 시각적 비활성화
+    }
+
+    // 💡 유효성 검사에 걸리거나 에러 시 버튼을 원래대로 되돌리는 헬퍼 함수
+    const restoreButton = () => {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerText = originalBtnText;
+            saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    };
+
     const type = document.querySelector('input[name="type"]:checked').value;
     const date = document.getElementById('input-date').value;
     const category = document.getElementById('input-category').value;
@@ -218,7 +242,9 @@ window.saveRecord = () => {
         .replace(/-/g, '');
     const rawDiscount = document.getElementById('input-discount').value.replace(/,/g, '');
 
+    // 💡 유효성 검사 실패 시 버튼 잠금을 꼭 풀어주어야 합니다!
     if (!date || rawAmount === '' || !itemName) {
+        restoreButton();
         return alert('필수 항목(날짜, 항목 이름, 금액)을 입력해주세요.');
     }
 
@@ -230,7 +256,10 @@ window.saveRecord = () => {
     let paymentMethod = '현금';
     if (type === 'expense' && payType === 'card') {
         paymentMethod = document.getElementById('input-card-select').value;
-        if (!paymentMethod) return alert('카드를 선택해주세요.');
+        if (!paymentMethod) {
+            restoreButton(); // 카드 미선택 시에도 잠금 해제
+            return alert('카드를 선택해주세요.');
+        }
     }
 
     const memo = `${itemName}\nPAY:${paymentMethod}\nDISC:${discountVal}\n${memoDetail}`;
@@ -251,10 +280,9 @@ window.saveRecord = () => {
         memo,
     };
 
-    // 🚀 1. 딜레이 제로(0초): 모달창 즉시 닫기
-    closeAddModal();
+    // 🚀 2단계: 딜레이 제로(0초) 낙관적 업데이트 시작!
+    closeAddModal(); // 모달창 즉시 닫기
 
-    // 🚀 2. 낙관적 업데이트: 서버 응답을 기다리지 않고 화면에 먼저 그려버리기!
     const optimisticData = {
         ID: recordId,
         Date: date + 'T00:00:00.000Z',
@@ -270,7 +298,7 @@ window.saveRecord = () => {
     } else {
         const idx = globalData.findIndex((d) => d.ID === recordId);
         if (idx > -1) {
-            // 💡 백엔드와 동일하게 기존 위치에서 빼서 맨 뒤로 넣습니다. (최신순 상단 노출용)
+            // 백엔드와 동일하게 기존 위치에서 빼서 맨 뒤로 넣습니다. (최신순 상단 노출용)
             globalData.splice(idx, 1);
             globalData.push(optimisticData);
         }
@@ -281,22 +309,33 @@ window.saveRecord = () => {
     if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
     if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
     const statsTab = document.getElementById('view-stats');
-    if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function')
+    if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function') {
         renderChart();
+    }
 
-    // 🚀 3. 백그라운드 동기화 (로딩 스피너 완전 제거!)
-    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.status === 'success') {
-                // 성공 시 화면 깜빡임 없이 조용히(isSilent=true) 서버 데이터와 싱크 맞추기
-                loadDailyRecords(true);
-            }
-        })
-        .catch((e) => {
-            alert('저장 중 네트워크 오류가 발생하여 이전 상태로 복구됩니다.');
-            loadDailyRecords(true);
+    // 🛡️ 3단계: 안전한 백그라운드 동기화 (try...catch...finally 구조 적용)
+    try {
+        const response = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload),
         });
+        const data = await response.json();
+
+        if (data.status === 'success') {
+            // 성공 시 화면 깜빡임 없이 조용히(isSilent=true) 서버 데이터와 싱크 맞추기
+            loadDailyRecords(true);
+        } else {
+            throw new Error('Server Return Error'); // 서버 내부 오류 발생 시 catch로 던짐
+        }
+    } catch (e) {
+        console.error('Data sync failed:', e);
+        alert('저장 중 통신 오류가 발생하여 안전한 원본 데이터로 복구됩니다.');
+        loadDailyRecords(true); // 에러 발생 시 원본 데이터로 롤백
+    } finally {
+        // 성공하든 실패하든, 통신이 완전히 끝나면 버튼 잠금을 해제합니다.
+        // 나중에 모달을 다시 열었을 때 버튼이 눌려있는 상태를 방지합니다.
+        restoreButton();
+    }
 };
 
 window.deleteRecord = () => {
