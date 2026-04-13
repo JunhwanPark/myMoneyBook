@@ -1,13 +1,12 @@
 // ==========================================
-// 💡 작업 공간(모드) 상태 및 스마트 [+] 버튼
+// 💡 1. 전역 상태 및 스마트 버튼 제어
 // ==========================================
-window.currentAppMode = 'LEDGER'; // 기본값은 가계부(LEDGER) 모드
+window.currentAppMode = 'LEDGER';
 
 window.handleMainPlusClick = () => {
-    // 자산 모드일 때는 예적금 모달을, 평소에는 일반 가계부 추가 모달을 띄웁니다!
-    if (window.currentAppMode === 'ASSETS') {
+    if (window.currentAppMode === 'ASSETS' && typeof openDepositModal === 'function') {
         openDepositModal();
-    } else {
+    } else if (typeof openAddModal === 'function') {
         openAddModal();
     }
 };
@@ -36,20 +35,14 @@ window.handleNavSettings = () => {
     else switchTab('settings', '설정', btn);
 };
 
-// 동적으로 텍스트를 생성할 때 쓰는 번역 함수
-window.t = (koStr) => {
-    return koStr; // 번역 없이 무조건 한국어 그대로 반환!
-};
-
-// 공통 날짜 포맷팅 유틸리티
+// ==========================================
+// 💡 2. 공통 UI 유틸리티 (날짜, 포맷팅, 뱃지)
+// ==========================================
 window.formatDateStr = (d) => {
     const daysKo = ['일', '월', '화', '수', '목', '금', '토'];
     return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${daysKo[d.getDay()]}요일`;
 };
 
-// ==========================================
-// 🛡️ XSS 방어용 HTML 특수문자 치환 함수
-// ==========================================
 window.escapeHTML = function (str) {
     if (!str) return '';
     return String(str)
@@ -60,9 +53,31 @@ window.escapeHTML = function (str) {
         .replace(/'/g, '&#039;');
 };
 
+window.applyTopRanks = (list) => {
+    list.forEach((item) => (item.rankBadge = ''));
+
+    const expenses = list
+        .filter((d) => d.Type === 'expense' && Number(d.Amount) > 0)
+        .sort((a, b) => Number(b.Amount) - Number(a.Amount));
+    const incomes = list
+        .filter((d) => d.Type === 'income' && Number(d.Amount) > 0)
+        .sort((a, b) => Number(b.Amount) - Number(a.Amount));
+
+    expenses.slice(0, 3).forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-red-600 bg-red-50 px-1 py-0.5 rounded border border-red-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
+    });
+
+    incomes.slice(0, 3).forEach((item, index) => {
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+        item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
+    });
+};
+
+// ==========================================
+// 💡 3. 화면(탭) 및 국가(테마) 전환 엔진
+// ==========================================
 window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
-    // 💡 자산 모드에서 탈출할 때 원래 테마(KR/CN)로 색상 복구!
-    // 👇 수정됨: tabId가 'assets'로 시작하지 않을 때만 탈출로 간주합니다! (assets, assets-settings 모두 무사 통과)
     if (window.currentAppMode === 'ASSETS' && !tabId.startsWith('assets')) {
         window.currentAppMode = 'LEDGER';
         document.body.classList.remove('theme-assets');
@@ -96,7 +111,6 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
     const searchInput = document.getElementById('search-input');
     const clearBtn = document.getElementById('search-clear-btn');
 
-    // 검색창에 글씨가 남아있으면 비우고 리스트 원상복구
     if (searchInput && searchInput.value !== '') {
         searchInput.value = '';
         if (clearBtn) clearBtn.classList.add('hidden');
@@ -105,61 +119,53 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         }
     }
 
-    // 💡 애니메이션 방향 계산 (현재 탭과 이동할 탭의 순서 비교)
     const tabOrder = ['daily', 'monthly', 'stats', 'settings'];
     const currentActive = document.querySelector('.tab-content.active');
     let currentTabId = 'daily';
-    if (currentActive) {
-        currentTabId = currentActive.id.replace('view-', '');
-    }
+    if (currentActive) currentTabId = currentActive.id.replace('view-', '');
 
     const currentIndex = tabOrder.indexOf(currentTabId);
     const newIndex = tabOrder.indexOf(tabId);
 
-    let direction = 'right'; // 기본 방향
-    if (forceDirection) {
-        direction = forceDirection; // 스와이프 시 강제 지정된 방향
-    } else if (currentIndex !== -1 && newIndex !== -1) {
-        direction = newIndex > currentIndex ? 'right' : 'left'; // 하단 버튼 클릭 시 방향 계산
-    }
+    let direction =
+        forceDirection ||
+        (currentIndex !== -1 && newIndex !== -1 && newIndex > currentIndex ? 'right' : 'left');
 
-    // 기존 탭 숨기기 및 애니메이션 클래스 초기화
     document.querySelectorAll('.tab-content').forEach((el) => {
         el.classList.remove('active', 'slide-in-right', 'slide-in-left');
     });
 
-    // 새 탭 띄우기 및 방향에 맞는 애니메이션 장착!
     const targetTab = document.getElementById('view-' + tabId);
-    targetTab.classList.add('active');
-    if (direction === 'right') {
-        targetTab.classList.add('slide-in-right');
-    } else {
-        targetTab.classList.add('slide-in-left');
+    if (targetTab) {
+        targetTab.classList.add('active');
+        targetTab.classList.add(direction === 'right' ? 'slide-in-right' : 'slide-in-left');
     }
 
-    // 하단 버튼 색상 변경
     document.querySelectorAll('.nav-btn').forEach((btn) => {
         btn.classList.remove('text-primary');
         btn.classList.add('text-gray-400');
     });
     if (btnElement) btnElement.classList.replace('text-gray-400', 'text-primary');
 
-    // 각 탭에 맞는 렌더링 함수 실행
-    if (tabId === 'daily') {
+    // 분리된 모듈들의 함수 호출
+    if (tabId === 'daily' && typeof renderDailyList === 'function') {
         renderDailyList(globalData);
     } else if (tabId === 'monthly') {
         if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
-
-        // 💡 제가 억지로 넣었던 setTimeout 등의 잡다한 로직을 빼고, 잘 작동하던 원본으로 복구!
         if (typeof calendar === 'undefined' || !calendar) {
             if (typeof initCalendar === 'function') initCalendar();
         } else {
-            setTimeout(() => calendar.render(), 10);
+            setTimeout(() => {
+                calendar.updateSize();
+                if (typeof renderCalendarEvents === 'function') renderCalendarEvents();
+            }, 300);
         }
-    } else if (tabId === 'stats') {
+    } else if (tabId === 'stats' && typeof renderChart === 'function') {
         renderChart();
-    } else if (tabId === 'assets' || tabId === 'assets-stats') {
-        // 👈 assets-stats(자산 통계) 탭 조건 추가!
+    } else if (
+        (tabId === 'assets' || tabId === 'assets-stats') &&
+        typeof renderAssetsList === 'function'
+    ) {
         renderAssetsList();
     }
 };
@@ -171,7 +177,6 @@ window.switchCountry = function (mode) {
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     const badge = document.getElementById('exchange-rate-badge');
 
-    // 1. 모든 상단 버튼의 불을 끕니다.
     if (btnKr)
         btnKr.className =
             'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
@@ -182,37 +187,29 @@ window.switchCountry = function (mode) {
         btnAssets.className =
             'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
 
-    // ==========================================
-    // 💰 자산 (ASSETS) 모드를 선택했을 때
-    // ==========================================
     if (mode === 'ASSETS') {
         window.currentAppMode = 'ASSETS';
-        if (badge) badge.classList.add('hidden'); // 환율 뱃지 숨김
+        if (badge) badge.classList.add('hidden');
 
-        // 💡 1) 하단 네비게이션 아이콘 & 텍스트를 자산 전용으로 변경
         document.getElementById('nav-icon-main').innerText = 'savings';
         document.getElementById('nav-label-main').innerText = '예적금';
         document.getElementById('nav-icon-sub').innerText = 'payments';
         document.getElementById('nav-label-sub').innerText = '배당금';
         document.getElementById('nav-label-stats').innerText = '통계';
 
-        // 💡 2) 초록색 자산 테마 입히기
         document.body.classList.remove('theme-cn');
         document.body.classList.add('theme-assets');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981');
 
-        // 상단 '자산' 버튼에 불 켜기
         if (btnAssets)
             btnAssets.className =
                 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
 
-        // 💡 3) 기존 화면 모두 숨기고 자산 리스트 화면 띄우기
         document
             .querySelectorAll('.tab-content')
             .forEach((el) => el.classList.remove('active', 'slide-in-right', 'slide-in-left'));
         document.getElementById('view-assets').classList.add('active', 'slide-in-right');
 
-        // 💡 4) 하단 버튼 색상 초기화 후 '예적금(main)' 버튼만 초록색 불 켜기
         document.querySelectorAll('.nav-btn').forEach((btn) => {
             btn.classList.remove('text-primary');
             btn.classList.add('text-gray-400');
@@ -220,40 +217,33 @@ window.switchCountry = function (mode) {
         const mainNavBtn = document.getElementById('nav-btn-main');
         if (mainNavBtn) mainNavBtn.classList.replace('text-gray-400', 'text-primary');
 
-        renderAssetsList(); // 예적금 데이터 그리기
+        if (typeof renderAssetsList === 'function') renderAssetsList();
         return;
     }
 
-    // ==========================================
-    // 🇰🇷/🇨🇳 국가(가계부) 모드를 선택했을 때
-    // ==========================================
     window.currentAppMode = 'LEDGER';
-    document.body.classList.remove('theme-assets'); // 초록색 테마 벗기기
+    document.body.classList.remove('theme-assets');
 
-    // 💡 1) 하단 네비게이션 아이콘 & 텍스트를 가계부 전용으로 원상복구
     document.getElementById('nav-icon-main').innerText = 'list_alt';
     document.getElementById('nav-label-main').innerText = '내역';
     document.getElementById('nav-icon-sub').innerText = 'calendar_month';
     document.getElementById('nav-label-sub').innerText = '달력';
     document.getElementById('nav-label-stats').innerText = '통계';
 
-    // 💡 2) 국가가 진짜로 변경되었을 때만 데이터 다시 불러오기
-    if (currentCountry !== mode) {
+    if (typeof currentCountry !== 'undefined' && currentCountry !== mode) {
         currentCountry = mode;
-        loadDailyRecords();
-    } else {
-        // 이미 중국 모드인데 자산에서 돌아왔다면 환율 뱃지 복구
-        if (mode === 'CN' && typeof fetchExchangeRate === 'function') fetchExchangeRate();
+        if (typeof loadDailyRecords === 'function') loadDailyRecords();
+    } else if (mode === 'CN' && typeof fetchExchangeRate === 'function') {
+        fetchExchangeRate();
     }
 
-    // 💡 3) 선택한 국가에 맞는 파란색/빨간색 테마 입히기
     if (mode === 'KR') {
         document.body.classList.remove('theme-cn');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
         if (btnKr)
             btnKr.className =
                 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
-        if (badge) badge.classList.add('hidden'); // 한국 모드는 환율 뱃지 숨김
+        if (badge) badge.classList.add('hidden');
     } else {
         document.body.classList.add('theme-cn');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
@@ -262,7 +252,6 @@ window.switchCountry = function (mode) {
                 'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
     }
 
-    // 💡 4) 자산 모드에서 탈출한 경우, 가계부의 '내역' 탭으로 강제 이동시켜 자연스럽게 복구
     const activeTab = document.querySelector('.tab-content.active');
     if (activeTab && activeTab.id.startsWith('view-assets')) {
         const mainNavBtn = document.getElementById('nav-btn-main');
@@ -271,85 +260,75 @@ window.switchCountry = function (mode) {
 };
 
 // ==========================================
-// 🏆 리스트 내 Top 1~3 랭킹 뱃지 생성기 (디자인 개선)
+// 💡 4. 환율 및 지역(Timezone) 설정
 // ==========================================
-window.applyTopRanks = (list) => {
-    list.forEach((item) => (item.rankBadge = ''));
-
-    const expenses = list
-        .filter((d) => d.Type === 'expense' && Number(d.Amount) > 0)
-        .sort((a, b) => Number(b.Amount) - Number(a.Amount));
-    const incomes = list
-        .filter((d) => d.Type === 'income' && Number(d.Amount) > 0)
-        .sort((a, b) => Number(b.Amount) - Number(a.Amount));
-
-    expenses.slice(0, 3).forEach((item, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        // 💡 shrink-0 추가 및 텍스트를 'TOP 1' -> '1위'로 축소
-        item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-red-600 bg-red-50 px-1 py-0.5 rounded border border-red-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
-    });
-
-    incomes.slice(0, 3).forEach((item, index) => {
-        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-        item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
-    });
+window.getKrwEquivalent = (cnyAmount) => {
+    if (typeof currentCountry === 'undefined' || currentCountry !== 'CN') return null;
+    const savedRate = localStorage.getItem('cachedCnyRate');
+    const rate = savedRate ? parseFloat(savedRate.replace(/,/g, '')) : 185.0;
+    return Math.round(Number(cnyAmount) * rate).toLocaleString('ko-KR') + '원';
 };
 
-// ==========================================
-// 🚀 앱 버전(Git Commit SHA) 자동 불러오기 기능
-// ==========================================
-window.fetchAppVersion = async () => {
-    const githubUser = 'JunhwanPark';
-    const githubRepo = 'myMoneyBook';
-    const branch = 'main';
+window.updateKrwGuide = () => {
+    const amountInput = document.getElementById('input-amount');
+    const guideEl = document.getElementById('krw-guide-text');
+    if (!amountInput || !guideEl) return;
 
-    const shaEl = document.getElementById('app-version-sha');
-    const dateEl = document.getElementById('app-version-date');
+    if (typeof currentCountry === 'undefined' || currentCountry !== 'CN') {
+        guideEl.classList.add('hidden');
+        return;
+    }
 
-    if (!shaEl || !dateEl) return;
-
-    try {
-        const res = await fetch(
-            `https://api.github.com/repos/${githubUser}/${githubRepo}/commits?sha=${branch}&per_page=1`
-        );
-
-        if (!res.ok) throw new Error('Network response was not ok');
-
-        const data = await res.json();
-
-        if (data && data.length > 0) {
-            const latestCommit = data[0];
-
-            // 1. Short SHA 추출 (앞 7자리)
-            const shortSha = latestCommit.sha.substring(0, 7);
-
-            // 2. 날짜 포맷팅 (한국 시간 기준)
-            const commitDate = new Date(latestCommit.commit.author.date);
-            const dateStr = `${commitDate.getFullYear()}.${String(commitDate.getMonth() + 1).padStart(2, '0')}.${String(commitDate.getDate()).padStart(2, '0')} ${String(commitDate.getHours()).padStart(2, '0')}:${String(commitDate.getMinutes()).padStart(2, '0')}`;
-
-            shaEl.innerText = shortSha;
-            dateEl.innerText = dateStr;
+    const val = amountInput.value.replace(/,/g, '');
+    if (val && !isNaN(val)) {
+        const krw = getKrwEquivalent(val);
+        if (krw) {
+            guideEl.innerText = `약 ${krw}`;
+            guideEl.classList.remove('hidden');
         }
-    } catch (error) {
-        console.error('버전 정보를 불러오지 못했습니다.', error);
-        shaEl.innerText = 'unknown';
-        dateEl.innerText = '업데이트 확인 불가';
+    } else {
+        guideEl.classList.add('hidden');
     }
 };
 
-// 앱 로딩이 완료되면 즉시 버전 정보를 가져옵니다.
-document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
+window.initCountryByTimezone = () => {
+    try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const isChina = tz === 'Asia/Shanghai' || tz === 'Asia/Urumqi';
+        window.currentCountry = isChina ? 'CN' : 'KR';
+
+        const btnKr = document.getElementById('btn-kr');
+        const btnCn = document.getElementById('btn-cn');
+
+        if (window.currentCountry === 'KR') {
+            document.body.classList.remove('theme-cn');
+            if (btnKr)
+                btnKr.className =
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
+            if (btnCn)
+                btnCn.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+        } else {
+            document.body.classList.add('theme-cn');
+            if (btnCn)
+                btnCn.className =
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
+            if (btnKr)
+                btnKr.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+        }
+    } catch (e) {
+        console.warn('타임존 인식 실패, 기본값으로 시작합니다.');
+    }
+};
+document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
 
 // ==========================================
-// 👆 화면 스와이프(Swipe) 제스처로 탭 이동하기 (자산 모드 완벽 호환)
+// 💡 5. 제스처(스와이프) 및 히스토리(뒤로가기) 감지
 // ==========================================
 (function initSwipeNavigation() {
-    let touchStartX = 0;
-    let touchStartY = 0;
-    let touchEndX = 0;
-    let touchEndY = 0;
-
-    // 스와이프 이벤트를 감지할 메인 영역을 잡습니다.
+    let touchStartX = 0,
+        touchStartY = 0,
+        touchEndX = 0,
+        touchEndY = 0;
     const mainArea = document.querySelector('main');
     if (!mainArea) return;
 
@@ -376,14 +355,11 @@ document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
         const deltaX = touchEndX - touchStartX;
         const deltaY = touchEndY - touchStartY;
 
-        // X축(가로) 이동 거리가 50px 이상이고, Y축(세로) 스크롤보다 클 때만 스와이프로 인정!
         if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
             const activeTabSection = document.querySelector('.tab-content.active');
             if (!activeTabSection) return;
 
             const activeTabId = activeTabSection.id.replace('view-', '');
-
-            // 💡 핵심: 현재 모드(LEDGER vs ASSETS)에 따라 스와이프할 탭의 종류와 순서를 다르게 세팅합니다!
             let tabOrder = ['daily', 'monthly', 'stats', 'settings'];
             let tabNames = ['내역', '달력', '통계', '설정'];
             const navBtnIds = ['nav-btn-main', 'nav-btn-sub', 'nav-btn-stats', 'nav-btn-settings'];
@@ -397,51 +373,40 @@ document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
             if (currentIndex === -1) return;
 
             let direction = 'right';
-
-            // 👈 화면을 왼쪽으로 밀었을 때 (다음 탭으로)
             if (deltaX < 0) {
                 currentIndex = (currentIndex + 1) % tabOrder.length;
-                direction = 'right'; // 새 화면이 오른쪽에서 밀려 들어옴
-            }
-            // 👉 화면을 오른쪽으로 밀었을 때 (이전 탭으로)
-            else {
+                direction = 'right';
+            } else {
                 currentIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
-                direction = 'left'; // 새 화면이 왼쪽에서 밀려 들어옴
+                direction = 'left';
             }
 
             const nextTabId = tabOrder[currentIndex];
             const nextTabName = tabNames[currentIndex];
-            // 💡 숨은 버그 픽스: onclick 문자열 매칭 대신, 고정된 ID로 하단 버튼을 정확히 타겟팅합니다.
             const nextBtn = document.getElementById(navBtnIds[currentIndex]);
 
             if (nextTabId && nextBtn) {
-                // 방향(direction) 변수를 끝에 같이 넘겨줍니다!
                 window.switchTab(nextTabId, nextTabName, nextBtn, direction);
             }
         }
     }
 })();
 
-// ==========================================
-// 💡 브라우저 뒤로 가기(History API) 자동 감지 엔진 (자산 모달 추가)
-// ==========================================
 (function initModalHistoryManager() {
     window.modalStack = [];
     window.isProgrammaticBack = false;
 
-    // 💡 우리 앱에서 사용하는 모든 팝업창(모달)의 ID 목록입니다. (자산 모달 추가 완료!)
     const modalIds = [
         'add-modal',
         'card-modal',
         'category-modal',
         'weekly-modal',
         'card-detail-modal',
-        'deposit-modal', // 👈 예적금 입력 모달
-        'asset-config-modal', // 👈 자산 설정 모달
+        'deposit-modal',
+        'asset-config-modal',
         'asset-owner-detail-modal',
     ];
 
-    // 💡 마법의 핵심: MutationObserver로 팝업들의 'hidden' 클래스 변화를 실시간으로 감시합니다.
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.attributeName === 'class') {
@@ -453,28 +418,19 @@ document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
                     const isInStack = window.modalStack.includes(id);
 
                     if (!isHidden && !isInStack) {
-                        // 1. 모달이 화면에 나타났을 때 (가짜 페이지 이동 기록을 하나 만듭니다)
                         window.modalStack.push(id);
                         history.pushState({ modal: id }, '', '');
                     } else if (isHidden && isInStack) {
-                        // 2. 사용자가 화면의 [X] 버튼이나 취소를 눌러 정상적으로 닫았을 때
                         window.modalStack = window.modalStack.filter((mId) => mId !== id);
-
-                        // 이미 닫혔으니 뒤로가기 기록도 코드로 조용히 한 칸 지워줍니다.
                         window.isProgrammaticBack = true;
                         history.back();
-
-                        // 약간의 시간차 후 플래그 해제
-                        setTimeout(() => {
-                            window.isProgrammaticBack = false;
-                        }, 100);
+                        setTimeout(() => (window.isProgrammaticBack = false), 100);
                     }
                 }
             }
         });
     });
 
-    // 앱이 켜질 때, 모든 모달 팝업의 옷(class)에 감시 카메라를 달아줍니다.
     document.addEventListener('DOMContentLoaded', () => {
         modalIds.forEach((id) => {
             const el = document.getElementById(id);
@@ -482,15 +438,10 @@ document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
         });
     });
 
-    // 💡 스마트폰에서 진짜 '물리적 뒤로 가기' 제스처를 했을 때의 동작을 가로챕니다!
     window.addEventListener('popstate', (e) => {
         if (window.isProgrammaticBack) return;
-
-        // 화면에 열려있는 모달이 있다면? (앱이 꺼지는 대신 모달만 닫게 함)
         if (window.modalStack.length > 0) {
             const topModalId = window.modalStack.pop();
-
-            // 💡 자산 모달 닫기 함수들도 분기에 연결해 줍니다!
             if (topModalId === 'add-modal' && typeof closeAddModal === 'function') closeAddModal();
             else if (topModalId === 'card-modal' && typeof closeCardModal === 'function')
                 closeCardModal();
@@ -504,98 +455,52 @@ document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
             )
                 closeCardDetailModal();
             else if (topModalId === 'deposit-modal' && typeof closeDepositModal === 'function')
-                closeDepositModal(); // 👈 자산 입력 모달 닫기
+                closeDepositModal();
             else if (
                 topModalId === 'asset-config-modal' &&
                 typeof closeAssetConfigModal === 'function'
             )
-                closeAssetConfigModal(); // 👈 자산 설정 모달 닫기
+                closeAssetConfigModal();
             else if (
                 topModalId === 'asset-owner-detail-modal' &&
                 typeof closeOwnerAssetDetail === 'function'
             )
-                closeOwnerAssetDetail(); // 👈 명의자 상세 내역 모달 닫기
+                closeOwnerAssetDetail();
         }
     });
 })();
 
 // ==========================================
-// 💡 CNY -> KRW 환산 금액 계산기 (수정본)
+// 💡 6. 앱 버전(GitHub SHA) 로더
 // ==========================================
-window.getKrwEquivalent = (cnyAmount) => {
-    // 👇 window.currentCountry 대신 전역 변수 currentCountry를 직접 확인합니다!
-    if (currentCountry !== 'CN') return null;
+window.fetchAppVersion = async () => {
+    const githubUser = 'JunhwanPark';
+    const githubRepo = 'myMoneyBook';
+    const branch = 'main';
+    const shaEl = document.getElementById('app-version-sha');
+    const dateEl = document.getElementById('app-version-date');
 
-    // 로컬 스토리지에서 캐싱된 환율 가져오기 (없으면 기본값 185.0)
-    const savedRate = localStorage.getItem('cachedCnyRate');
-    const rate = savedRate ? parseFloat(savedRate.replace(/,/g, '')) : 185.0;
+    if (!shaEl || !dateEl) return;
 
-    const krw = Math.round(Number(cnyAmount) * rate);
-    return krw.toLocaleString('ko-KR') + (window.appLang === 'cn' ? '韩元' : '원');
-};
-
-window.updateKrwGuide = () => {
-    const amountInput = document.getElementById('input-amount');
-    const guideEl = document.getElementById('krw-guide-text');
-    if (!amountInput || !guideEl) return;
-
-    // 👇 여기도 마찬가지로 window. 부분을 제거합니다!
-    if (currentCountry !== 'CN') {
-        guideEl.classList.add('hidden');
-        return;
-    }
-
-    const val = amountInput.value.replace(/,/g, '');
-    if (val && !isNaN(val)) {
-        const krw = getKrwEquivalent(val);
-        if (krw) {
-            guideEl.innerText = window.appLang === 'cn' ? `约 ${krw}` : `약 ${krw}`;
-            guideEl.classList.remove('hidden');
-        }
-    } else {
-        guideEl.classList.add('hidden');
-    }
-};
-
-// ==========================================
-// 🌍 접속 지역(타임존) 기반 국가 모드 자동 설정
-// ==========================================
-window.initCountryByTimezone = () => {
     try {
-        // 1. 브라우저/스마트폰에 설정된 타임존 가져오기 (예: 'Asia/Seoul', 'Asia/Shanghai')
-        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const res = await fetch(
+            `https://api.github.com/repos/${githubUser}/${githubRepo}/commits?sha=${branch}&per_page=1`
+        );
+        if (!res.ok) throw new Error('Network response was not ok');
+        const data = await res.json();
 
-        // 2. 중국 본토 타임존인지 확인 (상해, 북경, 심천 모두 Asia/Shanghai 하나로 통일됨)
-        const isChina = tz === 'Asia/Shanghai' || tz === 'Asia/Urumqi';
+        if (data && data.length > 0) {
+            const latestCommit = data[0];
+            const shortSha = latestCommit.sha.substring(0, 7);
+            const commitDate = new Date(latestCommit.commit.author.date);
+            const dateStr = `${commitDate.getFullYear()}.${String(commitDate.getMonth() + 1).padStart(2, '0')}.${String(commitDate.getDate()).padStart(2, '0')} ${String(commitDate.getHours()).padStart(2, '0')}:${String(commitDate.getMinutes()).padStart(2, '0')}`;
 
-        // 3. 전역 상태 변수 업데이트
-        currentCountry = isChina ? 'CN' : 'KR';
-
-        // 4. 앱 상단의 토글 버튼 디자인과 테마를 타임존에 맞게 세팅 (데이터 로딩 없이 UI만!)
-        const btnKr = document.getElementById('btn-kr');
-        const btnCn = document.getElementById('btn-cn');
-
-        if (currentCountry === 'KR') {
-            document.body.classList.remove('theme-cn');
-            if (btnKr)
-                btnKr.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
-            if (btnCn)
-                btnCn.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
-        } else {
-            document.body.classList.add('theme-cn');
-            if (btnCn)
-                btnCn.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
-            if (btnKr)
-                btnKr.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+            shaEl.innerText = shortSha;
+            dateEl.innerText = dateStr;
         }
-
-        console.log(`🌍 현재 타임존: ${tz} -> ${currentCountry} 모드로 시작합니다.`);
-    } catch (e) {
-        console.warn('타임존 인식에 실패하여 기본 모드로 시작합니다.', e);
+    } catch (error) {
+        shaEl.innerText = 'unknown';
+        dateEl.innerText = '업데이트 확인 불가';
     }
 };
-
-// HTML 문서(DOM)가 모두 그려지자마자 가장 먼저 타임존을 파악해서 세팅합니다.
-document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
+document.addEventListener('DOMContentLoaded', window.fetchAppVersion);
