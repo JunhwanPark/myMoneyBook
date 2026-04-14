@@ -10,11 +10,19 @@
     --text-muted: #6b7280;
 }
 
-/* 중국 테마 (Red/Rose) */
+/* 중국 모드 테마 (Red/Rose) */
 body.theme-cn {
-    --theme-color: #e11d48; /* 중국 테마: Rose (중국) */
+    --theme-color: #e11d48;
     --theme-hover: #be123c;
     --theme-light: #ffe4e6;
+}
+
+/* 💡 자산 모드 테마 (Emerald) - 변수만 바꿔치기하여 극강의 효율성 달성 */
+body.theme-assets {
+    --theme-color: #10b981;
+    --theme-hover: #059669;
+    --theme-light: #d1fae5;
+    transition: background-color 0.5s ease-in-out;
 }
 
 /* ==========================================
@@ -56,7 +64,7 @@ body {
 }
 
 /* ==========================================
-   3. 공통 컴포넌트 스타일 (Primary Theme)
+   3. 공통 컴포넌트 스타일 (테마 변수 연동)
    ========================================== */
 .bg-primary {
     background-color: var(--theme-color) !important;
@@ -69,6 +77,9 @@ body {
 }
 .bg-primary-light {
     background-color: var(--theme-light) !important;
+}
+.border-primary {
+    border-color: var(--theme-color) !important;
 }
 
 /* ==========================================
@@ -83,18 +94,16 @@ nav {
 }
 
 /* ==========================================
-   5. 달력 커스텀 (카드형 디자인)
+   5. 달력 커스텀 (카드형 디자인 완벽 핏)
    ========================================== */
-/* [추가] 달력 상단 헤더 버튼 (이전달, 다음달, 오늘) 배경 투명화 */
 .fc-toolbar .fc-button {
     background-color: transparent !important;
     border: none !important;
-    color: var(--text-muted) !important; /* 연한 회색 */
+    color: var(--text-muted) !important;
     box-shadow: none !important;
     padding: 4px 8px !important;
 }
 
-/* 버튼을 눌렀을 때나 마우스 올렸을 때 살짝 포인트 색상만 나타나게 */
 .fc-toolbar .fc-button:hover,
 .fc-toolbar .fc-button:active,
 .fc-toolbar .fc-button:focus {
@@ -104,14 +113,12 @@ nav {
     box-shadow: none !important;
 }
 
-/* 년/월 타이틀 폰트 세련되게 */
 .fc-toolbar-title {
     font-size: 1.1rem !important;
     font-weight: 800 !important;
     color: var(--text-main) !important;
 }
 
-/* 1. 달력 전체 뼈대 및 기본 실선 완벽 제거 */
 #calendar,
 .fc-theme-standard .fc-scrollgrid {
     border: none !important;
@@ -121,7 +128,6 @@ nav {
     border: none !important;
 }
 
-/* 2. 요일 헤더 (일, 월, 화...) */
 .fc-col-header-cell {
     padding: 10px 0 !important;
     font-weight: 700 !important;
@@ -129,38 +135,41 @@ nav {
     font-size: 11px;
 }
 
-/* 3. 개별 날짜 카드 간격 (이 여백이 카드를 분리해줍니다) */
 .fc-daygrid-day {
     padding: 1.5px !important;
 }
 
-/* 4. 날짜 카드 본체 디자인 (높이 강제 고정) */
+/* 💡 HTML에 있던 min-height, margin-top 등 미세 조정값 병합 */
 .fc-daygrid-day-frame {
     background-color: #ffffff;
     border: 1px solid #f3f4f6 !important;
     border-radius: 12px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-    height: 65px !important; /* min-height 대신 height로 고정! */
-    overflow: hidden !important; /* 내용이 많아도 카드가 커지지 않게 잘라냄 */
+    min-height: 45px !important;
+    height: 65px !important;
+    overflow: hidden !important;
     display: flex;
     flex-direction: column;
 }
 
-/* [수정] 카드 안쪽 이벤트(금액)들이 차지하는 공간 정렬 */
 .fc-daygrid-day-events {
     margin: 0 !important;
-    padding: 0 0.5px !important; /* 좌우 여백을 줄여서 왼쪽으로 당김 */
+    margin-bottom: 0 !important;
+    padding: 0 0.5px !important;
     display: flex;
     flex-direction: column;
     gap: 1px !important;
 }
 
-/* 5. 날짜 숫자 위치 이동 (우측 -> 좌측 상단) */
+.fc-daygrid-event-harness {
+    margin-top: 1px !important;
+}
+
 .fc-daygrid-day-top {
     display: flex;
-    justify-content: flex-start !important; /* 좌측 정렬 */
-    flex-direction: row !important; /* 기본 방향(row-reverse 무효화) */
-    padding: 4px 4px 0px 4px !important; /* 기존보다 상하좌우 여백을 대폭 줄여서 바짝 붙임 */
+    justify-content: flex-start !important;
+    flex-direction: row !important;
+    padding: 4px 4px 0px 4px !important;
 }
 
 .fc-daygrid-day-number {
@@ -170,15 +179,12 @@ nav {
     padding: 0 !important;
 }
 
-/* 6. 오늘 날짜 강조 (카드 배경색 제거, 날짜 숫자만 포인트) */
 .fc-day-today .fc-daygrid-day-frame {
-    /* 기존에 있던 배경색과 테두리 강조 속성을 지우고 기본값으로 돌립니다 */
     background-color: #ffffff !important;
     border-color: #f3f4f6 !important;
 }
 
 .fc-day-today .fc-daygrid-day-number {
-    /* 날짜 숫자에만 색상 유지 */
     background-color: var(--theme-color) !important;
     color: #ffffff !important;
     border-radius: 4px;
@@ -187,19 +193,19 @@ nav {
     margin-left: 0 !important;
 }
 
-/* 7. 달력 내 금액 텍스트 디자인 */
 .fc-event {
     border: none !important;
     background: transparent !important;
-    padding: 0 2px !important; /* 내부 패딩을 최소화하여 글씨를 왼쪽으로 밀착 */
-    margin-bottom: 0 !important; /* 줄 간격을 넓히던 하단 마진 완벽 제거 (절반 이하로 줄어듦) */
+    padding: 0 2px !important;
+    margin-bottom: 0 !important;
     pointer-events: none !important;
 }
+
 .fc-event-title {
     font-weight: 800 !important;
     font-size: 9px !important;
     letter-spacing: -0.5px;
-    line-height: 1.1 !important; /* 텍스트 자체의 줄 높이도 타이트하게 압축 */
+    line-height: 1.1 !important;
 }
 
 /* ==========================================
@@ -218,9 +224,36 @@ textarea:focus {
     box-shadow: 0 0 0 2px var(--theme-light);
 }
 
-/* ==========================================
-   💡 수입 탭 선택 시 마이너스 버튼 자동 숨김
-   ========================================== */
 form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
     display: none !important;
+}
+
+/* ==========================================
+   7. 💡 탭 전환 스와이프 슬라이드 애니메이션 (HTML에서 이동됨)
+   ========================================== */
+@keyframes slideInFromRight {
+    0% {
+        transform: translateX(20%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+@keyframes slideInFromLeft {
+    0% {
+        transform: translateX(-20%);
+        opacity: 0;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+.slide-in-right {
+    animation: slideInFromRight 0.2s ease-out forwards;
+}
+.slide-in-left {
+    animation: slideInFromLeft 0.2s ease-out forwards;
 }
