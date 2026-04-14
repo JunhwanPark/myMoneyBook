@@ -251,25 +251,42 @@
                         </button>
                     </div>
 
-                    <div class="relative mb-4">
-                        <span
-                            class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-[18px]"
-                            >search</span
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="relative flex-1">
+                            <span
+                                class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-[18px]"
+                                >search</span
+                            >
+                            <input
+                                type="text"
+                                id="search-input"
+                                oninput="handleSearch()"
+                                placeholder="검색어를 입력하세요"
+                                class="w-full bg-white border border-gray-100 shadow-sm pl-9 pr-9 py-2.5 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                            />
+                            <button
+                                id="search-clear-btn"
+                                onclick="clearSearch()"
+                                class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 flex items-center justify-center"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </div>
+
+                        <label
+                            class="flex items-center gap-1.5 shrink-0 cursor-pointer bg-white border border-gray-100 px-3 py-2.5 rounded-2xl shadow-sm active:scale-95 transition-all"
                         >
-                        <input
-                            type="text"
-                            id="search-input"
-                            oninput="handleSearch()"
-                            placeholder="검색어를 입력하세요"
-                            class="w-full bg-white border border-gray-100 shadow-sm pl-9 pr-9 py-2.5 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        />
-                        <button
-                            id="search-clear-btn"
-                            onclick="clearSearch()"
-                            class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 flex items-center justify-center"
-                        >
-                            <span class="material-symbols-outlined text-[18px]">close</span>
-                        </button>
+                            <input
+                                type="checkbox"
+                                id="search-current-month-only"
+                                onchange="handleSearch()"
+                                class="w-3.5 h-3.5 text-blue-500 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <span
+                                class="text-[11px] font-bold text-gray-500 whitespace-nowrap select-none"
+                                >이번달</span
+                            >
+                        </label>
                     </div>
 
                     <div id="daily-list-container"></div>

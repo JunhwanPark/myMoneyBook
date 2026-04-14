@@ -110,9 +110,17 @@ window.renderDailyList = (data, searchKeyword = '') => {
     let filtered = [];
     const isSearching = searchKeyword.trim().length > 0;
 
+    // 👇 1. 추가: 체크박스가 켜져 있는지 확인합니다.
+    const isCurrentMonthOnly = document.getElementById('search-current-month-only')?.checked;
+
     if (isSearching) {
         const kw = searchKeyword.trim().toLowerCase();
         filtered = data.filter((d) => {
+            // 👇 2. 추가: '이번 달만 검색'이 켜져 있는데, 날짜가 이번 달(prefix)이 아니면 무조건 제외!
+            if (isCurrentMonthOnly && !d.Date?.startsWith(prefix)) {
+                return false;
+            }
+
             const catLabel = globalCategories.find((c) => c.Value === d.Category)?.Label || '';
             const parts = d.Memo ? d.Memo.split('|') : [];
             if (parts.length > 1) parts[1] = '';
