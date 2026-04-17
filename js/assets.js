@@ -869,34 +869,27 @@ window.renderDividendsList = () => {
     summaryContainer.innerHTML = '';
     listContainer.innerHTML = '';
 
-    const TAX_LIMIT = 20000000;
-
     if (Object.keys(ownerTotals).length === 0) {
         summaryContainer.innerHTML = `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center text-sm text-gray-400">이번 연도 배당 내역이 없습니다.</div>`;
     } else {
+        // 💡 한도 계산 및 프로그레스 바 관련 변수를 모두 제거하고 심플하게 구성합니다.
         for (const [owner, totals] of Object.entries(ownerTotals)) {
-            const percent = Math.min((totals.preTax / TAX_LIMIT) * 100, 100).toFixed(1);
-            const barColor = percent >= 80 ? 'bg-red-500' : 'bg-indigo-500';
-            const textColor = percent >= 80 ? 'text-red-600' : 'text-indigo-600';
-
             summaryContainer.insertAdjacentHTML(
                 'beforeend',
                 `
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 transition hover:shadow-md mb-3">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-sm font-bold text-gray-800 flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-gray-400">person</span>${owner}</span>
-                        <span class="text-xs font-black ${textColor}">세전 ${totals.preTax.toLocaleString('ko-KR')}원</span>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 transition hover:shadow-md mb-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm font-bold text-gray-800 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[16px] text-gray-400">person</span>${owner}
+                        </span>
+                        <div class="text-right">
+                            <span class="text-[10px] text-gray-500 mr-1">세전 합계:</span>
+                            <span class="text-xs font-black text-indigo-600">${totals.preTax.toLocaleString('ko-KR')}원</span>
+                        </div>
                     </div>
-                    <div class="w-full bg-gray-100 rounded-full h-2.5 mb-1 overflow-hidden flex">
-                        <div class="${barColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
-                    </div>
-                    <div class="flex justify-between text-[9px] font-medium text-gray-400 mt-1">
-                        <span>진행률: ${percent}%</span>
-                        <span>한도: 2,000만원</span>
-                    </div>
-                    <div class="text-right mt-2 pt-2 border-t border-gray-50">
-                        <span class="text-[10px] text-gray-500 mr-1">세후 실수령 합계:</span>
-                        <span class="text-xs font-black text-gray-700">${totals.postTax.toLocaleString('ko-KR')}원</span>
+                    <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
+                        <span class="text-[10px] text-gray-400 font-medium">세후 실수령액</span>
+                        <span class="text-sm font-black text-gray-800">${totals.postTax.toLocaleString('ko-KR')}원</span>
                     </div>
                 </div>
             `
@@ -930,7 +923,7 @@ window.renderDividendsList = () => {
     });
 };
 
-// 💡 배당금 모달 열기 함수
+// 💡 배당금 모달 열기 및 데이터 매핑 (버그 수정 및 스마트 추출 기능 포함)
 window.openDividendModal = (id = null) => {
     const modal = document.getElementById('dividend-modal');
     const form = document.getElementById('dividend-form');
@@ -944,27 +937,57 @@ window.openDividendModal = (id = null) => {
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     document.getElementById('div-input-date').value = dateStr;
 
+    // 💡 수정된 렌더링 함수: 전역 변수 참조 오류 해결 & 명의자 자동 추출!
     const safeRenderSelect = (elId, type, placeholder) => {
         const el = document.getElementById(elId);
         if (!el) return;
+
         const orderKey = 'assetOrder_' + type;
         const savedOrder = JSON.parse(localStorage.getItem(orderKey)) || [];
-        const options = (window.globalCategories || [])
-            .filter((c) => c.Type === type)
-            .sort((a, b) => {
-                const idxA = savedOrder.indexOf(a.Value);
-                const idxB = savedOrder.indexOf(b.Value);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-                return a.Label.localeCompare(b.Label);
+
+        // 1. 설정(Settings)에서 등록한 카테고리 정상적으로 불러오기 (window. 제거)
+        let baseCategories = [];
+        if (typeof globalCategories !== 'undefined') {
+            baseCategories = globalCategories.filter((c) => c.Type === type);
+        }
+
+        // 2. 명의자의 경우, 기존 예적금 및 배당금 시트에 있는 이름들을 긁어와서 자동 추가!
+        if (type === 'asset_owner') {
+            const existingOwners = new Set();
+            if (typeof window.globalDeposits !== 'undefined') {
+                window.globalDeposits.forEach((d) => {
+                    if (d.명의자) existingOwners.add(d.명의자);
+                });
+            }
+            if (typeof window.globalDividends !== 'undefined') {
+                window.globalDividends.forEach((d) => {
+                    if (d.Owner) existingOwners.add(d.Owner);
+                });
+            }
+            existingOwners.forEach((owner) => {
+                // 설정에 등록 안 된 이름만 드롭다운에 임시로 쏙 추가해줍니다.
+                if (!baseCategories.find((c) => c.Label === owner)) {
+                    baseCategories.push({ Type: 'asset_owner', Value: owner, Label: owner });
+                }
             });
+        }
+
+        const options = baseCategories.sort((a, b) => {
+            const idxA = savedOrder.indexOf(a.Value);
+            const idxB = savedOrder.indexOf(b.Value);
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+            return a.Label.localeCompare(b.Label);
+        });
+
         el.innerHTML = `<option value="">${placeholder}</option>`;
         options.forEach((c) =>
             el.insertAdjacentHTML('beforeend', `<option value="${c.Label}">${c.Label}</option>`)
         );
     };
 
+    // 증권사와 명의자 드롭다운에 데이터 주입
     safeRenderSelect('div-input-owner', 'asset_owner', '명의자 선택');
     safeRenderSelect('div-input-broker', 'asset_broker', '증권사 선택 (설정에서 추가)');
 
@@ -973,7 +996,7 @@ window.openDividendModal = (id = null) => {
         if (d) {
             document.getElementById('dividend-modal-title').innerText = '배당금 수정';
             document.getElementById('div-input-id').value = d.ID;
-            document.getElementById('div-input-date').value = d.Date; // 영어 헤더!
+            document.getElementById('div-input-date').value = d.Date;
             document.getElementById('div-input-stock').value = d.Stock;
             if (d.Owner) document.getElementById('div-input-owner').value = d.Owner;
             if (d.Broker) document.getElementById('div-input-broker').value = d.Broker;
