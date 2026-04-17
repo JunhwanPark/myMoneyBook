@@ -829,3 +829,260 @@ window.closeOwnerAssetDetail = () => {
     document.getElementById('asset-owner-detail-modal-content').classList.add('translate-y-full');
     setTimeout(() => modal.classList.add('hidden'), 300);
 };
+
+// ==========================================
+// 📊 배당금(Dividends) 탭 전용 렌더링 및 기능 (영어 헤더 지원판)
+// ==========================================
+window.globalDividends = window.globalDividends || [];
+
+window.renderDividendsList = () => {
+    const summaryContainer = document.getElementById('dividends-summary-container');
+    const listContainer = document.getElementById('dividends-list-container');
+    const yearSelect = document.getElementById('dividend-year-select');
+    if (!summaryContainer || !listContainer || !yearSelect) return;
+
+    // 1. 연도 셀렉터 구성 (영어 Date 키 사용)
+    const years = [
+        ...new Set(window.globalDividends.map((d) => new Date(d.Date).getFullYear())),
+    ].sort((a, b) => b - a);
+    const currentYear = new Date().getFullYear();
+    if (!years.includes(currentYear)) years.unshift(currentYear);
+
+    const selectedYear = parseInt(yearSelect.value) || currentYear;
+    yearSelect.innerHTML = years
+        .map((y) => `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}년</option>`)
+        .join('');
+
+    const yearData = window.globalDividends.filter(
+        (d) => new Date(d.Date).getFullYear() === selectedYear
+    );
+
+    // 2. 명의자별 세전(Gross)/세후(Net) 합계 계산
+    const ownerTotals = {};
+    yearData.forEach((d) => {
+        const owner = d.Owner || '미상';
+        if (!ownerTotals[owner]) ownerTotals[owner] = { preTax: 0, postTax: 0 };
+        ownerTotals[owner].preTax += Number(d.Gross) || 0;
+        ownerTotals[owner].postTax += Number(d.Net) || 0;
+    });
+
+    summaryContainer.innerHTML = '';
+    listContainer.innerHTML = '';
+
+    const TAX_LIMIT = 20000000;
+
+    if (Object.keys(ownerTotals).length === 0) {
+        summaryContainer.innerHTML = `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center text-sm text-gray-400">이번 연도 배당 내역이 없습니다.</div>`;
+    } else {
+        for (const [owner, totals] of Object.entries(ownerTotals)) {
+            const percent = Math.min((totals.preTax / TAX_LIMIT) * 100, 100).toFixed(1);
+            const barColor = percent >= 80 ? 'bg-red-500' : 'bg-indigo-500';
+            const textColor = percent >= 80 ? 'text-red-600' : 'text-indigo-600';
+
+            summaryContainer.insertAdjacentHTML(
+                'beforeend',
+                `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 transition hover:shadow-md mb-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm font-bold text-gray-800 flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-gray-400">person</span>${owner}</span>
+                        <span class="text-xs font-black ${textColor}">세전 ${totals.preTax.toLocaleString('ko-KR')}원</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-2.5 mb-1 overflow-hidden flex">
+                        <div class="${barColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                    </div>
+                    <div class="flex justify-between text-[9px] font-medium text-gray-400 mt-1">
+                        <span>진행률: ${percent}%</span>
+                        <span>한도: 2,000만원</span>
+                    </div>
+                    <div class="text-right mt-2 pt-2 border-t border-gray-50">
+                        <span class="text-[10px] text-gray-500 mr-1">세후 실수령 합계:</span>
+                        <span class="text-xs font-black text-gray-700">${totals.postTax.toLocaleString('ko-KR')}원</span>
+                    </div>
+                </div>
+            `
+            );
+        }
+    }
+
+    yearData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+    yearData.forEach((d) => {
+        listContainer.insertAdjacentHTML(
+            'beforeend',
+            `
+            <div onclick="openDividendModal('${d.ID}')" class="bg-white px-3 py-2.5 rounded-xl border border-gray-100 flex justify-between items-center cursor-pointer active:scale-[0.99] transition shadow-sm hover:bg-gray-50 mb-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 mb-1">
+                        <span class="text-sm font-black text-gray-800 truncate">${d.Stock}</span>
+                        <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100">${d.Owner}</span>
+                    </div>
+                    <div class="text-[10px] text-gray-400 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[11px]">calendar_today</span>${d.Date} • ${d.Broker}
+                    </div>
+                </div>
+                <div class="text-right shrink-0 ml-3">
+                    <p class="text-[10px] text-gray-500 font-medium mb-0.5">세전 ${Number(d.Gross).toLocaleString('ko-KR')}원</p>
+                    <p class="text-sm font-black text-indigo-600 leading-none">세후 ${Number(d.Net).toLocaleString('ko-KR')}원</p>
+                </div>
+            </div>
+        `
+        );
+    });
+};
+
+// 💡 배당금 모달 열기 함수
+window.openDividendModal = (id = null) => {
+    const modal = document.getElementById('dividend-modal');
+    const form = document.getElementById('dividend-form');
+    if (!modal || !form) return;
+
+    form.reset();
+    document.getElementById('div-delete-btn').classList.add('hidden');
+    document.getElementById('dividend-modal-title').innerText = '배당금 추가';
+
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    document.getElementById('div-input-date').value = dateStr;
+
+    const safeRenderSelect = (elId, type, placeholder) => {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const orderKey = 'assetOrder_' + type;
+        const savedOrder = JSON.parse(localStorage.getItem(orderKey)) || [];
+        const options = (window.globalCategories || [])
+            .filter((c) => c.Type === type)
+            .sort((a, b) => {
+                const idxA = savedOrder.indexOf(a.Value);
+                const idxB = savedOrder.indexOf(b.Value);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+                return a.Label.localeCompare(b.Label);
+            });
+        el.innerHTML = `<option value="">${placeholder}</option>`;
+        options.forEach((c) =>
+            el.insertAdjacentHTML('beforeend', `<option value="${c.Label}">${c.Label}</option>`)
+        );
+    };
+
+    safeRenderSelect('div-input-owner', 'asset_owner', '명의자 선택');
+    safeRenderSelect('div-input-broker', 'asset_broker', '증권사 선택 (설정에서 추가)');
+
+    if (id) {
+        const d = (window.globalDividends || []).find((item) => item.ID === id);
+        if (d) {
+            document.getElementById('dividend-modal-title').innerText = '배당금 수정';
+            document.getElementById('div-input-id').value = d.ID;
+            document.getElementById('div-input-date').value = d.Date; // 영어 헤더!
+            document.getElementById('div-input-stock').value = d.Stock;
+            if (d.Owner) document.getElementById('div-input-owner').value = d.Owner;
+            if (d.Broker) document.getElementById('div-input-broker').value = d.Broker;
+            document.getElementById('div-input-pretax').value = Number(d.Gross || 0).toLocaleString(
+                'ko-KR'
+            );
+            document.getElementById('div-input-posttax').value = Number(d.Net || 0).toLocaleString(
+                'ko-KR'
+            );
+            document.getElementById('div-delete-btn').classList.remove('hidden');
+        }
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        const content = document.getElementById('dividend-modal-content');
+        if (content) content.classList.remove('translate-y-full');
+    }, 50);
+};
+
+window.closeDividendModal = () => {
+    const modal = document.getElementById('dividend-modal');
+    modal.classList.add('opacity-0');
+    document.getElementById('dividend-modal-content').classList.add('translate-y-full');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+};
+
+// 💡 배당금 저장/삭제 통신 함수
+window.saveDividend = () => {
+    const idInput = document.getElementById('div-input-id').value;
+    const payload = {
+        action: idInput ? 'update_dividend' : 'create_dividend',
+        id: idInput || 'div_' + Date.now(),
+        date: document.getElementById('div-input-date').value,
+        stock: document.getElementById('div-input-stock').value,
+        broker: document.getElementById('div-input-broker').value,
+        owner: document.getElementById('div-input-owner').value,
+        gross: document.getElementById('div-input-pretax').value.replace(/,/g, ''),
+        net: document.getElementById('div-input-posttax').value.replace(/,/g, ''),
+    };
+
+    if (
+        !payload.date ||
+        !payload.stock ||
+        !payload.broker ||
+        !payload.owner ||
+        !payload.gross ||
+        !payload.net
+    ) {
+        return alert('항목을 모두 입력해주세요.');
+    }
+
+    closeDividendModal();
+
+    // 임시로 화면에 먼저 그리기 (딜레이 방지)
+    const optimisticData = {
+        ID: payload.id,
+        Date: payload.date,
+        Stock: payload.stock,
+        Broker: payload.broker,
+        Owner: payload.owner,
+        Gross: payload.gross,
+        Net: payload.net,
+    };
+
+    if (payload.action === 'create_dividend') {
+        window.globalDividends.push(optimisticData);
+    } else {
+        const idx = window.globalDividends.findIndex((d) => d.ID === payload.id);
+        if (idx > -1) window.globalDividends[idx] = optimisticData;
+    }
+    renderDividendsList();
+
+    // 백엔드로 데이터 전송
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status === 'success' && typeof loadDailyRecords === 'function') {
+                loadDailyRecords(true);
+            }
+        })
+        .catch((e) => {
+            alert('저장 중 통신 오류가 발생했습니다. 원상 복구됩니다.');
+            if (typeof loadDailyRecords === 'function') loadDailyRecords(true);
+        });
+};
+
+window.deleteDividend = () => {
+    if (!confirm('이 배당금 내역을 삭제하시겠습니까?')) return;
+    const id = document.getElementById('div-input-id').value;
+
+    closeDividendModal();
+
+    window.globalDividends = window.globalDividends.filter((d) => d.ID !== id);
+    renderDividendsList();
+
+    fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete_dividend', id: id }),
+    })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status === 'success' && typeof loadDailyRecords === 'function') {
+                loadDailyRecords(true);
+            }
+        })
+        .catch((e) => {
+            alert('삭제 중 통신 오류가 발생했습니다. 원상 복구됩니다.');
+            if (typeof loadDailyRecords === 'function') loadDailyRecords(true);
+        });
+};

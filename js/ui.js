@@ -4,10 +4,23 @@
 window.currentAppMode = 'LEDGER';
 
 window.handleMainPlusClick = () => {
-    if (window.currentAppMode === 'ASSETS' && typeof openDepositModal === 'function') {
-        openDepositModal();
-    } else if (typeof openAddModal === 'function') {
-        openAddModal();
+    if (window.currentAppMode === 'ASSETS') {
+        // 💡 현재 어떤 자산 탭(예적금 vs 배당금)이 활성화되어 있는지 정확히 체크합니다.
+        const activeTab = document.querySelector('.tab-content.active');
+        const activeId = activeTab ? activeTab.id : '';
+
+        if (activeId === 'view-assets-dividends') {
+            // 배당금 탭일 때
+            if (typeof openDividendModal === 'function') openDividendModal();
+            else console.error('openDividendModal 함수를 찾을 수 없습니다.');
+        } else {
+            // 그 외 자산 탭(예적금, 통계 등)일 때
+            if (typeof openDepositModal === 'function') openDepositModal();
+            else console.error('openDepositModal 함수를 찾을 수 없습니다.');
+        }
+    } else {
+        // 가계부 모드일 때
+        if (typeof openAddModal === 'function') openAddModal();
     }
 };
 
@@ -167,6 +180,9 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         typeof renderAssetsList === 'function'
     ) {
         renderAssetsList();
+    } else if (tabId === 'assets-dividends') {
+        // 👇 배당금 탭으로 진입 시 배당금 리스트 그리기 함수 호출!
+        if (typeof renderDividendsList === 'function') renderDividendsList();
     }
 };
 
@@ -403,6 +419,7 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
         'weekly-modal',
         'card-detail-modal',
         'deposit-modal',
+        'dividend-modal',
         'asset-config-modal',
         'asset-owner-detail-modal',
     ];
@@ -456,6 +473,8 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
                 closeCardDetailModal();
             else if (topModalId === 'deposit-modal' && typeof closeDepositModal === 'function')
                 closeDepositModal();
+            else if (topModalId === 'dividend-modal' && typeof closeDividendModal === 'function')
+                closeDividendModal();
             else if (
                 topModalId === 'asset-config-modal' &&
                 typeof closeAssetConfigModal === 'function'

@@ -69,6 +69,32 @@ function doGet(e) {
             }
         }
 
+        // 👇 4. [신규] 배당금(Dividends) 데이터 가져오기
+        const divSheet = ss.getSheetByName('Dividends');
+        let divData = [];
+        if (divSheet) {
+            const divValues = divSheet.getDataRange().getValues();
+            if (divValues.length > 1) {
+                const headers = divValues[0];
+                const rows = divValues.slice(1);
+                divData = rows.map((row) => {
+                    let obj = {};
+                    headers.forEach((header, index) => {
+                        if (row[index] instanceof Date)
+                            obj[header] = Utilities.formatDate(
+                                row[index],
+                                Session.getScriptTimeZone(),
+                                'yyyy-MM-dd'
+                            );
+                        else obj[header] = row[index];
+                    });
+                    return obj;
+                });
+                // 최신 날짜순 정렬
+                divData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+            }
+        }
+
         // 응답 JSON에 deposits 항목을 추가해서 리턴합니다.
         return ContentService.createTextOutput(
             JSON.stringify({
@@ -76,6 +102,7 @@ function doGet(e) {
                 data: jsonData,
                 categories: catData,
                 deposits: depositData,
+                dividends: divData, // 👈 추가!
             })
         ).setMimeType(ContentService.MimeType.JSON);
     } catch (error) {
@@ -177,6 +204,69 @@ function doPost(e) {
 
                     depSheet.deleteRow(rowIndex);
                     depSheet.appendRow(rowValues);
+                }
+            }
+            return ContentService.createTextOutput(
+                JSON.stringify({ status: 'success' })
+            ).setMimeType(ContentService.MimeType.JSON);
+        }
+
+        // 👇 여기서부터 복사해서 붙여넣으세요!
+        // 💡 3. [신규] 배당금(Dividends) 전용 CRUD 로직
+        if (
+            action === 'create_dividend' ||
+            action === 'update_dividend' ||
+            action === 'delete_dividend'
+        ) {
+            const divSheet = ss.getSheetByName('Dividends');
+
+            if (action === 'create_dividend') {
+                const id = payload.id || Utilities.getUuid();
+                divSheet.appendRow([
+                    id, // A: ID
+                    payload.date, // B: Date
+                    payload.stock, // C: Stock
+                    payload.broker, // D: Broker
+                    payload.owner, // E: Owner
+                    payload.gross, // F: Gross (세전)
+                    payload.net, // G: Net (세후)
+                ]);
+                return ContentService.createTextOutput(
+                    JSON.stringify({ status: 'success' })
+                ).setMimeType(ContentService.MimeType.JSON);
+            }
+
+            const data = divSheet.getDataRange().getValues();
+            let rowIndex = -1;
+            for (let i = 1; i < data.length; i++) {
+                if (data[i][0] === payload.id) {
+                    rowIndex = i + 1;
+                    break;
+                }
+            }
+
+            if (rowIndex > -1) {
+                if (action === 'delete_dividend') {
+                    divSheet.deleteRow(rowIndex);
+                    return ContentService.createTextOutput(
+                        JSON.stringify({ status: 'success' })
+                    ).setMimeType(ContentService.MimeType.JSON);
+                }
+
+                if (action === 'update_dividend') {
+                    var rowValues = divSheet
+                        .getRange(rowIndex, 1, 1, divSheet.getLastColumn())
+                        .getValues()[0];
+
+                    rowValues[1] = payload.date;
+                    rowValues[2] = payload.stock;
+                    rowValues[3] = payload.broker;
+                    rowValues[4] = payload.owner;
+                    rowValues[5] = payload.gross;
+                    rowValues[6] = payload.net;
+
+                    divSheet.deleteRow(rowIndex);
+                    divSheet.appendRow(rowValues);
                 }
             }
             return ContentService.createTextOutput(
