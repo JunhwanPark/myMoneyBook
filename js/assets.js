@@ -256,8 +256,11 @@ window.renderAssetsList = () => {
                     ${badge}
                 </div>
                 <div class="flex justify-between items-end">
-                    <div>
-                        <p class="text-xs text-gray-500 mb-1">${d.명의자} • ${calc.months}개월 • 이율 ${Number(d.이율).toFixed(2)}%</p>
+                    <div class="flex flex-col items-start gap-1">
+                        <div class="flex items-center gap-1.5 mb-0.5">
+                            <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.명의자}</span>
+                            <span class="text-[11px] text-gray-500 font-medium">${calc.months}개월 • 이율 ${Number(d.이율).toFixed(2)}%</span>
+                        </div>
                         <p class="text-base font-black text-gray-900">${Number(d.원금).toLocaleString('ko-KR')}원</p>
                     </div>
                     <div class="text-right">
