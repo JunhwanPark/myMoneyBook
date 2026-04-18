@@ -1167,77 +1167,83 @@ window.renderCombinedAssetsStats = () => {
     });
 
     // 3. 화면 렌더링
+    // 💡 핵심: HTML의 세로 나열(space-y-4) 클래스를 지우고, 2열 그리드(grid-cols-2)로 즉시 교체!
+    limitContainer.className = 'grid grid-cols-2 gap-3 mb-6';
     limitContainer.innerHTML = '';
-    const owners = Object.keys(combinedStats).sort();
+    const owners = Object.keys(combinedStats).sort((a, b) => {
+        const totalA = combinedStats[a].deposit + combinedStats[a].dividend;
+        const totalB = combinedStats[b].deposit + combinedStats[b].dividend;
+        return totalB - totalA; // 합계 금액이 큰 순서대로(내림차순) 정렬
+    });
 
     if (owners.length === 0) {
+        limitContainer.className = 'mb-6'; // 데이터가 없을 때는 그리드 해제
         limitContainer.innerHTML = `<p class="text-center py-10 text-gray-400 text-sm">해당 연도의 금융소득 데이터가 없습니다.</p>`;
     } else {
         owners.forEach((owner) => {
             const stat = combinedStats[owner];
             const total = stat.deposit + stat.dividend;
             const percent = Math.min((total / TAX_LIMIT) * 100, 100).toFixed(1);
-            const remain = Math.max(TAX_LIMIT - total, 0);
 
             // 위험도에 따른 색상 (80% 이상시 경고)
             const isWarning = percent >= 80;
             const themeColor = isWarning ? 'text-red-500' : 'text-emerald-500';
             const barColor = isWarning ? 'bg-red-500' : 'bg-emerald-500';
 
+            // 💡 컴팩트 디자인 적용: 폰트 축소, 자간 좁히기(tracking-tighter), 뱃지 우상단 고정
             limitContainer.insertAdjacentHTML(
                 'beforeend',
                 `
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                    <div class="flex justify-between items-center mb-4">
-                        <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                <span class="material-symbols-outlined text-gray-500 text-sm">person</span>
-                            </span>
-                            <span class="font-black text-gray-800">${owner}</span>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[10px] text-gray-400 font-bold mb-0.5">합계 금융소득</p>
-                            <p class="text-base font-black ${themeColor}">${total.toLocaleString()}원</p>
-                        </div>
-                    </div>
-
-                    <div class="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden">
-                        <div class="${barColor} h-full transition-all duration-700" style="width: ${percent}%"></div>
-                    </div>
-
-                    <div class="flex justify-between text-[10px] font-bold text-gray-400">
-                        <span>진행률 ${percent}%</span>
-                        <span>한도 2,000만원</span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-50">
-                        <div class="bg-gray-50 p-2 rounded-xl text-center">
-                            <p class="text-[9px] text-gray-400 font-bold mb-0.5">예적금 이자</p>
-                            <p class="text-xs font-black text-gray-700">+${stat.deposit.toLocaleString()}원</p>
-                        </div>
-                        <div class="bg-gray-50 p-2 rounded-xl text-center">
-                            <p class="text-[9px] text-gray-400 font-bold mb-0.5">배당금 수익</p>
-                            <p class="text-xs font-black text-indigo-500">+${stat.dividend.toLocaleString()}원</p>
-                        </div>
-                    </div>
-
+                <div onclick="openCombinedOwnerDetail('${owner}', ${selectedYear})" class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between relative overflow-hidden active:scale-[0.98] transition cursor-pointer hover:bg-gray-50">
                     ${
                         isWarning
                             ? `
-                    <div class="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg">
-                        <span class="material-symbols-outlined text-[14px]">warning</span>
-                        종합과세 한도 도달 주의 (잔여: ${remain.toLocaleString()}원)
+                    <div class="absolute top-0 right-0 w-7 h-7 bg-red-50 text-red-500 rounded-bl-xl flex items-center justify-center shadow-sm">
+                        <span class="material-symbols-outlined text-[14px] font-black">priority_high</span>
                     </div>`
                             : ''
                     }
+
+                    <div class="flex items-center gap-1 mb-1.5">
+                        <span class="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-gray-400 text-[11px]">person</span>
+                        </span>
+                        <span class="font-black text-gray-800 text-[11px] truncate pr-4">${owner}</span>
+                    </div>
+
+                    <div class="mb-2">
+                        <p class="text-[14px] font-black ${themeColor} tracking-tighter leading-none">
+                            ${total.toLocaleString()}<span class="text-[9px] font-bold text-gray-400 ml-0.5">원</span>
+                        </p>
+                    </div>
+
+                    <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                        <div class="${barColor} h-full transition-all duration-700" style="width: ${percent}%"></div>
+                    </div>
+
+                    <div class="flex justify-between text-[8.5px] font-bold text-gray-400 mb-2.5">
+                        <span>${percent}%</span>
+                        <span>2천만</span>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center bg-gray-50 px-1.5 py-1 rounded-md">
+                            <span class="text-[9px] text-gray-500 font-bold">예적금</span>
+                            <span class="text-[9px] font-black text-gray-700 tracking-tighter">+${stat.deposit.toLocaleString()}</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gray-50 px-1.5 py-1 rounded-md">
+                            <span class="text-[9px] text-gray-500 font-bold">배당금</span>
+                            <span class="text-[9px] font-black text-indigo-500 tracking-tighter">+${stat.dividend.toLocaleString()}</span>
+                        </div>
+                    </div>
                 </div>
             `
             );
         });
     }
 
-    // 차트 업데이트 로직 호출 (생략 가능, 필요시 기존 차트 함수 수정)
-    updateCombinedAssetChart(selectedYear);
+    // 차트 업데이트 로직 호출
+    if (typeof updateCombinedAssetChart === 'function') updateCombinedAssetChart();
 };
 
 // ==========================================
@@ -1319,4 +1325,113 @@ const originalRenderCombined = window.renderCombinedAssetsStats;
 window.renderCombinedAssetsStats = () => {
     if (typeof originalRenderCombined === 'function') originalRenderCombined();
     if (typeof updateCombinedAssetChart === 'function') updateCombinedAssetChart();
+};
+
+// ==========================================
+// 💡 통계 탭: 명의자별 통합 금융소득 상세 모달
+// ==========================================
+window.openCombinedOwnerDetail = (owner, year) => {
+    const modal = document.getElementById('combined-owner-detail-modal');
+    const title = document.getElementById('combined-owner-detail-title');
+    const subtitle = document.getElementById('combined-owner-detail-subtitle');
+    const container = document.getElementById('combined-owner-detail-list-container');
+    if (!modal || !container) return;
+
+    title.innerText = `${owner} 님의 금융소득`;
+    subtitle.innerText = `${year}년 상세 내역`;
+    container.innerHTML = '';
+
+    // 1. 해당 연도, 해당 명의자의 예적금 데이터 가공
+    const deposits = (window.globalDeposits || [])
+        .filter(
+            (d) =>
+                d.명의자 === owner &&
+                d.상태 !== '중도해지' &&
+                new Date(d.만기일).getFullYear() === year
+        )
+        .map((d) => ({
+            id: d.ID,
+            type: 'deposit',
+            date: d.만기일,
+            title: d.은행,
+            subtitle: d.종류,
+            amount: Number(d.세전이자) || 0,
+            amountNet: Number(d.세후이자) || 0,
+            badge: '예적금 이자',
+            badgeColor: 'text-gray-600 bg-gray-100 border-gray-200',
+        }));
+
+    // 2. 해당 연도, 해당 명의자의 배당금 데이터 가공
+    const dividends = (window.globalDividends || [])
+        .filter((d) => d.Owner === owner && new Date(d.Date).getFullYear() === year)
+        .map((d) => ({
+            id: d.ID,
+            type: 'dividend',
+            date: d.Date,
+            title: d.Stock,
+            subtitle: d.Broker,
+            amount: Number(d.Gross) || 0,
+            amountNet: Number(d.Net) || 0,
+            badge: '배당금 수익',
+            badgeColor: 'text-indigo-600 bg-indigo-50 border-indigo-100',
+        }));
+
+    // 3. 두 데이터를 합쳐서 최신 날짜순으로 정렬
+    const combinedList = [...deposits, ...dividends].sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+    );
+
+    // 4. 화면에 그리기
+    if (combinedList.length === 0) {
+        container.innerHTML =
+            '<p class="text-center text-gray-400 py-10 text-sm">상세 내역이 없습니다.</p>';
+    } else {
+        combinedList.forEach((item) => {
+            // 클릭 시 해당 항목의 종류에 맞춰서 수정 모달을 영리하게 띄워줍니다.
+            const clickAction =
+                item.type === 'deposit'
+                    ? `openDepositModal('${item.id}')`
+                    : `openDividendModal('${item.id}')`;
+
+            container.insertAdjacentHTML(
+                'beforeend',
+                `
+                <div onclick="${clickAction}" class="bg-gray-50 p-4 rounded-2xl border border-gray-100 flex flex-col gap-2 transition active:scale-[0.99] cursor-pointer hover:bg-gray-100">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm font-black text-gray-800">${item.title}</span>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${item.badgeColor}">${item.badge}</span>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div class="text-xs text-gray-500">
+                            <span class="material-symbols-outlined text-[11px] align-middle mr-0.5">calendar_today</span>${item.date}
+                            <p class="mt-1 font-medium pl-4">${item.subtitle}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-[10px] text-gray-500 font-bold">세전 +${item.amount.toLocaleString('ko-KR')}원</p>
+                            <p class="text-[14px] font-black text-indigo-600 mt-0.5 tracking-tighter">세후 +${item.amountNet.toLocaleString('ko-KR')}원</p>
+                        </div>
+                    </div>
+                </div>
+            `
+            );
+        });
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        document
+            .getElementById('combined-owner-detail-modal-content')
+            .classList.remove('translate-y-full');
+    }, 10);
+};
+
+window.closeCombinedOwnerDetail = () => {
+    const modal = document.getElementById('combined-owner-detail-modal');
+    if (!modal) return;
+    modal.classList.add('opacity-0');
+    document
+        .getElementById('combined-owner-detail-modal-content')
+        .classList.add('translate-y-full');
+    setTimeout(() => modal.classList.add('hidden'), 300);
 };

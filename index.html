@@ -1400,6 +1400,38 @@
             </div>
         </div>
 
+        <div
+            id="combined-owner-detail-modal"
+            class="hidden fixed inset-0 bg-black/40 z-[95] flex items-end justify-center transition-opacity opacity-0"
+        >
+            <div
+                id="combined-owner-detail-modal-content"
+                class="bg-white w-full h-[80vh] rounded-t-3xl p-6 transform translate-y-full transition-transform flex flex-col shadow-2xl"
+            >
+                <div class="flex justify-between items-center mb-4 shrink-0">
+                    <div>
+                        <h3 class="text-lg font-bold" id="combined-owner-detail-title">
+                            상세 내역
+                        </h3>
+                        <p
+                            class="text-xs text-gray-500 font-bold"
+                            id="combined-owner-detail-subtitle"
+                        ></p>
+                    </div>
+                    <button
+                        onclick="closeCombinedOwnerDetail()"
+                        class="text-gray-400 bg-gray-50 rounded-full w-8 h-8 flex items-center justify-center active:bg-gray-100 transition"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+                <div
+                    id="combined-owner-detail-list-container"
+                    class="flex-1 overflow-y-auto no-scrollbar space-y-2 pb-6"
+                ></div>
+            </div>
+        </div>
+
         <script src="js/config.js"></script>
         <script src="js/utils.js"></script>
         <script src="js/api.js"></script>

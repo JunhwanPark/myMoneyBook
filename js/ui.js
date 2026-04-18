@@ -425,6 +425,7 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
         'dividend-modal',
         'asset-config-modal',
         'asset-owner-detail-modal',
+        'combined-owner-detail-modal',
     ];
 
     const observer = new MutationObserver((mutations) => {
@@ -488,6 +489,11 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
                 typeof closeOwnerAssetDetail === 'function'
             )
                 closeOwnerAssetDetail();
+            else if (
+                topModalId === 'combined-owner-detail-modal' &&
+                typeof closeCombinedOwnerDetail === 'function'
+            )
+                closeCombinedOwnerDetail();
         }
     });
 })();
