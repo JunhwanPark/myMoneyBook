@@ -473,6 +473,8 @@
                     </div>
 
                     <div id="assets-total-summary" class="mb-4"></div>
+                    <div id="assets-stats-owner-summary" class="mb-4"></div>
+                    <div id="assets-stats-summary-dashboard" class="mb-6"></div>
 
                     <div id="maturity-alert-container"></div>
                     <div id="assets-list-container" class="space-y-2 pb-4"></div>
@@ -500,36 +502,25 @@
                 </section>
 
                 <section id="view-assets-stats" class="tab-content">
-                    <h2 class="text-md font-semibold text-gray-700 mb-4">자산 분석</h2>
-
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5">
-                        <h3 class="text-xs font-bold text-gray-500 mb-3 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]"
-                                >account_balance_wallet</span
-                            >명의자별 운용 자산 현황
-                        </h3>
-                        <div id="assets-stats-owner-summary"></div>
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-md font-semibold text-gray-700">통합 금융소득 통계</h2>
+                        <select
+                            id="combined-stats-year-select"
+                            onchange="renderCombinedAssetsStats()"
+                            class="bg-gray-100 text-xs font-bold text-gray-700 px-2 py-1 rounded-lg outline-none border-none cursor-pointer"
+                        ></select>
                     </div>
 
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5">
-                        <h3 class="text-xs font-bold text-gray-500 mb-3 flex items-center gap-1">
+                    <div id="combined-owner-limit-container" class="space-y-4 mb-6"></div>
+
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                        <p class="text-[11px] font-bold text-gray-400 mb-3 flex items-center gap-1">
                             <span class="material-symbols-outlined text-[14px]">bar_chart</span
-                            >연도별 가족 이자 수익 비교
-                        </h3>
-                        <div class="h-64">
-                            <canvas id="assetInterestChart"></canvas>
+                            >연도별 금융소득 추이
+                        </p>
+                        <div class="h-[200px] relative">
+                            <canvas id="combinedAssetChart"></canvas>
                         </div>
-                    </div>
-
-                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5">
-                        <h3 class="text-xs font-bold text-gray-500 mb-3 flex items-center gap-1">
-                            <span class="material-symbols-outlined text-[14px]">monitoring</span
-                            >연도별 세전이자 현황
-                        </h3>
-                        <div
-                            id="assets-stats-summary-dashboard"
-                            class="space-y-3 divide-y divide-gray-50"
-                        ></div>
                     </div>
                 </section>
 

@@ -175,11 +175,14 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         }
     } else if (tabId === 'stats' && typeof renderChart === 'function') {
         renderChart();
-    } else if (
-        (tabId === 'assets' || tabId === 'assets-stats') &&
-        typeof renderAssetsList === 'function'
-    ) {
-        renderAssetsList();
+    } else if (tabId === 'assets' || tabId === 'assets-stats') {
+        // 기존: renderAssetsList();
+        // 수정: 통계 탭일 때는 통합 함수를, 목록 탭일 때는 기존 함수를 호출
+        if (tabId === 'assets-stats') {
+            if (typeof renderCombinedAssetsStats === 'function') renderCombinedAssetsStats();
+        } else {
+            if (typeof renderAssetsList === 'function') renderAssetsList();
+        }
     } else if (tabId === 'assets-dividends') {
         // 👇 배당금 탭으로 진입 시 배당금 리스트 그리기 함수 호출!
         if (typeof renderDividendsList === 'function') renderDividendsList();

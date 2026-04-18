@@ -1116,3 +1116,207 @@ window.deleteDividend = () => {
             if (typeof loadDailyRecords === 'function') loadDailyRecords(true);
         });
 };
+
+// ==========================================
+// 📈 통합 금융소득(예적금 이자 + 배당금) 통계 엔진
+// ==========================================
+window.renderCombinedAssetsStats = () => {
+    const limitContainer = document.getElementById('combined-owner-limit-container');
+    const yearSelect = document.getElementById('combined-stats-year-select');
+    if (!limitContainer || !yearSelect) return;
+
+    // 1. 데이터 수집 및 연도 추출
+    const depositData = window.globalDeposits || [];
+    const dividendData = window.globalDividends || [];
+
+    const allYears = new Set();
+    depositData.forEach((d) => allYears.add(new Date(d.만기일).getFullYear()));
+    dividendData.forEach((d) => allYears.add(new Date(d.Date).getFullYear()));
+
+    const years = [...allYears].sort((a, b) => b - a);
+    const currentYear = new Date().getFullYear();
+    if (!years.includes(currentYear)) years.unshift(currentYear);
+
+    const selectedYear = parseInt(yearSelect.value) || currentYear;
+    yearSelect.innerHTML = years
+        .map((y) => `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}년</option>`)
+        .join('');
+
+    // 2. 통합 데이터 구조 생성: { 명의자: { deposit: 0, dividend: 0, total: 0 } }
+    const combinedStats = {};
+    const TAX_LIMIT = 20000000;
+
+    // 예적금 이자 합산 (만기일 기준)
+    depositData.forEach((d) => {
+        const year = new Date(d.만기일).getFullYear();
+        if (year === selectedYear) {
+            const owner = d.명의자 || '미상';
+            if (!combinedStats[owner]) combinedStats[owner] = { deposit: 0, dividend: 0 };
+            combinedStats[owner].deposit += Number(d.세전이자) || 0;
+        }
+    });
+
+    // 배당금 합산 (지급일 기준)
+    dividendData.forEach((d) => {
+        const year = new Date(d.Date).getFullYear();
+        if (year === selectedYear) {
+            const owner = d.Owner || '미상';
+            if (!combinedStats[owner]) combinedStats[owner] = { deposit: 0, dividend: 0 };
+            combinedStats[owner].dividend += Number(d.Gross) || 0;
+        }
+    });
+
+    // 3. 화면 렌더링
+    limitContainer.innerHTML = '';
+    const owners = Object.keys(combinedStats).sort();
+
+    if (owners.length === 0) {
+        limitContainer.innerHTML = `<p class="text-center py-10 text-gray-400 text-sm">해당 연도의 금융소득 데이터가 없습니다.</p>`;
+    } else {
+        owners.forEach((owner) => {
+            const stat = combinedStats[owner];
+            const total = stat.deposit + stat.dividend;
+            const percent = Math.min((total / TAX_LIMIT) * 100, 100).toFixed(1);
+            const remain = Math.max(TAX_LIMIT - total, 0);
+
+            // 위험도에 따른 색상 (80% 이상시 경고)
+            const isWarning = percent >= 80;
+            const themeColor = isWarning ? 'text-red-500' : 'text-emerald-500';
+            const barColor = isWarning ? 'bg-red-500' : 'bg-emerald-500';
+
+            limitContainer.insertAdjacentHTML(
+                'beforeend',
+                `
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                <span class="material-symbols-outlined text-gray-500 text-sm">person</span>
+                            </span>
+                            <span class="font-black text-gray-800">${owner}</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] text-gray-400 font-bold mb-0.5">합계 금융소득</p>
+                            <p class="text-base font-black ${themeColor}">${total.toLocaleString()}원</p>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-gray-100 rounded-full h-3 mb-2 overflow-hidden">
+                        <div class="${barColor} h-full transition-all duration-700" style="width: ${percent}%"></div>
+                    </div>
+
+                    <div class="flex justify-between text-[10px] font-bold text-gray-400">
+                        <span>진행률 ${percent}%</span>
+                        <span>한도 2,000만원</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-50">
+                        <div class="bg-gray-50 p-2 rounded-xl text-center">
+                            <p class="text-[9px] text-gray-400 font-bold mb-0.5">예적금 이자</p>
+                            <p class="text-xs font-black text-gray-700">+${stat.deposit.toLocaleString()}원</p>
+                        </div>
+                        <div class="bg-gray-50 p-2 rounded-xl text-center">
+                            <p class="text-[9px] text-gray-400 font-bold mb-0.5">배당금 수익</p>
+                            <p class="text-xs font-black text-indigo-500">+${stat.dividend.toLocaleString()}원</p>
+                        </div>
+                    </div>
+
+                    ${
+                        isWarning
+                            ? `
+                    <div class="mt-3 flex items-center gap-1.5 text-[10px] font-bold text-red-500 bg-red-50 p-2 rounded-lg">
+                        <span class="material-symbols-outlined text-[14px]">warning</span>
+                        종합과세 한도 도달 주의 (잔여: ${remain.toLocaleString()}원)
+                    </div>`
+                            : ''
+                    }
+                </div>
+            `
+            );
+        });
+    }
+
+    // 차트 업데이트 로직 호출 (생략 가능, 필요시 기존 차트 함수 수정)
+    updateCombinedAssetChart(selectedYear);
+};
+
+// ==========================================
+// 📊 연도별 통합 금융소득(예적금+배당금) 차트 렌더링
+// ==========================================
+window.combinedChartInstance = null;
+
+window.updateCombinedAssetChart = () => {
+    const ctx = document.getElementById('combinedAssetChart');
+    if (!ctx) return;
+
+    const depositData = window.globalDeposits || [];
+    const dividendData = window.globalDividends || [];
+    const summary = {};
+
+    // 1. 예적금 세전 이자 수집
+    depositData.forEach((d) => {
+        if (d.상태 === '중도해지') return; // 중도해지는 이자 제외
+        const year = new Date(d.만기일).getFullYear();
+        const owner = d.명의자 || '미상';
+        if (!summary[year]) summary[year] = {};
+        if (!summary[year][owner]) summary[year][owner] = 0;
+        summary[year][owner] += Number(d.세전이자) || 0;
+    });
+
+    // 2. 배당금 세전(Gross) 수익 수집
+    dividendData.forEach((d) => {
+        const year = new Date(d.Date).getFullYear();
+        const owner = d.Owner || '미상';
+        if (!summary[year]) summary[year] = {};
+        if (!summary[year][owner]) summary[year][owner] = 0;
+        summary[year][owner] += Number(d.Gross) || 0;
+    });
+
+    const years = Object.keys(summary).sort();
+    const owners = [...new Set(years.flatMap((y) => Object.keys(summary[y])))].sort();
+
+    // 명의자별 예쁜 색상 팔레트
+    const colorPalette = ['#6366f1', '#10b981', '#f43f5e', '#f59e0b'];
+
+    const datasets = owners.map((owner, idx) => ({
+        label: owner,
+        data: years.map((year) => summary[year][owner] || 0),
+        backgroundColor: colorPalette[idx % colorPalette.length],
+        borderRadius: 4,
+    }));
+
+    if (window.combinedChartInstance) window.combinedChartInstance.destroy();
+
+    window.combinedChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: years, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { stacked: true, grid: { display: false } },
+                y: {
+                    stacked: true,
+                    border: { display: false },
+                    ticks: { callback: (v) => (v / 10000).toLocaleString() + '만' },
+                },
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: { size: 10, family: "'Pretendard', sans-serif" },
+                    },
+                },
+            },
+        },
+    });
+};
+
+// 위에서 만든 함수가 안전하게 호출되도록 기존 renderCombinedAssetsStats 내부를 덮어쓰기 위해 연결
+const originalRenderCombined = window.renderCombinedAssetsStats;
+window.renderCombinedAssetsStats = () => {
+    if (typeof originalRenderCombined === 'function') originalRenderCombined();
+    if (typeof updateCombinedAssetChart === 'function') updateCombinedAssetChart();
+};
