@@ -844,7 +844,7 @@ window.renderDividendsList = () => {
     const yearSelect = document.getElementById('dividend-year-select');
     if (!summaryContainer || !listContainer || !yearSelect) return;
 
-    // 1. 연도 셀렉터 구성 (영어 Date 키 사용)
+    // 1. 연도 셀렉터 구성
     const years = [
         ...new Set(window.globalDividends.map((d) => new Date(d.Date).getFullYear())),
     ].sort((a, b) => b - a);
@@ -857,7 +857,7 @@ window.renderDividendsList = () => {
         .join('');
 
     const yearData = window.globalDividends.filter(
-        (d) => new Date(d.Date).getFullYear() === selectedYear
+        (d) => d.Date && new Date(d.Date).getFullYear() === selectedYear
     );
 
     // 2. 명의자별 세전(Gross)/세후(Net) 합계 계산
@@ -875,7 +875,6 @@ window.renderDividendsList = () => {
     if (Object.keys(ownerTotals).length === 0) {
         summaryContainer.innerHTML = `<div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 text-center text-sm text-gray-400">이번 연도 배당 내역이 없습니다.</div>`;
     } else {
-        // 💡 한도 계산 및 프로그레스 바 관련 변수를 모두 제거하고 심플하게 구성합니다.
         for (const [owner, totals] of Object.entries(ownerTotals)) {
             summaryContainer.insertAdjacentHTML(
                 'beforeend',
@@ -887,12 +886,12 @@ window.renderDividendsList = () => {
                         </span>
                         <div class="text-right">
                             <span class="text-[10px] text-gray-500 mr-1">세전 합계:</span>
-                            <span class="text-xs font-black text-indigo-600">${totals.preTax.toLocaleString('ko-KR')}원</span>
+                            <span class="text-xs font-black text-indigo-600">+${totals.preTax.toLocaleString('ko-KR')}원</span>
                         </div>
                     </div>
                     <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50">
                         <span class="text-[10px] text-gray-400 font-medium">세후 실수령액</span>
-                        <span class="text-sm font-black text-gray-800">${totals.postTax.toLocaleString('ko-KR')}원</span>
+                        <span class="text-sm font-black text-gray-800">+${totals.postTax.toLocaleString('ko-KR')}원</span>
                     </div>
                 </div>
             `
@@ -900,7 +899,12 @@ window.renderDividendsList = () => {
         }
     }
 
-    yearData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    // 💡 3. 날짜 정렬 검토 및 보강 (안전한 Date 객체 변환 후 내림차순 정렬)
+    yearData.sort((a, b) => {
+        const dateA = new Date(a.Date).getTime();
+        const dateB = new Date(b.Date).getTime();
+        return dateB - dateA; // 최신날짜가 위로 오도록
+    });
 
     yearData.forEach((d) => {
         listContainer.insertAdjacentHTML(
@@ -910,15 +914,15 @@ window.renderDividendsList = () => {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5 mb-1">
                         <span class="text-sm font-black text-gray-800 truncate">${d.Stock}</span>
-                        <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100">${d.Owner}</span>
+                        <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.Owner}</span>
                     </div>
                     <div class="text-[10px] text-gray-400 flex items-center gap-1">
                         <span class="material-symbols-outlined text-[11px]">calendar_today</span>${d.Date} • ${d.Broker}
                     </div>
                 </div>
                 <div class="text-right shrink-0 ml-3">
-                    <p class="text-[10px] text-gray-500 font-medium mb-0.5">세전 ${Number(d.Gross).toLocaleString('ko-KR')}원</p>
-                    <p class="text-sm font-black text-indigo-600 leading-none">세후 ${Number(d.Net).toLocaleString('ko-KR')}원</p>
+                    <p class="text-[10px] text-gray-500 font-medium mb-0.5">세전 +${Number(d.Gross).toLocaleString('ko-KR')}원</p>
+                    <p class="text-sm font-black text-indigo-600 leading-none">세후 +${Number(d.Net).toLocaleString('ko-KR')}원</p>
                 </div>
             </div>
         `
