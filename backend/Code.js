@@ -1,6 +1,39 @@
+// 허용된 이메일 목록 (프론트엔드와 동일하게 설정)
+const ALLOWED_EMAILS = ['semoking@gmail.com', 'minxuan85@gmail.com'];
+
+// 💡 [신규] 프론트엔드에서 넘어온 구글 인증 마패(JWT)를 해독하여 이메일을 확인하는 함수
+function verifyGoogleToken(token) {
+    if (!token) return false;
+    try {
+        // JWT는 3부분으로 나뉘며, 두 번째 부분이 데이터(Payload)입니다.
+        const parts = token.split('.');
+        if (parts.length !== 3) return false;
+
+        // Base64 디코딩 후 JSON 파싱
+        const payloadBlob = Utilities.base64DecodeWebSafe(parts[1]);
+        const payloadString = Utilities.newBlob(payloadBlob).getDataAsString();
+        const payload = JSON.parse(payloadString);
+
+        // 해독된 이메일이 허용 목록에 있는지 검사
+        if (payload.email && ALLOWED_EMAILS.includes(payload.email)) {
+            return payload.email; // 검증 통과!
+        }
+        return false;
+    } catch (e) {
+        return false;
+    }
+}
+
 function doGet(e) {
     try {
-        const country = e.parameter.country || 'KR'; // 국가 파라미터 (기본값 KR)
+        // 🛡️ 보안 검문소: 토큰이 없거나 가짜면 즉시 쫓아냄
+        const token = e.parameter.token;
+        const verifiedEmail = verifyGoogleToken(token);
+        if (!verifiedEmail) {
+            throw new Error('Unauthorized Access: 유효하지 않은 접근입니다.');
+        }
+
+        const country = e.parameter.country || 'KR';
         const ss = SpreadsheetApp.getActiveSpreadsheet();
 
         // 1. 가계부 내역은 국가별 시트에서 가져오기
@@ -115,6 +148,14 @@ function doGet(e) {
 function doPost(e) {
     try {
         const payload = JSON.parse(e.postData.contents);
+
+        // 🛡️ 보안 검문소: 토큰이 없거나 가짜면 즉시 쫓아냄
+        const token = payload.token;
+        const verifiedEmail = verifyGoogleToken(token);
+        if (!verifiedEmail) {
+            throw new Error('Unauthorized Access: 유효하지 않은 접근입니다.');
+        }
+
         const action = payload.action || 'create';
         const country = payload.country || 'KR';
         const ss = SpreadsheetApp.getActiveSpreadsheet();

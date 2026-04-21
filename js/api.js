@@ -1,7 +1,12 @@
+// js/api.js 최상단
+window.googleAuthToken = null; // 👈 신규: 토큰 저장용 변수
+
 window.handleCredentialResponse = (response) => {
     const payload = jwt_decode(response.credential);
     if (ALLOWED_EMAILS.includes(payload.email)) {
         currentUserEmail = payload.email;
+        window.googleAuthToken = response.credential; // 👈 신규: 로그인 시 발급받은 마패를 저장!
+
         document.getElementById('settings-user-email').innerText = currentUserEmail;
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
@@ -161,7 +166,9 @@ window.loadDailyRecords = async (isSilent = false) => {
     try {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
-        const res = await fetch(`${GAS_URL}?country=${currentCountry}`);
+        const res = await fetch(
+            `${GAS_URL}?country=${currentCountry}&token=${window.googleAuthToken}`
+        );
         const result = await res.json();
 
         if (result.status === 'success') {
@@ -272,6 +279,7 @@ window.saveRecord = async (e) => {
 
     const payload = {
         action: action,
+        token: window.googleAuthToken,
         id: recordId,
         country: currentCountry,
         date,
@@ -363,6 +371,7 @@ window.deleteRecord = () => {
         method: 'POST',
         body: JSON.stringify({
             action: 'delete',
+            token: window.googleAuthToken, // 👈 💡 신분증(마패) 추가!
             id: recordId,
             country: currentCountry,
         }),
@@ -394,6 +403,7 @@ window.addCard = async () => {
             method: 'POST',
             body: JSON.stringify({
                 action: 'add_category',
+                token: window.googleAuthToken,
                 catType: `card_${currentCountry}`,
                 catLabel: `${label}|${day}`,
             }),
@@ -412,7 +422,11 @@ window.deleteCard = async (catValue) => {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'delete_category', catValue }),
+            body: JSON.stringify({
+                action: 'delete_category',
+                token: window.googleAuthToken,
+                catValue,
+            }),
         });
         if ((await res.json()).status === 'success') {
             await loadDailyRecords();
@@ -430,7 +444,12 @@ window.addCategory = async () => {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'add_category', catType: type, catLabel: label }),
+            body: JSON.stringify({
+                action: 'add_category',
+                token: window.googleAuthToken,
+                catType: type,
+                catLabel: label,
+            }),
         });
         if ((await res.json()).status === 'success') {
             document.getElementById('new-cat-label').value = '';
@@ -447,7 +466,11 @@ window.deleteCategory = async (catValue) => {
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'delete_category', catValue }),
+            body: JSON.stringify({
+                action: 'delete_category',
+                token: window.googleAuthToken,
+                catValue,
+            }),
         });
         if ((await res.json()).status === 'success') {
             await loadDailyRecords();
@@ -471,12 +494,21 @@ window.submitEditCategory = async (oldValue) => {
         // 1. 기존 데이터 삭제
         await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'delete_category', catValue: oldValue }),
+            body: JSON.stringify({
+                action: 'delete_category',
+                token: window.googleAuthToken,
+                catValue: oldValue,
+            }),
         });
         // 2. 수정된 데이터 추가
         await fetch(GAS_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'add_category', catType: type, catLabel: label }),
+            body: JSON.stringify({
+                action: 'add_category',
+                token: window.googleAuthToken,
+                catType: type,
+                catLabel: label,
+            }),
         });
 
         await loadDailyRecords();
@@ -504,6 +536,7 @@ window.submitEditCard = async (oldValue) => {
             method: 'POST',
             body: JSON.stringify({
                 action: 'add_category',
+                token: window.googleAuthToken,
                 catType: `card_${currentCountry}`,
                 catLabel: `${label}|${day}`,
             }),
