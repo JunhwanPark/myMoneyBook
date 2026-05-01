@@ -314,25 +314,33 @@ window.initCountryByTimezone = () => {
     try {
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
         const isChina = tz === 'Asia/Shanghai' || tz === 'Asia/Urumqi';
-        window.currentCountry = isChina ? 'CN' : 'KR';
+        const detectedCountry = isChina ? 'CN' : 'KR';
+
+        // 💡 핵심 버그 수정: 화면뿐만 아니라 api.js의 전역 변수도 강제로 동기화!
+        window.currentCountry = detectedCountry;
+        if (typeof currentCountry !== 'undefined') {
+            currentCountry = detectedCountry;
+        }
 
         const btnKr = document.getElementById('btn-kr');
         const btnCn = document.getElementById('btn-cn');
 
-        if (window.currentCountry === 'KR') {
+        if (detectedCountry === 'KR') {
             document.body.classList.remove('theme-cn');
             if (btnKr)
                 btnKr.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
             if (btnCn)
-                btnCn.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+                btnCn.className =
+                    'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
         } else {
             document.body.classList.add('theme-cn');
             if (btnCn)
                 btnCn.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow';
+                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
             if (btnKr)
-                btnKr.className = 'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70';
+                btnKr.className =
+                    'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
         }
     } catch (e) {
         console.warn('타임존 인식 실패, 기본값으로 시작합니다.');
