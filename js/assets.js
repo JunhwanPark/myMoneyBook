@@ -178,6 +178,7 @@ window.openDepositModal = (id = null) => {
     if (!modal || !form) return;
 
     form.reset();
+    document.getElementById('div-input-id').value = '';
     document.getElementById('dep-delete-btn').classList.add('hidden');
     document.getElementById('deposit-modal-title').innerText = '예적금 추가';
 
@@ -442,6 +443,7 @@ window.openDividendModal = (id = null) => {
     if (!modal || !form) return;
 
     form.reset();
+    document.getElementById('div-input-id').value = '';
     document.getElementById('div-delete-btn').classList.add('hidden');
     document.getElementById('dividend-modal-title').innerText = '배당금 추가';
 
