@@ -705,11 +705,28 @@ window.openCombinedOwnerDetail = (owner, year) => {
     const container = document.getElementById('combined-owner-detail-list-container');
     if (!modal || !container) return;
 
+    // 💡 [버그 픽스 1] HTML을 고치지 않아도 강제로 '어두운 배경' 클릭 시 닫기 연결
+    modal.onclick = (e) => {
+        if (e.target === modal) closeCombinedOwnerDetail();
+    };
+
+    // 💡 [버그 픽스 1] 모달 안의 'close' 글자나 '닫기' 버튼을 전부 찾아서 강제 연결
+    const closeBtns = modal.querySelectorAll('button, span');
+    closeBtns.forEach((btn) => {
+        if (btn.innerText.includes('close') || btn.innerText.includes('닫기')) {
+            btn.onclick = closeCombinedOwnerDetail;
+        }
+    });
+
+    // 💡 [버그 픽스 2] 안드로이드 물리 뒤로가기 버튼 대응 (가상의 주소 #detail 생성)
+    if (window.location.hash !== '#detail') {
+        history.pushState({ modalOpen: true }, '', '#detail');
+    }
+
     title.innerText = `${owner} 님의 금융소득`;
     subtitle.innerText = `${year}년 상세 내역`;
     container.innerHTML = '';
 
-    // 💡 수정 3: 상세 내역에서도 중도해지를 가져오고, 상태에 따라 뱃지 색상을 다르게 적용!
     const deposits = (window.globalDeposits || [])
         .filter((d) => d.명의자 === owner && new Date(d.만기일).getFullYear() === year)
         .map((d) => ({
@@ -786,6 +803,37 @@ window.openCombinedOwnerDetail = (owner, year) => {
             .classList.remove('translate-y-full');
     }, 10);
 };
+
+// 💡 모달창을 부드럽게 닫고, 뒤로가기 꼬리표를 제거하는 함수 (반드시 추가!)
+window.closeCombinedOwnerDetail = () => {
+    const modal = document.getElementById('combined-owner-detail-modal');
+    if (!modal) return;
+
+    // 1. 스르륵 사라지는 애니메이션 적용
+    modal.classList.add('opacity-0');
+    document
+        .getElementById('combined-owner-detail-modal-content')
+        .classList.add('translate-y-full');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+
+    // 2. 안드로이드 뒤로가기 방어막 해제 (주소창 꼬리표 제거)
+    if (window.location.hash === '#detail') {
+        history.back();
+    }
+};
+
+// 💡 안드로이드 스마트폰 '물리 취소(뒤로가기) 버튼' 감지 센서 (이것도 없다면 같이 추가해 주세요)
+window.addEventListener('popstate', () => {
+    const modal = document.getElementById('combined-owner-detail-modal');
+    // 뒤로가기를 눌러서 주소창에서 #detail이 사라졌는데, 모달은 떠있다면? 닫아줍니다!
+    if (modal && !modal.classList.contains('hidden') && window.location.hash !== '#detail') {
+        modal.classList.add('opacity-0');
+        document
+            .getElementById('combined-owner-detail-modal-content')
+            .classList.add('translate-y-full');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+});
 
 // ==========================================
 // 📊 5. 통합 금융소득 차트
