@@ -178,7 +178,7 @@ window.openDepositModal = (id = null) => {
     if (!modal || !form) return;
 
     form.reset();
-    document.getElementById('div-input-id').value = '';
+    document.getElementById('dep-input-id').value = '';
     document.getElementById('dep-delete-btn').classList.add('hidden');
     document.getElementById('deposit-modal-title').innerText = '예적금 추가';
 
