@@ -599,10 +599,10 @@ window.renderCombinedAssetsStats = () => {
     const yearSelect = document.getElementById('combined-stats-year-select');
     if (!limitContainer || !yearSelect) return;
 
-    // 💡 1. 누락되었던 연도 추출 및 드롭다운 생성 로직 복구
     const allYears = new Set();
     (window.globalDeposits || []).forEach((d) => {
-        if (d.상태 !== '중도해지' && d.만기일) allYears.add(new Date(d.만기일).getFullYear());
+        // 💡 수정 1: 연도 목록에 중도해지된 항목의 연도(해지일)도 포함시킵니다.
+        if (d.만기일) allYears.add(new Date(d.만기일).getFullYear());
     });
     (window.globalDividends || []).forEach((d) => {
         if (d.Date) allYears.add(new Date(d.Date).getFullYear());
@@ -612,20 +612,18 @@ window.renderCombinedAssetsStats = () => {
     const currentYear = new Date().getFullYear();
     if (!years.includes(currentYear)) years.unshift(currentYear);
 
-    // 현재 선택된 연도 파악 후 옵션 렌더링
     const selectedYear = parseInt(yearSelect.value) || currentYear;
     yearSelect.innerHTML = years
         .map((y) => `<option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}년</option>`)
         .join('');
 
-    // 💡 2. 2x2 그리드 설정 및 한도 변수
     limitContainer.className = 'grid grid-cols-2 gap-3 mb-6';
     const TAX_LIMIT = 20000000;
 
-    // 💡 3. 데이터 합산 로직
     const combinedStats = {};
     (window.globalDeposits || []).forEach((d) => {
-        if (new Date(d.만기일).getFullYear() === selectedYear && d.상태 !== '중도해지') {
+        // 💡 수정 2: 'd.상태 !== 중도해지' 조건을 삭제하여 해지 이자도 통계에 합산!
+        if (new Date(d.만기일).getFullYear() === selectedYear) {
             const owner = d.명의자 || '미상';
             if (!combinedStats[owner]) combinedStats[owner] = { deposit: 0, dividend: 0 };
             combinedStats[owner].deposit += Number(d.세전이자) || 0;
@@ -639,7 +637,6 @@ window.renderCombinedAssetsStats = () => {
         }
     });
 
-    // 💡 4. 금액 높은 순서대로 정렬
     const sortedOwners = Object.keys(combinedStats).sort((a, b) => {
         return (
             combinedStats[b].deposit +
@@ -712,13 +709,9 @@ window.openCombinedOwnerDetail = (owner, year) => {
     subtitle.innerText = `${year}년 상세 내역`;
     container.innerHTML = '';
 
+    // 💡 수정 3: 상세 내역에서도 중도해지를 가져오고, 상태에 따라 뱃지 색상을 다르게 적용!
     const deposits = (window.globalDeposits || [])
-        .filter(
-            (d) =>
-                d.명의자 === owner &&
-                d.상태 !== '중도해지' &&
-                new Date(d.만기일).getFullYear() === year
-        )
+        .filter((d) => d.명의자 === owner && new Date(d.만기일).getFullYear() === year)
         .map((d) => ({
             id: d.ID,
             type: 'deposit',
@@ -727,8 +720,11 @@ window.openCombinedOwnerDetail = (owner, year) => {
             subtitle: d.종류,
             amount: Number(d.세전이자) || 0,
             amountNet: Number(d.세후이자) || 0,
-            badge: '예적금 이자',
-            badgeColor: 'text-gray-600 bg-gray-100 border-gray-200',
+            badge: d.상태 === '중도해지' ? '중도해지' : '예적금 이자',
+            badgeColor:
+                d.상태 === '중도해지'
+                    ? 'text-red-500 bg-red-50 border-red-100'
+                    : 'text-gray-600 bg-gray-100 border-gray-200',
         }));
 
     const dividends = (window.globalDividends || [])
@@ -773,7 +769,7 @@ window.openCombinedOwnerDetail = (owner, year) => {
                         </div>
                         <div class="text-right shrink-0">
                             <p class="text-[10px] text-gray-500 font-bold">세전 +${item.amount.toLocaleString('ko-KR')}원</p>
-                            <p class="text-[14px] font-black text-indigo-600 mt-0.5 tracking-tighter">세후 +${item.amountNet.toLocaleString('ko-KR')}원</p>
+                            <p class="text-[14px] font-black ${item.badge === '배당금 수익' ? 'text-indigo-600' : item.badge === '중도해지' ? 'text-red-500' : 'text-emerald-600'} mt-0.5 tracking-tighter">세후 +${item.amountNet.toLocaleString('ko-KR')}원</p>
                         </div>
                     </div>
                 </div>
@@ -791,16 +787,6 @@ window.openCombinedOwnerDetail = (owner, year) => {
     }, 10);
 };
 
-window.closeCombinedOwnerDetail = () => {
-    const modal = document.getElementById('combined-owner-detail-modal');
-    if (!modal) return;
-    modal.classList.add('opacity-0');
-    document
-        .getElementById('combined-owner-detail-modal-content')
-        .classList.add('translate-y-full');
-    setTimeout(() => modal.classList.add('hidden'), 300);
-};
-
 // ==========================================
 // 📊 5. 통합 금융소득 차트
 // ==========================================
@@ -812,7 +798,7 @@ window.updateCombinedAssetChart = () => {
 
     const summary = {};
     (window.globalDeposits || []).forEach((d) => {
-        if (d.상태 === '중도해지') return;
+        // 💡 수정 4: 막대그래프(차트)에서도 중도해지 이자를 포함! (if(d.상태 === '중도해지') return; 삭제)
         const year = new Date(d.만기일).getFullYear();
         const owner = d.명의자 || '미상';
         if (!summary[year]) summary[year] = {};
