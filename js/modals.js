@@ -322,6 +322,7 @@ window.closeCategoryModal = () => document.getElementById('category-modal').clas
 // 💡 날짜별 상세 내역 (일간 상세 모달)
 window.openWeeklyModal = function (clickedDateStr) {
     const targetDate = clickedDateStr.substring(0, 10);
+    window.currentWeeklyModalDate = targetDate;
     const d = new Date(targetDate);
     const displayDate =
         typeof window.formatDateStr === 'function' ? window.formatDateStr(d) : targetDate;

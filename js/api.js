@@ -208,6 +208,14 @@ window.loadDailyRecords = async (isSilent = false) => {
 
         // 데이터가 변경되었을 수 있으니 화면을 다시 한번 살짝(Silent) 새로고침 합니다.
         renderDailyList(globalData);
+        if (
+            window.currentWeeklyModalDate &&
+            document.getElementById('weekly-modal') &&
+            !document.getElementById('weekly-modal').classList.contains('hidden') &&
+            typeof window.openWeeklyModal === 'function'
+        ) {
+            window.openWeeklyModal(window.currentWeeklyModalDate);
+        }
         if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
         updateMonthlyTotals();
         const statsTab = document.getElementById('view-stats');
@@ -339,6 +347,14 @@ window.saveRecord = async (e) => {
     if (typeof renderDailyList === 'function') renderDailyList(globalData);
     if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
     if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
+    if (
+        window.currentWeeklyModalDate &&
+        document.getElementById('weekly-modal') &&
+        !document.getElementById('weekly-modal').classList.contains('hidden') &&
+        typeof window.openWeeklyModal === 'function'
+    ) {
+        window.openWeeklyModal(window.currentWeeklyModalDate);
+    }
     const statsTab = document.getElementById('view-stats');
     if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function') {
         renderChart();
