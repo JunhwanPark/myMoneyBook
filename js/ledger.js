@@ -18,7 +18,11 @@ window.updateMonthTitles = function () {
 
 // 💡 월 이동 (이전달/다음달 화살표)
 window.changeGlobalMonth = (offset) => {
-    currentDisplayDate.setMonth(currentDisplayDate.getMonth() + offset);
+    currentDisplayDate = new Date(
+        currentDisplayDate.getFullYear(),
+        currentDisplayDate.getMonth() + offset,
+        1
+    );
     if (typeof updateMonthTitles === 'function') updateMonthTitles();
     if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
 
