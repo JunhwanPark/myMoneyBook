@@ -4,11 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('input', (e) => {
-            let val = e.target.value;
-            // 맨 앞에 마이너스(-)가 있는지 확인
+            const input = e.target;
+            const originalValue = input.value;
+            const originalCursor = input.selectionStart ?? originalValue.length;
+
+            // 커서 앞에 있던 숫자·소수점·마이너스 기호의 개수를 기억
+            const beforeCursor = originalValue.slice(0, originalCursor);
+            const countBefore = (beforeCursor.match(/[0-9.-]/g) || []).length;
+
+            let val = originalValue;
             const isNegative = val.startsWith('-');
 
-            // 숫자와 소수점만 남기고 모두 제거
+            // 숫자와 소수점만 남기기
             val = val.replace(/[^0-9.]/g, '');
 
             if (currentCountry === 'KR') {
@@ -17,17 +24,29 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const parts = val.split('.');
                 parts[0] = parts[0] ? Number(parts[0]).toLocaleString('en-US') : '';
+
                 val = parts.join('.');
             }
 
             // 마이너스 기호 복구
-            if (isNegative && val) {
-                e.target.value = '-' + val;
-            } else if (isNegative && !val) {
-                e.target.value = '-';
-            } else {
-                e.target.value = val;
+            if (isNegative) {
+                val = val ? '-' + val : '-';
             }
+
+            input.value = val;
+
+            // 입력 전 커서 위치에 해당하는 숫자·기호 개수만큼 이동
+            let cursor = 0;
+            let count = 0;
+
+            while (cursor < val.length && count < countBefore) {
+                if (/[0-9.-]/.test(val[cursor])) {
+                    count++;
+                }
+                cursor++;
+            }
+
+            input.setSelectionRange(cursor, cursor);
         });
     });
 
