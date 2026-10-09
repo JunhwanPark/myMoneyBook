@@ -111,7 +111,8 @@ window.fetchExchangeRate = async () => {
 // 🚀 최적화된 데이터 로드 함수 (SWR 캐싱 패턴 적용)
 // ==========================================
 window.loadDailyRecords = async (isSilent = false) => {
-    const cacheKey = `ledgerCache_${currentCountry}`; // 국가별 캐시 키 분리
+    const requestedCountry = currentCountry;
+    const cacheKey = `ledgerCache_${requestedCountry}`;
 
     // 💡 1. 앱을 켜자마자 로컬 스토리지에 캐시된 어제 데이터가 있다면 즉시 화면에 렌더링!
     if (!isSilent) {
@@ -167,7 +168,7 @@ window.loadDailyRecords = async (isSilent = false) => {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
         const res = await fetch(
-            `${GAS_URL}?country=${currentCountry}&token=${window.googleAuthToken}`
+            `${GAS_URL}?country=${requestedCountry}&token=${window.googleAuthToken}`
         );
 
         if (!res.ok) {
@@ -178,6 +179,13 @@ window.loadDailyRecords = async (isSilent = false) => {
 
         if (result.status !== 'success') {
             throw new Error(`서버 데이터 조회 실패: ${JSON.stringify(result).slice(0, 300)}`);
+        }
+        // 요청 이후 국가가 바뀌었다면 이전 요청의 결과는 적용하지 않음
+        if (requestedCountry !== currentCountry) {
+            console.log(
+                `[Load] 이전 국가의 응답 무시: ${requestedCountry}, 현재 국가: ${currentCountry}`
+            );
+            return false;
         }
         // 💡 2. 통신에 성공하면 최신 데이터를 로컬 스토리지에 조용히 덮어씌워 둡니다 (다음 접속을 위해)
         localStorage.setItem(cacheKey, JSON.stringify(result));
