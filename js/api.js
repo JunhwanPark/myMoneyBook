@@ -535,10 +535,9 @@ window.submitEditCard = async (oldValue) => {
         await fetch(GAS_URL, {
             method: 'POST',
             body: JSON.stringify({
-                action: 'add_category',
+                action: 'delete_category',
                 token: window.googleAuthToken,
-                catType: `card_${currentCountry}`,
-                catLabel: `${label}|${day}`,
+                catValue: oldValue,
             }),
         });
 
