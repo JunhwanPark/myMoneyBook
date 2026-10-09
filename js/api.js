@@ -295,7 +295,7 @@ window.saveRecord = async (e) => {
 
     const optimisticData = {
         ID: recordId,
-        Date: date + 'T00:00:00.000Z',
+        Date: date,
         Type: type,
         Category: category,
         Amount: finalAmount.toString(),
