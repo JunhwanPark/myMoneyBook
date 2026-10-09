@@ -250,8 +250,20 @@ window.switchCountry = function (mode) {
     document.getElementById('nav-label-stats').innerText = '통계';
 
     if (typeof currentCountry !== 'undefined' && currentCountry !== mode) {
+        // 국가 전환 시 이전 국가의 검색 조건 초기화
+        const searchInput = document.getElementById('search-input');
+        const clearBtn = document.getElementById('search-clear-btn');
+        const currentMonthOnly = document.getElementById('search-current-month-only');
+
+        if (searchInput) searchInput.value = '';
+        if (clearBtn) clearBtn.classList.add('hidden');
+        if (currentMonthOnly) currentMonthOnly.checked = false;
+
         currentCountry = mode;
-        if (typeof loadDailyRecords === 'function') loadDailyRecords();
+
+        if (typeof loadDailyRecords === 'function') {
+            loadDailyRecords();
+        }
     } else if (mode === 'CN' && typeof fetchExchangeRate === 'function') {
         fetchExchangeRate();
     }
