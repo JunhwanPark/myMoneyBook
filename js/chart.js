@@ -37,13 +37,16 @@ window.renderChart = function () {
     const btnExp = document.getElementById('btn-tab-expense');
     const btnInc = document.getElementById('btn-tab-income');
     const btnCum = document.getElementById('btn-tab-cum');
+    const btnComparison = document.getElementById('btn-tab-comparison');
+
     const btnClassOn = 'bg-white text-gray-800 shadow-sm rounded-md px-3 py-1 transition-all';
     const btnClassOff = 'text-gray-400 hover:text-gray-600 px-3 py-1 transition-all';
 
-    if (btnExp && btnInc && btnCum) {
+    if (btnExp && btnInc && btnCum && btnComparison) {
         btnExp.className = mode === 'expense' ? btnClassOn : btnClassOff;
         btnInc.className = mode === 'income' ? btnClassOn : btnClassOff;
         btnCum.className = mode === 'cumulative' ? btnClassOn : btnClassOff;
+        btnComparison.className = mode === 'comparison' ? btnClassOn : btnClassOff;
     }
 
     const chartEl = document.getElementById('mainChart');
@@ -54,7 +57,26 @@ window.renderChart = function () {
     const existingChart = Chart.getChart(chartEl);
     if (existingChart) existingChart.destroy();
 
-    if (mode === 'cumulative') {
+    if (mode === 'comparison') {
+        const oldToggle = document.getElementById('chart-income-toggle');
+        if (oldToggle) oldToggle.remove();
+
+        if (totalAmountEl) {
+            totalAmountEl.innerHTML =
+                '<span class="text-sm font-bold text-gray-600 truncate">전월 대비 지출</span>';
+            totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
+        }
+
+        if (chartWrapper) {
+            chartWrapper.style.display = 'flex';
+            chartWrapper.classList.remove('relative');
+        }
+
+        if (noDataEl) noDataEl.classList.add('hidden');
+
+        // 기존 mainChart 영역에 비교 그래프 표시
+        window.renderCategoryComparisonChart(targetY, targetM);
+    } else if (mode === 'cumulative') {
         if (totalAmountEl) {
             const titleText = window.showCumulativeIncome
                 ? '지난달 vs 이번달 (수입/지출)'
@@ -667,3 +689,205 @@ document.addEventListener('click', (e) => {
         }
     }
 });
+
+/**
+ * 카테고리별 전월 대비 지출 비교 그래프
+ */
+window.categoryComparisonChartInstance = null;
+
+window.renderCategoryComparisonChart = (targetY, targetM) => {
+    const canvas = document.getElementById('mainChart');
+
+    if (!canvas) return;
+
+    // 기존 그래프 정리
+    if (window.categoryComparisonChartInstance) {
+        window.categoryComparisonChartInstance.destroy();
+        window.categoryComparisonChartInstance = null;
+    }
+
+    // 전월 계산 (1월이면 전년도 12월)
+    let prevY = targetY;
+    let prevM = targetM - 1;
+
+    if (prevM < 0) {
+        prevM = 11;
+        prevY--;
+    }
+
+    const currentPrefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
+    const prevPrefix = `${prevY}-${String(prevM + 1).padStart(2, '0')}`;
+
+    const currentTotals = {};
+    const prevTotals = {};
+
+    // 현재 선택된 국가의 기존 globalData만 사용
+    globalData.forEach((item) => {
+        if (item.Type !== 'expense' || !item.Date) return;
+
+        const category = globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
+
+        const amount = Number(item.Amount) || 0;
+
+        if (item.Date.startsWith(currentPrefix)) {
+            currentTotals[category] = (currentTotals[category] || 0) + amount;
+        } else if (item.Date.startsWith(prevPrefix)) {
+            prevTotals[category] = (prevTotals[category] || 0) + amount;
+        }
+    });
+
+    // 양쪽 월의 카테고리를 합친 후 지출 규모가 큰 순서로 최대 8개 표시
+    const categories = [...new Set([...Object.keys(currentTotals), ...Object.keys(prevTotals)])]
+        .sort((a, b) => {
+            const totalA = (currentTotals[a] || 0) + (prevTotals[a] || 0);
+            const totalB = (currentTotals[b] || 0) + (prevTotals[b] || 0);
+
+            return totalB - totalA;
+        })
+        .slice(0, 8);
+
+    // 두 달 모두 지출 내역이 없으면 안내 메시지 표시
+    const chartWrapper = document.getElementById('chart-wrapper');
+    const noDataEl = document.getElementById('no-chart-data');
+
+    if (categories.length === 0) {
+        if (chartWrapper) chartWrapper.style.display = 'none';
+
+        if (noDataEl) {
+            noDataEl.innerText = '비교할 지출 내역이 없습니다.';
+            noDataEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    // 비교할 지출 내역이 있으면 그래프 표시
+    if (chartWrapper) chartWrapper.style.display = 'flex';
+    if (noDataEl) noDataEl.classList.add('hidden');
+
+    const allAmounts = [...Object.values(prevTotals), ...Object.values(currentTotals)];
+
+    const hasNegative = allAmounts.some((amount) => amount < 0);
+
+    const minAmount = Math.min(0, ...allAmounts);
+    const maxAmount = Math.max(0, ...allAmounts);
+
+    window.categoryComparisonChartInstance = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+
+        data: {
+            labels: categories,
+            datasets: [
+                {
+                    label: `${prevM + 1}월`,
+                    data: categories.map((category) => prevTotals[category] || 0),
+                    backgroundColor: '#d1d5db',
+                    borderRadius: 4,
+                    barPercentage: 0.72,
+                    categoryPercentage: 0.78,
+                },
+                {
+                    label: `${targetM + 1}월`,
+                    data: categories.map((category) => currentTotals[category] || 0),
+                    backgroundColor: '#ef4444',
+                    borderRadius: 4,
+                    barPercentage: 0.72,
+                    categoryPercentage: 0.78,
+                },
+            ],
+        },
+
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+
+            // 막대를 클릭하면 해당 월의 카테고리 상세 내역 표시
+            onClick: (event, elements, chart) => {
+                if (elements.length === 0 || typeof openCategoryDetailModal !== 'function') {
+                    return;
+                }
+
+                const element = elements[0];
+                const categoryLabel = chart.data.labels[element.index];
+                const selectedPrefix = element.datasetIndex === 0 ? prevPrefix : currentPrefix;
+
+                openCategoryDetailModal(categoryLabel, 'expense', selectedPrefix);
+            },
+
+            onHover: (event, elements) => {
+                if (event.native?.target) {
+                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                }
+            },
+
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        usePointStyle: true,
+                        font: {
+                            size: 9,
+                            family: "'Pretendard', sans-serif",
+                        },
+                    },
+                },
+
+                // 가로 막대마다 숫자를 표시하면 복잡해져서 툴팁으로 제공
+                datalabels: {
+                    display: false,
+                },
+
+                tooltip: {
+                    callbacks: {
+                        label: (context) => {
+                            const amount = context.parsed.x;
+                            const formatted =
+                                typeof formatMoney === 'function'
+                                    ? formatMoney(amount)
+                                    : amount.toLocaleString();
+
+                            return ` ${context.dataset.label}: ${formatted}`;
+                        },
+                    },
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 11, weight: 'bold' },
+                    padding: 8,
+                },
+            },
+
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    min: hasNegative ? minAmount : 0,
+                    max: maxAmount > 0 ? maxAmount * 1.05 : 1,
+                    display: false,
+                    grid: { display: false },
+                },
+
+                y: {
+                    afterFit: (scale) => {
+                        scale.width = 135;
+                    },
+                    grid: { display: false },
+                    ticks: {
+                        color: '#6b7280',
+                        font: {
+                            size: 10,
+                            family: "'Pretendard', sans-serif",
+                        },
+                    },
+                },
+            },
+        },
+    });
+};
