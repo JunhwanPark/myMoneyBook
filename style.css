@@ -257,3 +257,126 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
 .slide-in-left {
     animation: slideInFromLeft 0.2s ease-out forwards;
 }
+
+/* ==========================================
+   FEATURE-007: PC 반응형 공통 레이아웃
+   1024px 이상에서만 적용
+   ========================================== */
+@media (min-width: 1024px) {
+    /* PC에서는 앱을 넓게 표시하고 좌측 메뉴 영역 확보 */
+    #main-app:not(.hidden) {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        width: min(100%, 1600px);
+        max-width: none;
+        height: 100dvh;
+        margin: 0 auto;
+        overflow: hidden;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.06);
+    }
+
+    /* 상단 헤더는 전체 너비 사용 */
+    #main-app > div:first-child {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    /* 콘텐츠 영역 */
+    #main-app > main {
+        grid-column: 2;
+        grid-row: 2;
+        min-width: 0;
+        min-height: 0;
+        padding: 28px 32px 32px;
+        overflow-y: auto;
+    }
+
+    /* 하단 메뉴를 좌측 사이드바로 전환 */
+    #main-app > nav {
+        grid-column: 1;
+        grid-row: 2;
+        min-height: 0;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        gap: 8px;
+        padding: 24px 12px;
+        border-top: none;
+        border-right: 1px solid #e5e7eb;
+        box-shadow: none;
+    }
+
+    #main-app > nav > button,
+    #main-app > nav > div {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+
+    /* 메뉴 아이콘과 이름을 가로로 정렬 */
+    #main-app > nav .nav-btn {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    #main-app > nav .nav-btn .material-symbols-outlined {
+        margin-bottom: 0;
+    }
+
+    /* 새 내역 추가 버튼 */
+    #main-app > nav > div {
+        justify-content: flex-start;
+        padding: 8px 12px;
+    }
+
+    #main-app > nav > div > button {
+        width: 100%;
+        height: 44px;
+        border-radius: 10px;
+    }
+}
+
+/* FEATURE-007: PC 화면 폰트 가독성 개선 */
+@media (min-width: 1024px) {
+    /* 본문: 작은 글자부터 단계적으로 확대 */
+    #main-app > main .text-xs {
+        font-size: 0.8rem;
+    }
+
+    #main-app > main .text-sm {
+        font-size: 0.95rem;
+    }
+
+    #main-app > main .text-base {
+        font-size: 1.05rem;
+    }
+
+    #main-app > main .text-md {
+        font-size: 1.05rem;
+    }
+
+    #main-app > main .text-lg {
+        font-size: 1.2rem;
+    }
+
+    #main-app > main .text-xl {
+        font-size: 1.35rem;
+    }
+
+    #main-app > main .text-2xl {
+        font-size: 1.6rem;
+    }
+
+    /* PC 사이드바 메뉴 */
+    #main-app > nav .nav-btn {
+        font-size: 1rem;
+    }
+
+    /* 상단 앱 제목 */
+    #main-app > div:first-child > span {
+        font-size: 1rem;
+    }
+}
