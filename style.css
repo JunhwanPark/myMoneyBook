@@ -380,3 +380,34 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
         font-size: 1rem;
     }
 }
+
+/* UI-REFRESH-001: 달력 가독성 개선 */
+.fc-col-header-cell {
+    font-size: 12px;
+}
+
+.fc-daygrid-day-number {
+    font-size: 12px !important;
+    color: #6b7280 !important;
+}
+
+.fc-event-title {
+    font-size: 10px !important;
+    letter-spacing: -0.2px;
+}
+
+/* UI-REFRESH-002: 하단 내비게이션 가독성 개선 */
+@media (max-width: 1023px) {
+    nav .nav-btn .material-symbols-outlined {
+        font-size: 25px;
+    }
+
+    nav .nav-btn > span:last-child {
+        font-size: 11px;
+        line-height: 1.3;
+    }
+
+    nav .nav-btn.text-primary {
+        font-weight: 700;
+    }
+}
