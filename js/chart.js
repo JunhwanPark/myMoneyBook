@@ -583,7 +583,7 @@ window.renderExchangeMiniChart = async () => {
         }
 
         results.forEach((rate) => {
-            data.push(rate ? +rate.toFixed(1) : fallbackRate);
+            data.push(rate ? +rate.toFixed(2) : fallbackRate);
         });
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -619,7 +619,7 @@ window.renderExchangeMiniChart = async () => {
                         color: '#4f46e5',
                         font: { size: 9, weight: '900' },
                         formatter: function (value) {
-                            return value.toFixed(1);
+                            return value.toFixed(2);
                         },
                     },
                     tooltip: {
@@ -639,8 +639,12 @@ window.renderExchangeMiniChart = async () => {
                     x: { ticks: { font: { size: 9 }, color: '#9ca3af' }, grid: { display: false } },
                     y: {
                         display: false,
-                        suggestedMin: Math.min(...data) - 1,
-                        suggestedMax: Math.max(...data) + 2,
+                        min:
+                            Math.min(...data) -
+                            Math.max((Math.max(...data) - Math.min(...data)) * 0.25, 0.02),
+                        max:
+                            Math.max(...data) +
+                            Math.max((Math.max(...data) - Math.min(...data)) * 0.25, 0.02),
                     },
                 },
                 layout: { padding: { top: 15, bottom: 0, left: 10, right: 10 } },
