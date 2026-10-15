@@ -249,6 +249,7 @@ window.showToast = (message, type = 'info') => {
     const messageEl = document.getElementById('save-success-toast-message');
     const iconEl = document.getElementById('save-success-toast-icon');
     if (messageEl) messageEl.textContent = message;
+    toast.classList.toggle('whitespace-nowrap', type === 'success');
     if (iconEl) {
         const isSuccess = type === 'success';
         iconEl.textContent = isSuccess ? 'check_circle' : 'info';
