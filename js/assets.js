@@ -315,7 +315,7 @@ window.saveDeposit = () => {
         !payload.bank ||
         !payload.owner
     ) {
-        return alert('필수 항목을 모두 입력해 주세요.');
+        return window.showToast('필수 항목을 모두 입력해 주세요.');
     }
 
     closeDepositModal();
@@ -552,7 +552,7 @@ window.saveDividend = () => {
     };
 
     if (!payload.date || !payload.stock || !payload.broker || !payload.owner)
-        return alert('모두 입력해 주세요.');
+        return window.showToast('모두 입력해 주세요.');
 
     closeDividendModal();
 

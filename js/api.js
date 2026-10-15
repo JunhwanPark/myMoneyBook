@@ -230,13 +230,44 @@ window.loadDailyRecords = async (isSilent = false) => {
         console.error('데이터 로드 중 에러 발생:', error);
 
         if (!isSilent) {
-            alert('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
+            window.showToast('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
         }
 
         return false;
     } finally {
         if (!isSilent) hideLoader();
     }
+};
+
+let saveSuccessToastTimer;
+let saveSuccessToastHideTimer;
+
+window.showToast = (message, type = 'info') => {
+    const toast = document.getElementById('save-success-toast');
+    if (!toast) return;
+
+    const messageEl = document.getElementById('save-success-toast-message');
+    const iconEl = document.getElementById('save-success-toast-icon');
+    if (messageEl) messageEl.textContent = message;
+    if (iconEl) {
+        const isSuccess = type === 'success';
+        iconEl.textContent = isSuccess ? 'check_circle' : 'info';
+        iconEl.classList.toggle('text-emerald-400', isSuccess);
+        iconEl.classList.toggle('text-amber-300', !isSuccess);
+    }
+
+    clearTimeout(saveSuccessToastTimer);
+    clearTimeout(saveSuccessToastHideTimer);
+    toast.classList.remove('invisible', 'opacity-0', 'translate-y-2');
+    toast.classList.add('opacity-100', 'translate-y-0');
+    toast.setAttribute('aria-hidden', 'false');
+
+    saveSuccessToastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-2');
+        toast.setAttribute('aria-hidden', 'true');
+        saveSuccessToastHideTimer = setTimeout(() => toast.classList.add('invisible'), 300);
+    }, type === 'success' ? 2400 : 4000);
 };
 
 window.saveRecord = async (e) => {
@@ -280,7 +311,7 @@ window.saveRecord = async (e) => {
     // 💡 유효성 검사 실패 시 버튼 잠금을 꼭 풀어주어야 합니다!
     if (!date || rawAmount === '' || !itemName) {
         restoreButton();
-        return alert('필수 항목(날짜, 항목 이름, 금액)을 입력해주세요.');
+        return window.showToast('필수 항목(날짜, 항목 이름, 금액)을 입력해주세요.');
     }
 
     const amountStr = document.getElementById('input-amount').value.replace(/,/g, '');
@@ -293,7 +324,7 @@ window.saveRecord = async (e) => {
         paymentMethod = document.getElementById('input-card-select').value;
         if (!paymentMethod) {
             restoreButton(); // 카드 미선택 시에도 잠금 해제
-            return alert('카드를 선택해주세요.');
+            return window.showToast('카드를 선택해주세요.');
         }
     }
 
@@ -390,9 +421,11 @@ window.saveRecord = async (e) => {
 
         if (!syncSuccess) {
             console.error('저장 후 데이터 동기화 실패');
-            alert(
+            window.showToast(
                 '거래는 저장되었지만 최신 데이터 동기화에 실패했습니다. 새로고침 후 확인해주세요.'
             );
+        } else {
+            window.showToast('저장이 완료되었습니다', 'success');
         }
     } catch (e) {
         console.error('Data sync failed:', e);
@@ -421,14 +454,14 @@ window.saveRecord = async (e) => {
             }
         }
 
-        alert('저장 결과를 확인할 수 없습니다. 서버 데이터를 다시 확인합니다.');
+        window.showToast('저장 결과를 확인할 수 없습니다. 서버 데이터를 다시 확인합니다.');
 
         // 서버 데이터 재동기화 시도
         const recoverySuccess = await loadDailyRecords(true);
 
         if (!recoverySuccess) {
             console.error('실패 후 데이터 재동기화도 실패');
-            alert('데이터 복구에 실패했습니다. 새로고침 후 서버 기록을 확인해주세요.');
+            window.showToast('데이터 복구에 실패했습니다. 새로고침 후 서버 기록을 확인해주세요.');
         }
     } finally {
         // 성공하든 실패하든, 통신이 완전히 끝나면 버튼 잠금을 해제합니다.
@@ -437,10 +470,12 @@ window.saveRecord = async (e) => {
     }
 };
 
-window.deleteRecord = () => {
+window.deleteRecord = async () => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
 
     const recordId = document.getElementById('input-id').value;
+    const originalGlobalData = [...globalData];
+    const deleteCountry = currentCountry;
 
     // 🚀 1. 즉시 모달 닫기
     closeAddModal();
@@ -456,25 +491,45 @@ window.deleteRecord = () => {
         renderChart();
 
     // 🚀 3. 백그라운드 삭제 요청
-    fetch(GAS_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-            action: 'delete',
-            token: window.googleAuthToken, // 👈 💡 신분증(마패) 추가!
-            id: recordId,
-            country: currentCountry,
-        }),
-    })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.status === 'success') {
-                loadDailyRecords(true); // 성공 시 조용히 데이터 싱크
-            }
-        })
-        .catch((e) => {
-            alert('삭제 중 통신 오류가 발생하여 원상복구 되었습니다.');
-            loadDailyRecords(true); // 실패 시 롤백
+    try {
+        const response = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'delete',
+                token: window.googleAuthToken, // 👈 💡 신분증(마패) 추가!
+                id: recordId,
+                country: deleteCountry,
+            }),
         });
+        const data = await response.json();
+
+        if (!response.ok || data.status !== 'success') {
+            throw new Error(data.message || `HTTP ${response.status}`);
+        }
+
+        const syncSuccess = await loadDailyRecords(true);
+        if (syncSuccess) {
+            window.showToast('삭제 후 목록을 갱신했습니다', 'success');
+        } else {
+            window.showToast('항목은 삭제되었지만 목록 갱신에 실패했습니다. 새로고침 후 확인해주세요.');
+        }
+    } catch (e) {
+        console.error('Record deletion failed:', e);
+
+        if (currentCountry === deleteCountry) {
+            globalData = originalGlobalData;
+            if (typeof renderDailyList === 'function') renderDailyList(globalData);
+            if (typeof calendar !== 'undefined' && calendar) renderCalendarEvents();
+            if (typeof updateMonthlyTotals === 'function') updateMonthlyTotals();
+            const statsTab = document.getElementById('view-stats');
+            if (statsTab && statsTab.classList.contains('active') && typeof renderChart === 'function') {
+                renderChart();
+            }
+        }
+
+        window.showToast('삭제 결과를 확인할 수 없습니다. 서버 데이터를 다시 확인합니다.');
+        await loadDailyRecords(true);
+    }
 };
 
 // ==========================================
@@ -483,7 +538,7 @@ window.deleteRecord = () => {
 window.addCard = async () => {
     const label = document.getElementById('new-card-label').value.trim();
     const day = document.getElementById('new-card-day').value.trim();
-    if (!label || !day) return alert('정보를 정확히 입력하세요.');
+    if (!label || !day) return window.showToast('정보를 정확히 입력하세요.');
 
     showLoader();
     try {
@@ -501,7 +556,7 @@ window.addCard = async () => {
         await loadDailyRecords();
         openCardModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
     } catch (e) {
-        alert('카드 추가 중 에러가 발생했습니다.');
+        window.showToast('카드 추가 중 에러가 발생했습니다.');
         hideLoader();
     }
 };
@@ -522,14 +577,14 @@ window.deleteCard = async (catValue) => {
             openCardModal();
         }
     } catch (e) {
-        alert('에러');
+        window.showToast('에러');
     }
 };
 
 window.addCategory = async () => {
     const type = document.getElementById('new-cat-type').value;
     const label = document.getElementById('new-cat-label').value.trim();
-    if (!label) return alert('카테고리 이름을 입력해주세요.');
+    if (!label) return window.showToast('카테고리 이름을 입력해주세요.');
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -546,7 +601,7 @@ window.addCategory = async () => {
             openCategoryModal();
         }
     } catch (e) {
-        alert('에러');
+        window.showToast('에러');
     }
 };
 
@@ -566,7 +621,7 @@ window.deleteCategory = async (catValue) => {
             openCategoryModal();
         }
     } catch (e) {
-        alert('에러');
+        window.showToast('에러');
     }
 };
 
@@ -576,7 +631,7 @@ window.deleteCategory = async (catValue) => {
 window.submitEditCategory = async (oldValue) => {
     const type = document.getElementById('new-cat-type').value;
     const label = document.getElementById('new-cat-label').value.trim();
-    if (!label) return alert('카테고리 이름을 입력해주세요.');
+    if (!label) return window.showToast('카테고리 이름을 입력해주세요.');
 
     showLoader();
     try {
@@ -603,7 +658,7 @@ window.submitEditCategory = async (oldValue) => {
         await loadDailyRecords();
         openCategoryModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
     } catch (e) {
-        alert('수정 중 에러가 발생했습니다.');
+        window.showToast('수정 중 에러가 발생했습니다.');
         hideLoader();
     }
 };
@@ -611,7 +666,7 @@ window.submitEditCategory = async (oldValue) => {
 window.submitEditCard = async (oldValue) => {
     const label = document.getElementById('new-card-label').value.trim();
     const day = document.getElementById('new-card-day').value.trim();
-    if (!label || !day) return alert('정보를 정확히 입력하세요.');
+    if (!label || !day) return window.showToast('정보를 정확히 입력하세요.');
 
     showLoader();
     try {
@@ -633,7 +688,7 @@ window.submitEditCard = async (oldValue) => {
         await loadDailyRecords();
         openCardModal();
     } catch (e) {
-        alert('수정 중 에러가 발생했습니다.');
+        window.showToast('수정 중 에러가 발생했습니다.');
         hideLoader();
     }
 };
