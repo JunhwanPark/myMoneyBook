@@ -764,7 +764,11 @@ window.renderCategoryComparisonChart = (targetY, targetM) => {
     if (chartWrapper) chartWrapper.style.display = 'flex';
     if (noDataEl) noDataEl.classList.add('hidden');
 
-    const allAmounts = [...Object.values(prevTotals), ...Object.values(currentTotals)];
+    // 축 범위는 실제 표시하는 카테고리만 기준으로 계산한다.
+    const allAmounts = categories.flatMap((category) => [
+        prevTotals[category] || 0,
+        currentTotals[category] || 0,
+    ]);
 
     const hasNegative = allAmounts.some((amount) => amount < 0);
 
@@ -868,8 +872,8 @@ window.renderCategoryComparisonChart = (targetY, targetM) => {
             scales: {
                 x: {
                     beginAtZero: true,
-                    min: hasNegative ? minAmount : 0,
-                    max: maxAmount > 0 ? maxAmount * 1.05 : 1,
+                    min: hasNegative ? minAmount * 1.05 : 0,
+                    max: maxAmount > 0 ? maxAmount * 1.05 : 0,
                     display: false,
                     grid: { display: false },
                 },
