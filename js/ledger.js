@@ -423,9 +423,7 @@ window.showSuggestions = (text) => {
         return;
     }
 
-    const uniqueNames = [];
-    const seen = new Set();
-
+    const nameCategories = new Map();
     if (typeof globalData !== 'undefined') {
         globalData.forEach((item) => {
             if (!item.Memo) return;
@@ -433,14 +431,17 @@ window.showSuggestions = (text) => {
                 typeof parseMemo === 'function' ? parseMemo(item.Memo) : { itemName: item.Memo };
             const name = parsed.itemName.trim();
 
-            if (name && !seen.has(name)) {
-                seen.add(name);
-                uniqueNames.push(name);
-            }
+            if (!name) return;
+            // globalData는 오래된 내역부터 순회하므로 타입별 최신 카테고리로 갱신합니다.
+            const existing = nameCategories.get(name) || {};
+            existing[item.Type] = item.Category;
+            nameCategories.set(name, existing);
         });
     }
 
-    const matched = uniqueNames.filter((name) => name.toLowerCase().includes(keyword)).slice(0, 5);
+    const matched = [...nameCategories.entries()]
+        .filter(([name]) => name.toLowerCase().startsWith(keyword))
+        .slice(0, 5);
 
     if (matched.length === 0) {
         box.innerHTML = '';
@@ -448,10 +449,11 @@ window.showSuggestions = (text) => {
         return;
     }
 
+    window.currentSuggestions = matched;
     box.innerHTML = matched
         .map(
-            (name) =>
-                `<div onclick="selectSuggestion('${name.replace(/'/g, "\\'")}')" class="px-4 py-2.5 border-b border-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer active:bg-gray-200 transition">
+            ([name], index) =>
+                `<div onclick="selectSuggestion(${index})" class="px-4 py-2.5 border-b border-gray-50 text-sm font-medium text-gray-700 hover:bg-gray-100 cursor-pointer active:bg-gray-200 transition">
             <span class="material-symbols-outlined text-[14px] text-gray-400 align-middle mr-1">history</span>
             ${typeof escapeHTML === 'function' ? escapeHTML(name) : name}
         </div>`
@@ -461,9 +463,18 @@ window.showSuggestions = (text) => {
     box.classList.remove('hidden');
 };
 
-window.selectSuggestion = (name) => {
+window.selectSuggestion = (index) => {
+    const suggestion = window.currentSuggestions?.[index];
+    if (!suggestion) return;
+    const [name, categories] = suggestion;
     const input = document.getElementById('input-item-name');
     if (input) input.value = name;
+    const type = document.querySelector('input[name="type"]:checked')?.value;
+    const previousCategory = categories[type];
+    const categorySelect = document.getElementById('input-category');
+    if (categorySelect && previousCategory && [...categorySelect.options].some((option) => option.value === previousCategory)) {
+        categorySelect.value = previousCategory;
+    }
     const box = document.getElementById('suggestion-box');
     if (box) {
         box.innerHTML = '';
