@@ -337,6 +337,16 @@ window.initCalendar = () => {
         height: 'auto',
         fixedWeekCount: false,
         dayCellContent: (info) => info.dayNumberText.replace('일', ''),
+        eventDidMount: (info) => {
+            const digitCount = info.event.title.replace(/\D/g, '').length;
+            if (digitCount < 7) return;
+
+            const title = info.el.querySelector('.fc-event-title');
+            if (!title) return;
+            title.style.fontSize = '0.68em';
+            title.style.letterSpacing = '-0.04em';
+            title.style.whiteSpace = 'nowrap';
+        },
         dateClick: (info) => {
             if (typeof openWeeklyModal === 'function') openWeeklyModal(info.dateStr);
         },
