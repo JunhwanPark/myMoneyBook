@@ -318,6 +318,7 @@ window.saveDeposit = () => {
         return window.showToast('필수 항목을 모두 입력해 주세요.');
     }
 
+    window.setSyncStatus('syncing');
     closeDepositModal();
 
     const optimisticData = {
@@ -351,6 +352,7 @@ window.saveDeposit = () => {
 
 window.deleteDeposit = () => {
     if (!confirm('이 상품을 삭제하시겠습니까?')) return;
+    window.setSyncStatus('syncing');
     const id = document.getElementById('dep-input-id').value;
     closeDepositModal();
 
@@ -554,6 +556,7 @@ window.saveDividend = () => {
     if (!payload.date || !payload.stock || !payload.broker || !payload.owner)
         return window.showToast('모두 입력해 주세요.');
 
+    window.setSyncStatus('syncing');
     closeDividendModal();
 
     const optimisticData = {
@@ -579,6 +582,7 @@ window.saveDividend = () => {
 
 window.deleteDividend = () => {
     if (!confirm('삭제하시겠습니까?')) return;
+    window.setSyncStatus('syncing');
     const id = document.getElementById('div-input-id').value;
     closeDividendModal();
 

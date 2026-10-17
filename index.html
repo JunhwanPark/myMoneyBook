@@ -160,7 +160,13 @@
             <div
                 class="bg-primary text-white px-4 py-2 flex justify-between items-center z-20 relative transition-colors duration-300"
             >
-                <span class="font-bold text-sm shrink-0">변민삼박 가계부</span>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="font-bold text-sm">변민삼박 가계부</span>
+                    <div id="sync-status" role="status" aria-live="polite" title="동기화 상태" class="flex items-center gap-1 text-[9px] font-bold whitespace-nowrap">
+                        <span id="sync-status-icon" class="material-symbols-outlined text-[13px] text-emerald-300">check_circle</span>
+                        <span id="sync-status-text" class="hidden sm:inline text-white/90">동기화 완료</span>
+                    </div>
+                </div>
 
                 <div class="flex items-center gap-2 relative">
                     <button

@@ -1,6 +1,24 @@
 // js/api.js 최상단
 window.googleAuthToken = null; // 👈 신규: 토큰 저장용 변수
 
+window.setSyncStatus = (status) => {
+    const icon = document.getElementById('sync-status-icon');
+    const text = document.getElementById('sync-status-text');
+    const badge = document.getElementById('sync-status');
+    if (!icon || !text || !badge) return;
+
+    const states = {
+        syncing: { label: '동기화 중', icon: 'sync', color: 'text-amber-200', title: 'Google 스프레드시트와 동기화 중입니다.' },
+        synced: { label: '동기화 완료', icon: 'check_circle', color: 'text-emerald-300', title: 'Google 스프레드시트와 동기화되었습니다.' },
+        error: { label: '동기화 실패', icon: 'error', color: 'text-red-300', title: '동기화에 실패했습니다. 연결을 확인해 주세요.' },
+    };
+    const state = states[status] || states.syncing;
+    text.textContent = state.label;
+    icon.textContent = state.icon;
+    icon.className = `material-symbols-outlined text-[13px] ${state.color}${status === 'syncing' ? ' animate-spin' : ''}`;
+    badge.title = state.title;
+};
+
 window.handleCredentialResponse = (response) => {
     const payload = jwt_decode(response.credential);
     if (ALLOWED_EMAILS.includes(payload.email)) {
@@ -163,6 +181,7 @@ window.loadDailyRecords = async (isSilent = false) => {
 
     // 캐시가 아예 없는(앱 첫 실행) 경우에만 로딩 스피너를 띄웁니다.
     if (!isSilent) showLoader();
+    window.setSyncStatus('syncing');
 
     try {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
@@ -225,9 +244,11 @@ window.loadDailyRecords = async (isSilent = false) => {
             window.renderAssetsList();
         }
 
+        window.setSyncStatus('synced');
         return true;
     } catch (error) {
         console.error('데이터 로드 중 에러 발생:', error);
+        if (requestedCountry === currentCountry) window.setSyncStatus('error');
 
         if (!isSilent) {
             window.showToast('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
@@ -328,6 +349,8 @@ window.saveRecord = async (e) => {
             return window.showToast('카드를 선택해주세요.');
         }
     }
+
+    window.setSyncStatus('syncing');
 
     const memo = `${itemName}\nPAY:${paymentMethod}\nDISC:${discountVal}\n${memoDetail}`;
     const action = document.getElementById('input-action').value;
@@ -473,6 +496,7 @@ window.saveRecord = async (e) => {
 
 window.deleteRecord = async () => {
     if (!confirm('정말 삭제하시겠습니까?')) return;
+    window.setSyncStatus('syncing');
 
     const recordId = document.getElementById('input-id').value;
     const originalGlobalData = [...globalData];
@@ -541,6 +565,7 @@ window.addCard = async () => {
     const day = document.getElementById('new-card-day').value.trim();
     if (!label || !day) return window.showToast('정보를 정확히 입력하세요.');
 
+    window.setSyncStatus('syncing');
     showLoader();
     try {
         // 👇 현재 국가 코드(KR 또는 CN)를 붙여서 Type을 생성합니다.
@@ -557,6 +582,7 @@ window.addCard = async () => {
         await loadDailyRecords();
         openCardModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
     } catch (e) {
+        window.setSyncStatus('error');
         window.showToast('카드 추가 중 에러가 발생했습니다.');
         hideLoader();
     }
@@ -564,6 +590,7 @@ window.addCard = async () => {
 
 window.deleteCard = async (catValue) => {
     if (!confirm('카드를 삭제하시겠습니까? (기존 내역 유지)')) return;
+    window.setSyncStatus('syncing');
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -576,8 +603,11 @@ window.deleteCard = async (catValue) => {
         if ((await res.json()).status === 'success') {
             await loadDailyRecords();
             openCardModal();
+        } else {
+            window.setSyncStatus('error');
         }
     } catch (e) {
+        window.setSyncStatus('error');
         window.showToast('에러');
     }
 };
@@ -586,6 +616,7 @@ window.addCategory = async () => {
     const type = document.getElementById('new-cat-type').value;
     const label = document.getElementById('new-cat-label').value.trim();
     if (!label) return window.showToast('카테고리 이름을 입력해주세요.');
+    window.setSyncStatus('syncing');
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -600,14 +631,18 @@ window.addCategory = async () => {
             document.getElementById('new-cat-label').value = '';
             await loadDailyRecords();
             openCategoryModal();
+        } else {
+            window.setSyncStatus('error');
         }
     } catch (e) {
+        window.setSyncStatus('error');
         window.showToast('에러');
     }
 };
 
 window.deleteCategory = async (catValue) => {
     if (!confirm('카테고리를 삭제하시겠습니까?')) return;
+    window.setSyncStatus('syncing');
     try {
         const res = await fetch(GAS_URL, {
             method: 'POST',
@@ -620,8 +655,11 @@ window.deleteCategory = async (catValue) => {
         if ((await res.json()).status === 'success') {
             await loadDailyRecords();
             openCategoryModal();
+        } else {
+            window.setSyncStatus('error');
         }
     } catch (e) {
+        window.setSyncStatus('error');
         window.showToast('에러');
     }
 };
@@ -634,6 +672,7 @@ window.submitEditCategory = async (oldValue) => {
     const label = document.getElementById('new-cat-label').value.trim();
     if (!label) return window.showToast('카테고리 이름을 입력해주세요.');
 
+    window.setSyncStatus('syncing');
     showLoader();
     try {
         // 1. 기존 데이터 삭제
@@ -659,6 +698,7 @@ window.submitEditCategory = async (oldValue) => {
         await loadDailyRecords();
         openCategoryModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
     } catch (e) {
+        window.setSyncStatus('error');
         window.showToast('수정 중 에러가 발생했습니다.');
         hideLoader();
     }
@@ -669,6 +709,7 @@ window.submitEditCard = async (oldValue) => {
     const day = document.getElementById('new-card-day').value.trim();
     if (!label || !day) return window.showToast('정보를 정확히 입력하세요.');
 
+    window.setSyncStatus('syncing');
     showLoader();
     try {
         await fetch(GAS_URL, {
@@ -689,6 +730,7 @@ window.submitEditCard = async (oldValue) => {
         await loadDailyRecords();
         openCardModal();
     } catch (e) {
+        window.setSyncStatus('error');
         window.showToast('수정 중 에러가 발생했습니다.');
         hideLoader();
     }
