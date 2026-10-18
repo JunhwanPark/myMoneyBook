@@ -46,11 +46,13 @@ window.fetchExchangeRate = async () => {
         const rateValue = document.getElementById('cny-rate-value');
 
         if (!badge || !rateValue) return;
+        const canShowExchangeRate = () =>
+            currentCountry === 'CN' && window.currentAppMode !== 'ASSETS';
 
         // 1. 한국 모드일 때: 뱃지를 숨기고, 기억해둔 상태를 'KR'로 변경
-        if (currentCountry !== 'CN') {
+        if (!canShowExchangeRate()) {
             badge.classList.add('hidden');
-            window._lastRateFetchedCountry = 'KR';
+            if (currentCountry !== 'CN') window._lastRateFetchedCountry = 'KR';
             return;
         }
 
@@ -78,6 +80,10 @@ window.fetchExchangeRate = async () => {
             });
             clearTimeout(timeoutId); // 통신 성공 시 타이머 해제
             const data = await res.json();
+            if (!canShowExchangeRate()) {
+                badge.classList.add('hidden');
+                return;
+            }
 
             if (data && data.rates && data.rates.KRW) {
                 const rate = data.rates.KRW;
@@ -96,6 +102,10 @@ window.fetchExchangeRate = async () => {
         } catch (networkError) {
             clearTimeout(timeoutId);
             console.warn('환율 API 통신 지연 또는 실패. 캐시된 데이터를 확인합니다.', networkError);
+            if (!canShowExchangeRate()) {
+                badge.classList.add('hidden');
+                return;
+            }
 
             // 💡 통신 실패 시 스마트폰(localStorage)에서 마지막으로 성공했던 환율을 꺼내옵니다.
             const cachedRate = localStorage.getItem('cachedCnyRate');
@@ -118,7 +128,7 @@ window.fetchExchangeRate = async () => {
         console.error('환율 처리 중 치명적 에러:', e);
         const badge = document.getElementById('exchange-rate-badge');
         const rateValue = document.getElementById('cny-rate-value');
-        if (badge && rateValue) {
+        if (badge && rateValue && currentCountry === 'CN' && window.currentAppMode !== 'ASSETS') {
             rateValue.innerText = '오류';
             badge.classList.remove('hidden');
         }
