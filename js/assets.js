@@ -110,6 +110,8 @@ window.renderAssetsList = () => {
             opacityClass = 'opacity-70';
         } else if (isMatured) {
             statusBadge = `<span class="bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-amber-200 animate-pulse">만기 도래!</span>`;
+        } else {
+            statusBadge = `<span class="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-100">운용중</span>`;
         }
 
         // 💡 1. 대표 연도 추출 및 구분선 삽입 (정렬 기준에 따라 다름)
@@ -131,40 +133,37 @@ window.renderAssetsList = () => {
             currentYearGroup = itemYear; // 현재 렌더링 중인 연도 업데이트
         }
 
-        // 💡 2. 카드 내부에 '가입일'과 '만기일'을 나란히 배치
+        // 모바일에서 한 화면에 더 많은 항목이 보이도록 핵심 정보를 압축해 배치합니다.
         listContainer.insertAdjacentHTML(
             'beforeend',
             `
-            <div onclick="openDepositModal('${d.ID}')" class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:bg-gray-50 active:scale-[0.99] transition mb-3 ${opacityClass}">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-[16px]">account_balance</span>
-                        </span>
-                        <div>
-                            <p class="text-xs font-black text-gray-800 flex items-center gap-1.5">${d.은행} <span class="text-[10px] font-medium text-gray-500">${d.종류}</span></p>
-                            <div class="flex items-center gap-1 mt-0.5">
-                                <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.명의자}</span>
-                                ${statusBadge}
-                            </div>
-                        </div>
+            <div onclick="openDepositModal('${d.ID}')" class="bg-white px-2.5 py-2 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition mb-1.5 ${opacityClass}">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="min-w-0 text-xs font-black text-gray-800 truncate">${d.은행} <span class="font-medium text-gray-500">${d.종류}</span></p>
+                    <span class="shrink-0 text-[10px] font-black text-emerald-700">연 ${Number(d.이율).toFixed(2)}%</span>
+                </div>
+                <div class="flex items-center gap-1 mt-1 mb-1.5">
+                    <span class="text-[8px] font-bold text-blue-600 bg-blue-50 px-1 py-0.5 rounded">${d.명의자}</span>
+                    ${d.과세여부 ? `<span class="text-[8px] font-bold text-gray-500 bg-gray-50 px-1 py-0.5 rounded">${d.과세여부}</span>` : ''}
+                    ${statusBadge}
+                </div>
+                <div class="grid grid-cols-3 gap-1 py-1.5 border-y border-gray-100">
+                    <div class="min-w-0">
+                        <p class="text-[8px] font-bold text-gray-400">원금</p>
+                        <p class="text-[9px] font-black text-gray-800 whitespace-nowrap tracking-tight">${calc.principal.toLocaleString()}원</p>
                     </div>
-
-                    <div class="text-right shrink-0">
-                        <p class="text-[10px] text-gray-400 font-bold mb-1.5">이율 <span class="text-emerald-600">${Number(d.이율).toFixed(2)}%</span></p>
-                        <p class="text-[9px] text-gray-400 leading-tight mb-0.5">${d.가입일} 가입</p>
-                        <p class="text-[9px] font-bold text-gray-700 leading-tight">${d.만기일} 만기</p>
+                    <div class="min-w-0 text-center">
+                        <p class="text-[8px] font-bold text-gray-400">세전 이자</p>
+                        <p class="text-[9px] font-bold text-gray-700 whitespace-nowrap tracking-tight">+${calc.preTax.toLocaleString()}원</p>
+                    </div>
+                    <div class="min-w-0 text-right">
+                        <p class="text-[8px] font-bold text-gray-400">세후 이자</p>
+                        <p class="text-[9px] font-black text-emerald-600 whitespace-nowrap tracking-tight">+${calc.postTax.toLocaleString()}원</p>
                     </div>
                 </div>
-                <div class="bg-gray-50 rounded-lg p-2.5 flex justify-between items-center">
-                    <div>
-                        <p class="text-[9px] text-gray-400 font-bold mb-0.5">원금</p>
-                        <p class="text-sm font-black text-gray-800">${calc.principal.toLocaleString()}원</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-[9px] text-gray-400 font-bold mb-0.5">예상 세후 이자</p>
-                        <p class="text-sm font-black text-emerald-600 tracking-tighter">+${calc.postTax.toLocaleString()}원</p>
-                    </div>
+                <div class="grid grid-cols-2 gap-2 mt-1.5 text-[9px] font-medium text-gray-500">
+                    <span class="truncate">가입 ${d.가입일}</span>
+                    <span class="truncate text-right">만기 ${d.만기일}</span>
                 </div>
             </div>
         `
