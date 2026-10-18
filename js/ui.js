@@ -236,7 +236,11 @@ window.switchCountry = function (mode) {
         const mainNavBtn = document.getElementById('nav-btn-main');
         if (mainNavBtn) mainNavBtn.classList.replace('text-gray-400', 'text-primary');
 
-        if (typeof renderAssetsList === 'function') renderAssetsList();
+        if (typeof loadDailyRecords === 'function') {
+            loadDailyRecords();
+        } else if (typeof renderAssetsList === 'function') {
+            renderAssetsList();
+        }
         return;
     }
 
