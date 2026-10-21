@@ -92,7 +92,11 @@
             rel="stylesheet"
         />
 
-        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <!-- Warm up Google's connection before the GIS script is requested. -->
+        <link rel="preconnect" href="https://accounts.google.com" />
+        <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+        <link rel="preload" href="https://accounts.google.com/gsi/client" as="script" />
+        <script src="https://accounts.google.com/gsi/client" async></script>
         <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
         <link rel="stylesheet" href="style.css" />
     </head>
