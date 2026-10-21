@@ -18,6 +18,12 @@ window.getDepositCalc = (d) => {
 };
 
 window.assetSortMode = window.assetSortMode || 'end';
+window.expandedAssetYears = window.expandedAssetYears || new Set();
+window.assetYearExpansionInitialized = window.assetYearExpansionInitialized || false;
+window.setAssetYearExpanded = (year, expanded) => {
+    if (expanded) window.expandedAssetYears.add(year);
+    else window.expandedAssetYears.delete(year);
+};
 window.setAssetSort = (mode) => {
     window.assetSortMode = mode;
     const btnEnd = document.getElementById('btn-sort-end');
@@ -91,8 +97,28 @@ window.renderAssetsList = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 💡 연도별 그룹핑을 위한 변수 추가
+    const currentYear = new Date().getFullYear();
+    if (!window.assetYearExpansionInitialized) {
+        window.expandedAssetYears.add(currentYear);
+        window.assetYearExpansionInitialized = true;
+    }
+
+    // 연도별 상태 건수를 접힌 헤더에 표시합니다.
+    const yearCounts = {};
+    sorted.forEach((d) => {
+        const date = window.assetSortMode === 'end' ? d.만기일 : d.가입일;
+        const year = new Date(date).getFullYear();
+        if (!yearCounts[year]) yearCounts[year] = { matured: 0, due: 0, active: 0, canceled: 0 };
+
+        const end = getDepositCalc(d).end;
+        if (d.상태 === '중도해지') yearCounts[year].canceled++;
+        else if (d.상태 === '만기') yearCounts[year].matured++;
+        else if (end <= today) yearCounts[year].due++;
+        else yearCounts[year].active++;
+    });
+
     let currentYearGroup = null;
+    let currentYearList = null;
 
     sorted.forEach((d) => {
         const calc = getDepositCalc(d);
@@ -118,23 +144,44 @@ window.renderAssetsList = () => {
         const repDate = window.assetSortMode === 'end' ? d.만기일 : d.가입일;
         const itemYear = new Date(repDate).getFullYear();
 
-        // 새로운 연도의 아이템이 나타나면 헤더(구분선)를 추가합니다.
+        // 새 연도의 목록을 접을 수 있는 그룹으로 엽니다.
         if (currentYearGroup !== itemYear) {
+            if (currentYearGroup !== null) listContainer.insertAdjacentHTML('beforeend', '</div></details>');
             const headerText = window.assetSortMode === 'end' ? '만기' : '가입';
+            const counts = yearCounts[itemYear];
+            const countLabels = [
+                ['matured', '만기수령', 'text-gray-500'],
+                ['due', '만기도래', 'text-amber-600'],
+                ['active', '운용중', 'text-emerald-700'],
+                ['canceled', '중도해지', 'text-red-500'],
+            ]
+                .filter(([key]) => counts[key] > 0)
+                .map(
+                    ([key, label, color]) =>
+                        `<span class="${color} whitespace-nowrap">${label} ${counts[key]}</span>`
+                )
+                .join('');
             listContainer.insertAdjacentHTML(
                 'beforeend',
                 `
-                <div class="flex items-center gap-3 mt-5 mb-3 px-1">
-                    <span class="text-[13px] font-black text-gray-800 bg-gray-100 px-2 py-1 rounded-md tracking-tight">${itemYear}년 ${headerText}</span>
-                    <div class="h-px bg-gray-200 flex-1"></div>
-                </div>
+                <details class="asset-year-group mb-2" ${window.expandedAssetYears.has(itemYear) ? 'open' : ''}
+                    ontoggle="setAssetYearExpanded(${itemYear}, this.open)">
+                    <summary class="flex items-center justify-between cursor-pointer list-none px-3 py-2.5 rounded-xl bg-gray-100 text-sm font-black text-gray-700 active:bg-gray-200">
+                        <span class="shrink-0">${itemYear}년 ${headerText}</span>
+                        <span class="flex flex-wrap items-center justify-end gap-x-2 text-[9px] font-bold">
+                            ${countLabels}
+                            <span class="material-symbols-outlined text-base">expand_more</span>
+                        </span>
+                    </summary>
+                    <div class="asset-year-list space-y-2 pt-2">
             `
             );
-            currentYearGroup = itemYear; // 현재 렌더링 중인 연도 업데이트
+            currentYearGroup = itemYear;
+            currentYearList = listContainer.lastElementChild.querySelector('.asset-year-list');
         }
 
         // 모바일에서 한 화면에 더 많은 항목이 보이도록 핵심 정보를 압축해 배치합니다.
-        listContainer.insertAdjacentHTML(
+        currentYearList.insertAdjacentHTML(
             'beforeend',
             `
             <div onclick="openDepositModal('${d.ID}')" class="bg-white px-2.5 py-2 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition mb-1.5 ${opacityClass}">
@@ -169,6 +216,7 @@ window.renderAssetsList = () => {
         `
         );
     });
+    if (currentYearGroup !== null) listContainer.insertAdjacentHTML('beforeend', '</div></details>');
 };
 
 window.openDepositModal = (id = null) => {
