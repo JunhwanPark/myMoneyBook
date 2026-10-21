@@ -396,6 +396,11 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
     letter-spacing: -0.2px;
 }
 
+/* Fade income and expense amounts in days outside the displayed month. */
+.fc-day-other .fc-daygrid-event {
+    opacity: 0.45;
+}
+
 /* UI-REFRESH-002: 하단 내비게이션 가독성 개선 */
 @media (max-width: 1023px) {
     nav .nav-btn .material-symbols-outlined {
