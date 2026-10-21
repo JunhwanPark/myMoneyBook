@@ -456,6 +456,25 @@
                             id="chart-wrapper"
                             class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-center"
                         >
+                            <div
+                                id="comparison-type-toggle"
+                                class="hidden absolute top-2 left-2 z-10 flex gap-1 bg-white/80 backdrop-blur-sm p-0.5 rounded-md border border-gray-200 shadow-sm"
+                            >
+                                <button
+                                    id="btn-comparison-expense"
+                                    onclick="setComparisonType('expense')"
+                                    class="text-[10px] font-bold px-2.5 py-1 rounded-md bg-white text-gray-800 shadow-sm"
+                                >
+                                    지출
+                                </button>
+                                <button
+                                    id="btn-comparison-income"
+                                    onclick="setComparisonType('income')"
+                                    class="text-[10px] font-bold px-2.5 py-1 rounded-md text-gray-400"
+                                >
+                                    수입
+                                </button>
+                            </div>
                             <div class="relative w-full h-[220px]">
                                 <canvas id="mainChart"></canvas>
                             </div>

@@ -8,6 +8,11 @@ window.setChartMode = (mode) => {
     if (typeof renderChart === 'function') renderChart();
 };
 
+window.setComparisonType = (type) => {
+    window.comparisonType = type === 'income' ? 'income' : 'expense';
+    if (typeof renderChart === 'function') renderChart();
+};
+
 // 💡 카드 통계 기준 토글 함수 (기준일 <-> 달력월)
 window.setCardStatMode = (mode) => {
     window.cardStatMode = mode;
@@ -53,30 +58,42 @@ window.renderChart = function () {
     const noDataEl = document.getElementById('no-chart-data');
     const totalAmountEl = document.getElementById('chart-total-amount');
     const chartWrapper = document.getElementById('chart-wrapper');
+    const comparisonToggle = document.getElementById('comparison-type-toggle');
 
     const existingChart = Chart.getChart(chartEl);
     if (existingChart) existingChart.destroy();
 
     if (mode === 'comparison') {
+        window.comparisonType = window.comparisonType || 'expense';
+        if (comparisonToggle) comparisonToggle.classList.remove('hidden');
+        const comparisonExpense = document.getElementById('btn-comparison-expense');
+        const comparisonIncome = document.getElementById('btn-comparison-income');
+        if (comparisonExpense) comparisonExpense.className = window.comparisonType === 'expense'
+            ? 'text-[10px] font-bold px-2.5 py-1 rounded-md bg-white text-gray-800 shadow-sm'
+            : 'text-[10px] font-bold px-2.5 py-1 rounded-md text-gray-400';
+        if (comparisonIncome) comparisonIncome.className = window.comparisonType === 'income'
+            ? 'text-[10px] font-bold px-2.5 py-1 rounded-md bg-white text-gray-800 shadow-sm'
+            : 'text-[10px] font-bold px-2.5 py-1 rounded-md text-gray-400';
         const oldToggle = document.getElementById('chart-income-toggle');
         if (oldToggle) oldToggle.remove();
 
         if (totalAmountEl) {
             totalAmountEl.innerHTML =
-                '<span class="text-sm font-bold text-gray-600 truncate">전월 대비 지출</span>';
+                `<span class="text-sm font-bold text-gray-600 truncate">전월 대비 ${window.comparisonType === 'income' ? '수입' : '지출'}</span>`;
             totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
         }
 
         if (chartWrapper) {
             chartWrapper.style.display = 'flex';
-            chartWrapper.classList.remove('relative');
+            chartWrapper.classList.add('relative');
         }
 
         if (noDataEl) noDataEl.classList.add('hidden');
 
         // 기존 mainChart 영역에 비교 그래프 표시
-        window.renderCategoryComparisonChart(targetY, targetM);
+        window.renderCategoryComparisonChart(targetY, targetM, window.comparisonType);
     } else if (mode === 'cumulative') {
+        if (comparisonToggle) comparisonToggle.classList.add('hidden');
         if (totalAmountEl) {
             const titleText = window.showCumulativeIncome
                 ? '지난달 vs 이번달 (수입/지출)'
@@ -268,6 +285,7 @@ window.renderChart = function () {
             },
         });
     } else {
+        if (comparisonToggle) comparisonToggle.classList.add('hidden');
         const oldToggle = document.getElementById('chart-income-toggle');
         if (oldToggle) oldToggle.remove();
 
@@ -695,7 +713,7 @@ document.addEventListener('click', (e) => {
  */
 window.categoryComparisonChartInstance = null;
 
-window.renderCategoryComparisonChart = (targetY, targetM) => {
+window.renderCategoryComparisonChart = (targetY, targetM, type = 'expense') => {
     const canvas = document.getElementById('mainChart');
 
     if (!canvas) return;
@@ -723,7 +741,7 @@ window.renderCategoryComparisonChart = (targetY, targetM) => {
 
     // 현재 선택된 국가의 기존 globalData만 사용
     globalData.forEach((item) => {
-        if (item.Type !== 'expense' || !item.Date) return;
+        if (item.Type !== type || !item.Date) return;
 
         const category = globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
 
@@ -754,7 +772,7 @@ window.renderCategoryComparisonChart = (targetY, targetM) => {
         if (chartWrapper) chartWrapper.style.display = 'none';
 
         if (noDataEl) {
-            noDataEl.innerText = '비교할 지출 내역이 없습니다.';
+            noDataEl.innerText = `비교할 ${type === 'income' ? '수입' : '지출'} 내역이 없습니다.`;
             noDataEl.classList.remove('hidden');
         }
         return;
@@ -792,7 +810,7 @@ window.renderCategoryComparisonChart = (targetY, targetM) => {
                 {
                     label: `${targetM + 1}월`,
                     data: categories.map((category) => currentTotals[category] || 0),
-                    backgroundColor: '#ef4444',
+                    backgroundColor: type === 'income' ? '#3b82f6' : '#ef4444',
                     borderRadius: 4,
                     barPercentage: 0.72,
                     categoryPercentage: 0.78,
@@ -815,7 +833,7 @@ window.renderCategoryComparisonChart = (targetY, targetM) => {
                 const categoryLabel = chart.data.labels[element.index];
                 const selectedPrefix = element.datasetIndex === 0 ? prevPrefix : currentPrefix;
 
-                openCategoryDetailModal(categoryLabel, 'expense', selectedPrefix);
+                openCategoryDetailModal(categoryLabel, type, selectedPrefix);
             },
 
             onHover: (event, elements) => {
