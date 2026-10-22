@@ -91,6 +91,26 @@ window.clearSearch = () => {
 
 // 💡 리스트 정렬 순서 전역 상태 및 토글
 window.listSortOrder = localStorage.getItem('listSortOrder') || 'asc';
+window.collapsedDailyDates = new Set();
+
+window.toggleDailyDateGroup = (button) => {
+    const dateStr = button?.dataset.date;
+    const contentId = button?.getAttribute('aria-controls');
+    const content = contentId ? document.getElementById(contentId) : null;
+    const summary = button?.querySelector('[data-daily-summary]');
+    const arrow = button?.querySelector('[data-daily-arrow]');
+    if (!dateStr || !content || !summary || !arrow) return;
+
+    const isCollapsed = window.collapsedDailyDates.has(dateStr);
+    if (isCollapsed) window.collapsedDailyDates.delete(dateStr);
+    else window.collapsedDailyDates.add(dateStr);
+
+    const shouldCollapse = !isCollapsed;
+    button.setAttribute('aria-expanded', String(!shouldCollapse));
+    content.classList.toggle('hidden', shouldCollapse);
+    summary.classList.toggle('hidden', !shouldCollapse);
+    arrow.textContent = shouldCollapse ? 'expand_more' : 'expand_less';
+};
 
 window.toggleListSortOrder = () => {
     window.listSortOrder = window.listSortOrder === 'asc' ? 'desc' : 'asc';
@@ -189,21 +209,39 @@ window.renderDailyList = (data, searchKeyword = '') => {
         const d = new Date(dateStr);
         const displayDate =
             typeof window.formatDateStr === 'function' ? window.formatDateStr(d) : dateStr;
+        const itemsForDate = groupedByDate[dateStr];
+        const dailyIncome = itemsForDate
+            .filter((item) => item.Type === 'income')
+            .reduce((sum, item) => sum + (Number(item.Amount) || 0), 0);
+        const dailyExpense = itemsForDate
+            .filter((item) => item.Type === 'expense')
+            .reduce((sum, item) => sum + (Number(item.Amount) || 0), 0);
+        const isCollapsed = window.collapsedDailyDates.has(dateStr);
+        const contentId = `daily-date-content-${dateStr.replace(/[^0-9-]/g, '')}`;
 
         container.insertAdjacentHTML(
             'beforeend',
-            `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
-                <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                ${displayDate}
-            </div>`
+            `<div class="mt-5 mb-2 border-b border-gray-100 px-1 pb-1">
+                <button type="button" data-date="${dateStr}" aria-controls="${contentId}" aria-expanded="${!isCollapsed}" onclick="toggleDailyDateGroup(this)" class="w-full min-h-10 text-xs font-bold text-gray-500 flex items-center gap-1 text-left">
+                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                    <span class="flex-1">${displayDate}</span>
+                    <span data-daily-summary class="${isCollapsed ? 'flex' : 'hidden'} items-center gap-2 text-[10px] font-semibold">
+                        ${dailyIncome !== 0 ? `<span class="text-blue-500">수입 ${formatMoney(dailyIncome)}</span>` : ''}
+                        ${dailyExpense !== 0 ? `<span class="text-red-500">지출 ${formatMoney(dailyExpense)}</span>` : ''}
+                    </span>
+                    <span data-daily-arrow class="material-symbols-outlined text-[16px]">${isCollapsed ? 'expand_more' : 'expand_less'}</span>
+                </button>
+            </div>
+            <div id="${contentId}" class="${isCollapsed ? 'hidden' : ''}"></div>`
         );
 
-        let itemsForDate = groupedByDate[dateStr];
+        const dateContent = document.getElementById(contentId);
+        let orderedItemsForDate = itemsForDate;
         if (window.listSortOrder === 'desc') {
-            itemsForDate = [...itemsForDate].reverse();
+            orderedItemsForDate = [...itemsForDate].reverse();
         }
 
-        itemsForDate.forEach((item) => {
+        orderedItemsForDate.forEach((item) => {
             const parsed =
                 typeof parseMemo === 'function'
                     ? parseMemo(item.Memo)
@@ -223,7 +261,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
                 krwValue = getKrwEquivalent(Math.abs(amountNum));
             }
 
-            container.insertAdjacentHTML(
+            dateContent.insertAdjacentHTML(
                 'beforeend',
                 `<div onclick="if(typeof openEditModal === 'function') openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
                     <div class="flex items-center gap-2.5 flex-1 min-w-0">
