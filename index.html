@@ -233,7 +233,7 @@
                 </div>
             </div>
 
-            <main class="flex-1 overflow-y-auto p-4 pb-24 no-scrollbar">
+            <main class="flex-1 overflow-y-auto p-4 pb-4 no-scrollbar">
                 <section id="view-daily" class="tab-content active">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-md font-semibold text-gray-700">월 내역</h2>
@@ -707,6 +707,22 @@
                     </ul>
                 </section>
             </main>
+
+            <div
+                id="spending-ticker"
+                class="spending-ticker hidden"
+                role="status"
+                aria-live="polite"
+                aria-label="이번 달 지출 비교"
+            >
+                <span class="spending-ticker-label">이번 달 소비 리포트</span>
+                <div class="spending-ticker-window">
+                    <div class="spending-ticker-track">
+                        <span id="spending-ticker-message"></span>
+                        <span id="spending-ticker-copy" aria-hidden="true"></span>
+                    </div>
+                </div>
+            </div>
 
             <nav
                 class="bg-white border-t border-gray-200 flex justify-between items-center pb-2 pt-2 z-10"

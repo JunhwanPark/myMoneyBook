@@ -287,6 +287,109 @@ window.renderDailyList = (data, searchKeyword = '') => {
     });
 };
 
+// 이번 달 현재까지와 전월 같은 날짜 구간의 지출 및 카테고리 변화를 전광판에 표시합니다.
+window.updateSpendingTicker = () => {
+    const ticker = document.getElementById('spending-ticker');
+    const messageEl = document.getElementById('spending-ticker-message');
+    const copyEl = document.getElementById('spending-ticker-copy');
+    if (!ticker || !messageEl || !copyEl) return;
+
+    const dailyView = document.getElementById('view-daily');
+    const mainApp = document.getElementById('main-app');
+    const isDailyViewActive =
+        window.currentAppMode !== 'ASSETS' && dailyView?.classList.contains('active');
+    if (!isDailyViewActive) {
+        ticker.classList.add('hidden');
+        mainApp?.classList.remove('spending-ticker-visible');
+        return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateKey = (date) =>
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const currentStart = dateKey(new Date(today.getFullYear(), today.getMonth(), 1));
+    const previousStartDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const previousEndDay = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    const previousCutoff = dateKey(
+        new Date(
+            today.getFullYear(),
+            today.getMonth() - 1,
+            Math.min(today.getDate(), previousEndDay)
+        )
+    );
+    const previousPrefix = dateKey(previousStartDate).slice(0, 7);
+    let currentExpense = 0;
+    let previousExpense = 0;
+    const currentByCategory = new Map();
+    const previousByCategory = new Map();
+
+    (globalData || []).forEach((item) => {
+        if (item.Type !== 'expense' || !item.Date) return;
+        const date = String(item.Date).slice(0, 10);
+        const amount = Number(item.Amount) || 0;
+        const categoryKey = item.Category || '__uncategorized__';
+        const categoryLabel =
+            globalCategories.find((category) => category.Value === item.Category)?.Label ||
+            item.Category ||
+            '미분류';
+
+        if (date >= currentStart && date <= dateKey(today)) {
+            currentExpense += amount;
+            const entry = currentByCategory.get(categoryKey) || { label: categoryLabel, amount: 0 };
+            entry.amount += amount;
+            currentByCategory.set(categoryKey, entry);
+        } else if (date.startsWith(previousPrefix) && date <= previousCutoff) {
+            previousExpense += amount;
+            const entry = previousByCategory.get(categoryKey) || { label: categoryLabel, amount: 0 };
+            entry.amount += amount;
+            previousByCategory.set(categoryKey, entry);
+        }
+    });
+
+    const difference = currentExpense - previousExpense;
+    let headline;
+    if (difference < 0) {
+        ticker.dataset.trend = 'less';
+        headline = `🎉 절약 중! 전월 같은 기간보다 <span class="spending-ticker-delta spending-ticker-delta--less">${escapeHTML(formatMoney(Math.abs(difference)))}</span> 덜 쓰고 있어요.`;
+    } else if (difference > 0) {
+        ticker.dataset.trend = 'more';
+        headline = `⚠️ 지출 페이스가 빨라요! 전월 같은 기간보다 <span class="spending-ticker-delta spending-ticker-delta--more">${escapeHTML(formatMoney(difference))}</span> 더 쓰고 있어요.`;
+    } else {
+        ticker.dataset.trend = 'same';
+        headline = currentExpense === 0
+            ? '😌 이번 달은 아직 지출이 없어요.'
+            : '😌 전월 같은 기간과 지출이 같아요.';
+    }
+
+    const categoryChanges = new Map();
+    [...currentByCategory.keys(), ...previousByCategory.keys()].forEach((key) => {
+        if (categoryChanges.has(key)) return;
+        const current = currentByCategory.get(key);
+        const previous = previousByCategory.get(key);
+        const label = current?.label || previous?.label || '미분류';
+        const amount = (current?.amount || 0) - (previous?.amount || 0);
+        if (amount !== 0) categoryChanges.set(key, { label, amount });
+    });
+    const categorySummary = [...categoryChanges.values()]
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+        .slice(0, 2)
+        .map(
+            ({ label, amount }) =>
+                `${escapeHTML(label)} <span class="spending-ticker-delta ${amount > 0 ? 'spending-ticker-delta--more' : 'spending-ticker-delta--less'}">${amount > 0 ? '+' : '−'}${escapeHTML(formatMoney(Math.abs(amount)))}</span>`
+        )
+        .join(' · ');
+    const totals = `전월 같은 기간 ${escapeHTML(formatMoney(previousExpense))} → 이번 달 ${escapeHTML(formatMoney(currentExpense))}.`;
+    const message = categorySummary
+        ? `${headline} ${totals} 카테고리 변화: ${categorySummary}.`
+        : `${headline} ${totals} 카테고리별 큰 변화는 없어요.`;
+
+    messageEl.innerHTML = message;
+    copyEl.innerHTML = message;
+    ticker.classList.remove('hidden');
+    mainApp?.classList.add('spending-ticker-visible');
+};
+
 // 💡 이번 달 총 수입/지출 및 증감 계산
 window.updateMonthlyTotals = function () {
     if (typeof globalData === 'undefined' || !globalData) return;
@@ -360,6 +463,8 @@ window.updateMonthlyTotals = function () {
             momExpenseEl.innerHTML = `<span class="text-gray-400">지난달과 동일</span>`;
         }
     }
+
+    if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
 };
 
 // 💡 달력(FullCalendar) 초기화 (유령 렌더링 문제 완벽 해결!)

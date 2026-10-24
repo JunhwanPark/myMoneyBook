@@ -153,6 +153,7 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         targetTab.classList.add('active');
         targetTab.classList.add(direction === 'right' ? 'slide-in-right' : 'slide-in-left');
     }
+    if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
 
     document.querySelectorAll('.nav-btn').forEach((btn) => {
         btn.classList.remove('text-primary');
@@ -228,6 +229,7 @@ window.switchCountry = function (mode) {
             .querySelectorAll('.tab-content')
             .forEach((el) => el.classList.remove('active', 'slide-in-right', 'slide-in-left'));
         document.getElementById('view-assets').classList.add('active', 'slide-in-right');
+        if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
 
         document.querySelectorAll('.nav-btn').forEach((btn) => {
             btn.classList.remove('text-primary');
