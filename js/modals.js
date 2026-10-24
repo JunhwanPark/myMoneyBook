@@ -380,9 +380,9 @@ window.openWeeklyModal = function (clickedDateStr) {
 
             container.insertAdjacentHTML(
                 'beforeend',
-                `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                    <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                        <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-2.5 py-1.5 rounded-xl mb-1.5 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <div class="${iconBg} w-7 h-7 rounded-full flex items-center justify-center shrink-0">
                             <span class="material-symbols-outlined text-sm">${iconName}</span>
                         </div>
                         <div class="flex-1 min-w-0">
@@ -390,10 +390,10 @@ window.openWeeklyModal = function (clickedDateStr) {
                                 <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                                 ${item.rankBadge || ''}
                             </div>
-                            <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
+                            <p class="text-[10px] text-gray-400 mt-0.5 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
                         </div>
                     </div>
-                    <div class="text-right shrink-0 ml-3">
+                    <div class="text-right shrink-0 ml-2">
                         <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${typeof formatMoney === 'function' ? formatMoney(Math.abs(amountNum)) : Math.abs(amountNum)}</p>
                         ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                         ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${typeof formatMoney === 'function' ? formatMoney(parsed.discount) : parsed.discount}</p>` : ''}
@@ -533,6 +533,28 @@ window.closeCardDetailModal = function () {
 };
 
 // 💡 월간 수입/지출 클릭 시 전체 내역 모달
+window.collapsedMonthlyModalDates = window.collapsedMonthlyModalDates || new Set();
+
+window.toggleMonthlyModalDateGroup = (button) => {
+    const date = button?.dataset.date;
+    const type = button?.dataset.type;
+    const contentId = button?.getAttribute('aria-controls');
+    const content = contentId ? document.getElementById(contentId) : null;
+    const summary = button?.querySelector('[data-monthly-summary]');
+    const arrow = button?.querySelector('[data-monthly-arrow]');
+    if (!date || !type || !content || !summary || !arrow) return;
+
+    const key = `${type}:${date}`;
+    const shouldCollapse = !window.collapsedMonthlyModalDates.has(key);
+    if (shouldCollapse) window.collapsedMonthlyModalDates.add(key);
+    else window.collapsedMonthlyModalDates.delete(key);
+
+    button.setAttribute('aria-expanded', String(!shouldCollapse));
+    content.classList.toggle('hidden', shouldCollapse);
+    summary.classList.toggle('hidden', !shouldCollapse);
+    arrow.textContent = shouldCollapse ? 'expand_more' : 'expand_less';
+};
+
 window.openMonthlyModal = function (type) {
     const year = currentDisplayDate.getFullYear();
     const month = currentDisplayDate.getMonth() + 1;
@@ -577,14 +599,35 @@ window.openMonthlyModal = function (type) {
         );
 
         dateGroups.forEach(({ date, items }) => {
-            renderTransactionDateHeader(container, date);
+            const parsedDate = new Date(`${date}T00:00:00`);
+            const displayDate =
+                typeof window.formatDateStr === 'function' ? window.formatDateStr(parsedDate) : date;
+            const contentId = `monthly-${type}-date-content-${date.replace(/[^0-9-]/g, '')}`;
+            const isCollapsed = window.collapsedMonthlyModalDates.has(`${type}:${date}`);
+            const dailyTotal = items.reduce((sum, item) => sum + (Number(item.Amount) || 0), 0);
 
+            container.insertAdjacentHTML(
+                'beforeend',
+                `<div class="mt-5 mb-2 border-b border-gray-100 px-1 pb-1">
+                    <button type="button" data-date="${date}" data-type="${type}" aria-controls="${contentId}" aria-expanded="${!isCollapsed}" onclick="toggleMonthlyModalDateGroup(this)" class="w-full min-h-10 text-xs font-bold text-gray-500 flex items-center gap-1 text-left">
+                        <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                        <span class="flex-1">${displayDate}</span>
+                        <span data-monthly-summary class="${isCollapsed ? 'flex' : 'hidden'} items-center gap-2 text-[10px] font-semibold">
+                            <span class="${type === 'income' ? 'text-blue-500' : 'text-red-500'}">${typeName} ${formatMoney(dailyTotal)}</span>
+                        </span>
+                        <span data-monthly-arrow class="material-symbols-outlined text-[16px]">${isCollapsed ? 'expand_more' : 'expand_less'}</span>
+                    </button>
+                </div>
+                <div id="${contentId}" class="${isCollapsed ? 'hidden' : ''}"></div>`
+            );
+
+            const dateContent = document.getElementById(contentId);
             items.forEach((item) => {
                 const categoryLabel = item.Category
                     ? globalCategories.find((category) => category.Value === item.Category)?.Label ||
                       item.Category
                     : '미분류';
-                renderTransactionRow(container, item, { categoryLabel });
+                renderTransactionRow(dateContent, item, { categoryLabel });
             });
         });
     }

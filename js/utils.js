@@ -84,9 +84,9 @@ window.renderTransactionRow = (container, item, options = {}) => {
 
     container.insertAdjacentHTML(
         'beforeend',
-        `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition${shadowClass}">
-            <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                <div class="${iconColor} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+        `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-2.5 py-1.5 rounded-xl mb-1.5 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition${shadowClass}">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+                <div class="${iconColor} w-7 h-7 rounded-full flex items-center justify-center shrink-0">
                     <span class="material-symbols-outlined text-sm">${iconName}</span>
                 </div>
                 <div class="flex-1 min-w-0">
@@ -94,10 +94,10 @@ window.renderTransactionRow = (container, item, options = {}) => {
                         <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                         ${item.rankBadge || ''}
                     </div>
-                    <p class="text-[10px] text-gray-400 mt-1 truncate">${detailLabel}</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5 truncate">${detailLabel}</p>
                 </div>
             </div>
-            <div class="text-right shrink-0 ml-3">
+            <div class="text-right shrink-0 ml-2">
                 <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${formattedAmount}</p>
                 ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
                 ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${formattedDiscount}</p>` : ''}
