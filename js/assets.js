@@ -69,6 +69,28 @@ window.renderAssetsList = () => {
         if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return NaN;
         return Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86400000;
     };
+    const depositIndices = new Map();
+    const subscriptionYearIndexCounts = new Map();
+    deposits
+        .map((deposit, sourceOrder) => ({ deposit, sourceOrder }))
+        .sort((a, b) => {
+            const aDate = dateOrdinal(a.deposit.가입일);
+            const bDate = dateOrdinal(b.deposit.가입일);
+            const aHasDate = Number.isFinite(aDate);
+            const bHasDate = Number.isFinite(bDate);
+            if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+            if (!aHasDate || aDate === bDate) return a.sourceOrder - b.sourceOrder;
+            return aDate - bDate;
+        })
+        .forEach(({ deposit }) => {
+            const subscriptionDate = String(deposit.가입일 || '').slice(0, 10);
+            const year = subscriptionDate.match(/^(\d{4})-\d{2}-\d{2}$/)?.[1];
+            if (!year || !Number.isFinite(dateOrdinal(subscriptionDate))) return;
+
+            const index = (subscriptionYearIndexCounts.get(year) || 0) + 1;
+            subscriptionYearIndexCounts.set(year, index);
+            depositIndices.set(deposit.ID, `${year}-${String(index).padStart(2, '0')}`);
+        });
     const todayOrdinal =
         Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000;
     const nextMaturity = deposits
@@ -162,6 +184,9 @@ window.renderAssetsList = () => {
         const calc = getDepositCalc(d);
         const isMatured = calc.end <= today && d.상태 !== '중도해지' && d.상태 !== '만기';
         const isCanceled = d.상태 === '중도해지';
+        const isReceived = d.상태 === '만기';
+        const isClosed = isReceived || isCanceled;
+        const isDue = isMatured;
 
         let statusBadge = '';
         let opacityClass = '';
@@ -224,7 +249,13 @@ window.renderAssetsList = () => {
             `
             <div onclick="openDepositModal('${d.ID}')" class="bg-white px-2.5 py-2 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition mb-1.5 ${opacityClass}">
                 <div class="flex items-center justify-between gap-2">
-                    <p class="min-w-0 text-xs font-black text-gray-800 truncate">${d.은행} <span class="font-medium text-gray-500">${d.종류}</span></p>
+                    <div class="flex min-w-0 items-center gap-1.5">
+                        <span class="shrink-0 inline-flex items-center gap-1 rounded-md ${isClosed ? (isCanceled ? 'bg-red-50 border-red-200 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-500') : isDue ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-800'} border px-1.5 py-0.5 text-[9px] font-extrabold font-mono tabular-nums shadow-sm ${isDue ? 'ring-1 ring-amber-200' : ''}" ${isClosed ? `title="${isCanceled ? '중도해지' : '만기수령'} 완료"` : isDue ? 'title="만기 도래 · 확인 필요"' : ''}>
+                            <span class="${isClosed ? 'line-through decoration-current' : ''}">${depositIndices.get(d.ID) || ''}</span>
+                            ${isClosed ? `<span class="text-[10px] leading-none" aria-label="${isCanceled ? '중도해지' : '만기수령'} 완료">${isCanceled ? '×' : '✓'}</span>` : isDue ? '<span class="text-[11px] leading-none">!</span>' : ''}
+                        </span>
+                        <p class="min-w-0 text-xs font-black text-gray-800 truncate">${d.은행} <span class="font-medium text-gray-500">${d.종류}</span></p>
+                    </div>
                     <span class="shrink-0 text-[10px] font-black text-emerald-700">연 ${Number(d.이율).toFixed(2)}%</span>
                 </div>
                 <div class="flex items-center gap-1 mt-1 mb-1.5">
