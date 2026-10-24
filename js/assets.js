@@ -62,6 +62,24 @@ window.renderAssetsList = () => {
         return;
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dateOrdinal = (value) => {
+        const parts = String(value || '').slice(0, 10).split('-').map(Number);
+        if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return NaN;
+        return Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86400000;
+    };
+    const todayOrdinal =
+        Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000;
+    const nextMaturity = deposits
+        .filter((d) => d.상태 !== '중도해지' && d.상태 !== '만기')
+        .map((deposit) => ({
+            deposit,
+            daysLeft: dateOrdinal(deposit.만기일) - todayOrdinal,
+        }))
+        .filter((item) => Number.isFinite(item.daysLeft) && item.daysLeft >= 0)
+        .sort((a, b) => a.daysLeft - b.daysLeft)[0];
+
     // 총 예치 원금 및 예상 이자 요약
     let totalPrincipal = 0;
     let totalPostTax = 0;
@@ -74,13 +92,36 @@ window.renderAssetsList = () => {
     });
 
     if (totalSummary) {
+        const upcomingName = nextMaturity
+            ? [nextMaturity.deposit.은행, nextMaturity.deposit.종류, nextMaturity.deposit.명의자]
+                  .filter(Boolean)
+                  .join(' · ')
+            : '';
+        const maturityLabel = nextMaturity
+            ? nextMaturity.daysLeft === 0
+                ? '오늘 만기'
+                : `${nextMaturity.daysLeft}일 남음`
+            : '예정된 만기 없음';
+
         totalSummary.innerHTML = `
-            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-md">
-                <p class="text-xs font-medium text-emerald-100 mb-1">총 예치 원금</p>
-                <p class="text-2xl font-black tracking-tight mb-3">${totalPrincipal.toLocaleString()}원</p>
-                <div class="flex justify-between items-center bg-white/20 px-3 py-2 rounded-lg">
-                    <span class="text-[11px] font-bold">만기 시 예상 실수령 이자</span>
-                    <span class="text-[13px] font-black">+${totalPostTax.toLocaleString()}원</span>
+            <div class="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-3 text-white shadow-md">
+                <div class="flex justify-between items-end gap-2">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-medium text-emerald-100 mb-0.5">총 예치 원금</p>
+                        <p class="text-xl font-black tracking-tight">${totalPrincipal.toLocaleString()}원</p>
+                    </div>
+                    <div class="shrink-0 text-right">
+                        <p class="text-[9px] font-bold text-emerald-100">만기 시 예상 실수령 이자</p>
+                        <p class="text-xs font-black">+${totalPostTax.toLocaleString()}원</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 mt-2 pt-2 border-t border-white/20">
+                    <span class="material-symbols-outlined text-[18px] text-emerald-100">event_upcoming</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[9px] font-bold text-emerald-100">가장 가까운 만기</p>
+                        <p class="text-[11px] font-bold truncate">${nextMaturity ? `${escapeHTML(upcomingName)} · ${escapeHTML(String(nextMaturity.deposit.만기일).slice(0, 10))}` : '예정된 만기가 없습니다.'}</p>
+                    </div>
+                    ${nextMaturity ? `<span class="shrink-0 bg-white/20 rounded-full px-2 py-1 text-[10px] font-black">${maturityLabel}</span>` : ''}
                 </div>
             </div>
         `;
@@ -93,9 +134,6 @@ window.renderAssetsList = () => {
         }
         return new Date(b.가입일).getTime() - new Date(a.가입일).getTime();
     });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     const currentYear = new Date().getFullYear();
     if (!window.assetYearExpansionInitialized) {
