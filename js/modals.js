@@ -483,18 +483,7 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
     } else {
         if (typeof applyTopRanks === 'function') applyTopRanks(filteredData);
 
-        const groupedByDate = {};
-        filteredData.forEach((item) => {
-            const dateStr = item.Date.substring(0, 10);
-            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
-            groupedByDate[dateStr].push(item);
-        });
-
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
-            return window.listSortOrder === 'asc'
-                ? new Date(a) - new Date(b)
-                : new Date(b) - new Date(a);
-        });
+        const dateGroups = groupTransactionsByDate(filteredData);
 
         const sortText =
             window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)';
@@ -510,64 +499,18 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
         `
         );
 
-        sortedDates.forEach((dateStr) => {
-            const d = new Date(dateStr);
-            const displayDate =
-                typeof window.formatDateStr === 'function' ? window.formatDateStr(d) : dateStr;
+        dateGroups.forEach(({ date, items }) => {
+            renderTransactionDateHeader(container, date);
 
-            container.insertAdjacentHTML(
-                'beforeend',
-                `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
-                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                    ${displayDate}
-                </div>`
-            );
-
-            let itemsForDate = groupedByDate[dateStr];
-            if (window.listSortOrder === 'desc') {
-                itemsForDate = [...itemsForDate].reverse();
-            }
-
-            itemsForDate.forEach((item) => {
-                const parsed =
-                    typeof parseMemo === 'function'
-                        ? parseMemo(item.Memo)
-                        : { itemName: item.Memo, discount: 0 };
-                const catLabel =
-                    globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
-                const iconName =
-                    typeof getCategoryIcon === 'function' ? getCategoryIcon(catLabel) : 'payments';
-                const amountNum = Number(item.Amount);
-                const displaySign = amountNum < 0 ? '-' : '';
-
-                let krwValue = '';
-                if (typeof getKrwEquivalent === 'function')
-                    krwValue = getKrwEquivalent(Math.abs(amountNum));
-
-                container.insertAdjacentHTML(
-                    'beforeend',
-                    `
-                    <div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition">
-                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                            <div class="bg-red-100 text-red-600 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-sm">${iconName}</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center">
-                                    <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
-                                    ${item.rankBadge || ''}
-                                </div>
-                                <p class="text-[10px] text-gray-400 mt-1 truncate">${catLabel}</p>
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0 ml-3">
-                            <p class="text-red-500 font-bold text-sm leading-none">${displaySign}${typeof formatMoney === 'function' ? formatMoney(Math.abs(amountNum)) : Math.abs(amountNum)}</p>
-                            ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
-                            ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${typeof formatMoney === 'function' ? formatMoney(parsed.discount) : parsed.discount}</p>` : ''}
-                        </div>
-                    </div>
-                `
-                );
+            items.forEach((item) => {
+                const categoryLabel =
+                    globalCategories.find((category) => category.Value === item.Category)?.Label ||
+                    '미분류';
+                renderTransactionRow(container, item, {
+                    categoryLabel,
+                    showPayMethod: false,
+                    shadow: false,
+                });
             });
         });
     }
@@ -617,18 +560,7 @@ window.openMonthlyModal = function (type) {
     } else {
         if (typeof applyTopRanks === 'function') applyTopRanks(monthlyData);
 
-        const groupedByDate = {};
-        monthlyData.forEach((item) => {
-            const dateStr = item.Date.substring(0, 10);
-            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
-            groupedByDate[dateStr].push(item);
-        });
-
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
-            return window.listSortOrder === 'asc'
-                ? new Date(a) - new Date(b)
-                : new Date(b) - new Date(a);
-        });
+        const dateGroups = groupTransactionsByDate(monthlyData);
 
         const sortText =
             window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)';
@@ -644,68 +576,15 @@ window.openMonthlyModal = function (type) {
         `
         );
 
-        sortedDates.forEach((dateStr) => {
-            const d = new Date(dateStr);
-            const displayDate =
-                typeof window.formatDateStr === 'function' ? window.formatDateStr(d) : dateStr;
+        dateGroups.forEach(({ date, items }) => {
+            renderTransactionDateHeader(container, date);
 
-            container.insertAdjacentHTML(
-                'beforeend',
-                `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
-                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                    ${displayDate}
-                </div>`
-            );
-
-            let itemsForDate = groupedByDate[dateStr];
-            if (window.listSortOrder === 'desc') {
-                itemsForDate = [...itemsForDate].reverse();
-            }
-
-            itemsForDate.forEach((item) => {
-                const isExp = item.Type === 'expense';
-                let catLabel = '미분류';
-                if (item.Category) {
-                    const foundCat = globalCategories.find((c) => c.Value === item.Category);
-                    catLabel = foundCat ? foundCat.Label : item.Category;
-                }
-                const parsed =
-                    typeof parseMemo === 'function'
-                        ? parseMemo(item.Memo)
-                        : { itemName: item.Memo, payMethod: '', discount: 0 };
-                const iconName =
-                    typeof getCategoryIcon === 'function' ? getCategoryIcon(catLabel) : 'payments';
-                const amountNum = Number(item.Amount);
-                const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
-                const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
-                const displaySign = amountNum < 0 ? '-' : '';
-
-                let krwValue = '';
-                if (typeof getKrwEquivalent === 'function')
-                    krwValue = getKrwEquivalent(Math.abs(amountNum));
-
-                container.insertAdjacentHTML(
-                    'beforeend',
-                    `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                            <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-sm">${iconName}</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center">
-                                    <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
-                                    ${item.rankBadge || ''}
-                                </div>
-                                <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0 ml-3">
-                            <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${typeof formatMoney === 'function' ? formatMoney(Math.abs(amountNum)) : Math.abs(amountNum)}</p>
-                            ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
-                            ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${typeof formatMoney === 'function' ? formatMoney(parsed.discount) : parsed.discount}</p>` : ''}
-                        </div>
-                    </div>`
-                );
+            items.forEach((item) => {
+                const categoryLabel = item.Category
+                    ? globalCategories.find((category) => category.Value === item.Category)?.Label ||
+                      item.Category
+                    : '미분류';
+                renderTransactionRow(container, item, { categoryLabel });
             });
         });
     }
@@ -748,18 +627,7 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
     } else {
         if (typeof applyTopRanks === 'function') applyTopRanks(catData);
 
-        const groupedByDate = {};
-        catData.forEach((item) => {
-            const dateStr = item.Date.substring(0, 10);
-            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
-            groupedByDate[dateStr].push(item);
-        });
-
-        const sortedDates = Object.keys(groupedByDate).sort((a, b) => {
-            return window.listSortOrder === 'asc'
-                ? new Date(a) - new Date(b)
-                : new Date(b) - new Date(a);
-        });
+        const dateGroups = groupTransactionsByDate(catData);
 
         const sortText =
             window.listSortOrder === 'asc' ? '과거순 (1일 ➔ 말일)' : '최신순 (말일 ➔ 1일)';
@@ -775,65 +643,11 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
         `
         );
 
-        sortedDates.forEach((dateStr) => {
-            const d = new Date(dateStr);
-            const displayDate =
-                typeof window.formatDateStr === 'function' ? window.formatDateStr(d) : dateStr;
+        dateGroups.forEach(({ date, items }) => {
+            renderTransactionDateHeader(container, date);
 
-            container.insertAdjacentHTML(
-                'beforeend',
-                `<div class="mt-5 mb-2 px-1 text-xs font-bold text-gray-500 flex items-center gap-1 border-b border-gray-100 pb-1">
-                    <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                    ${displayDate}
-                </div>`
-            );
-
-            let itemsForDate = groupedByDate[dateStr];
-            if (window.listSortOrder === 'desc') {
-                itemsForDate = [...itemsForDate].reverse();
-            }
-
-            itemsForDate.forEach((item) => {
-                const parsed =
-                    typeof parseMemo === 'function'
-                        ? parseMemo(item.Memo)
-                        : { itemName: item.Memo, payMethod: '', discount: 0 };
-                const isExp = item.Type === 'expense';
-                const iconName =
-                    typeof getCategoryIcon === 'function'
-                        ? getCategoryIcon(categoryLabel)
-                        : 'payments';
-                const amountNum = Number(item.Amount);
-                const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
-                const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
-                const displaySign = amountNum < 0 ? '-' : '';
-
-                let krwValue = '';
-                if (typeof getKrwEquivalent === 'function')
-                    krwValue = getKrwEquivalent(Math.abs(amountNum));
-
-                container.insertAdjacentHTML(
-                    'beforeend',
-                    `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-3 py-2 rounded-xl mb-2 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                        <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                            <div class="${iconBg} w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                                <span class="material-symbols-outlined text-sm">${iconName}</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center">
-                                    <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
-                                    ${item.rankBadge || ''}
-                                </div>
-                                <p class="text-[10px] text-gray-400 mt-1 truncate">${escapeHTML(categoryLabel)} • ${escapeHTML(parsed.payMethod)}</p>
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0 ml-3">
-                            <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${typeof formatMoney === 'function' ? formatMoney(Math.abs(amountNum)) : Math.abs(amountNum)}</p>
-                            ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
-                            ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${typeof formatMoney === 'function' ? formatMoney(parsed.discount) : parsed.discount}</p>` : ''}
-                        </div>
-                    </div>`
-                );
+            items.forEach((item) => {
+                renderTransactionRow(container, item, { categoryLabel });
             });
         });
     }

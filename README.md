@@ -1,124 +1,70 @@
-# 💳 변민삼박 가계부 & 자산관리 (Serverless Family Ledger & Assets)
+# 변민삼박 가계부
 
-구글 스프레드시트(Google Sheets)를 데이터베이스로 사용하고, GitHub Pages로 무료 호스팅되는 **초경량 서버리스 가계부 및 자산관리 웹앱**입니다.
-복잡한 서버 구축 없이 누구나 포크(Fork)하여 자신만의 무료 금융 비서를 만들 수 있습니다.
+Google 스프레드시트에 데이터를 저장하고 GitHub Pages에서 실행하는 가족용 가계부 웹앱입니다. 별도 서버 없이 Google Apps Script를 통해 스프레드시트와 통신합니다. GitHub Pages와 Google 서비스의 무료 제공 범위에서 운영할 수 있습니다.
 
-## ✨ 주요 기능
+## 주요 기능
 
-- **Zero Cost:** 서버 유지비 0원 (GitHub Pages + Google Apps Script 활용)
-- **통합 자산 관리:** 예적금 포트폴리오 트래킹, 명의자별 자산 흐름 분석 및 만기 임박(D-3) 알림 대시보드 제공
-- **초고속 렌더링:** SWR(Stale-While-Revalidate) 로컬 캐싱 패턴 적용으로 초기 로딩 지연 시간 제로(0초)
-- **모바일 최적화:** 네이티브 앱 수준의 UI/UX, 스와이프(Swipe) 제스처 및 모바일 뒤로 가기(History API) 완벽 호환
-- **글로벌 지원:** 접속 타임존 기반 국가 모드(KRW/CNY 가계부) 자동 분리 및 실시간 환율 조회 연동
-- **강력한 통계:** Chart.js 기반의 동적 도넛 차트, 누적 추이 그래프 및 가족 구성원별 운용 자산 비교
+- 한국 원화 및 중국 위안화 가계부
+- 날짜별 내역 목록과 달력 보기
+- 월별 통계, 카테고리별 비교, 누적 추이
+- 예적금 및 배당금 관리와 명의자별 자산 통계
+- 모바일 화면과 홈 화면 바로가기 지원
 
----
+## 데이터 흐름
 
-## 🚀 시작하기 (How to Use)
+1. 사용자가 Google 계정으로 로그인합니다.
+2. 웹앱이 Google Apps Script 웹 앱에 요청을 보냅니다.
+3. Apps Script가 연결된 Google 스프레드시트에서 데이터를 읽고 씁니다.
 
-본 프로젝트를 포크하여 본인만의 가계부를 구축하려면 아래의 4단계를 순서대로 진행해 주세요.
+허용할 계정은 [`js/config.js`](js/config.js)와 [`backend/Code.js`](backend/Code.js)의 `ALLOWED_EMAILS`에 동일하게 설정합니다. 앱을 포크해 사용하는 경우 OAuth 클라이언트 ID와 Apps Script URL도 본인의 값으로 바꿔야 합니다.
 
-### 1️⃣ 저장소 포크 (Fork)
+## 내 저장소에서 설정하기
 
-1. 우측 상단의 `Fork` 버튼을 눌러 이 저장소를 본인의 GitHub 계정으로 복사합니다.
+### 1. 저장소와 Google OAuth 설정
 
-### 2️⃣ 구글 로그인(OAuth) 클라이언트 ID 발급
+1. 이 저장소를 포크하고 GitHub Pages를 `main` 브랜치에서 사용하도록 설정합니다.
+2. Google Cloud Console에서 웹 애플리케이션 OAuth 클라이언트를 만듭니다.
+3. 승인된 JavaScript 원본에 GitHub Pages 주소를 등록합니다. 예: `https://사용자명.github.io`
+4. OAuth 클라이언트 ID를 [`index.html`](index.html)의 `data-client_id`에 입력합니다.
+5. 사용할 이메일 주소를 `ALLOWED_EMAILS`에 입력합니다. 프론트엔드와 Apps Script 양쪽의 목록을 일치시킵니다.
 
-본인 앱에 본인만 로그인할 수 있도록 구글 인증을 설정합니다.
+### 2. 스프레드시트와 Apps Script 설정
 
-1. [Google Cloud Console](https://console.cloud.google.com/)에 접속하여 새 프로젝트를 생성합니다.
-2. `API 및 서비스` > `사용자 인증 정보` 메뉴로 이동합니다.
-3. `사용자 인증 정보 만들기` > `OAuth 클라이언트 ID`를 선택합니다. (애플리케이션 유형: 웹 애플리케이션)
-4. **승인된 자바스크립트 원본(Authorized JavaScript origins)**에 본인의 GitHub Pages 주소를 추가합니다. (예: `https://[본인아이디].github.io`)
-5. 생성된 **클라이언트 ID**를 복사해 둡니다.
-6. 코드의 `index.html` 파일에서 `data-client_id` 속성값을 방금 발급받은 본인의 클라이언트 ID로 교체합니다.
+1. Google 스프레드시트를 만들고 아래 표의 이름으로 시트 탭을 추가합니다. 첫 줄에는 각 시트의 헤더를 입력합니다.
+2. 스프레드시트에서 **확장 프로그램 → Apps Script**를 엽니다.
+3. [`backend/Code.js`](backend/Code.js)의 내용을 Apps Script 프로젝트에 추가합니다.
+4. Apps Script를 웹 앱으로 배포합니다. 실행 사용자는 본인, 액세스 권한은 `모든 사용자`로 설정합니다.
+5. 웹 앱 URL을 [`js/config.js`](js/config.js)의 `GAS_URL`에 입력합니다.
 
-### 3️⃣ 백엔드 세팅 (Google Sheets & Apps Script)
+| 시트 이름 | 첫 줄 헤더 |
+| --- | --- |
+| `Data_KR` | `ID`, `Date`, `UserEmail`, `Type`, `Category`, `Amount`, `Memo`, `UpdatedAt` |
+| `Data_CN` | `ID`, `Date`, `UserEmail`, `Type`, `Category`, `Amount`, `Memo`, `UpdatedAt` |
+| `Category` | `Type`, `Value`, `Label` |
+| `Deposits` | `ID`, `가입일`, `만기일`, `종류`, `원금`, `이율`, `과세여부`, `세전이자`, `세후이자`, `명의자`, `은행`, `상태` |
+| `Dividends` | `ID`, `Date`, `Stock`, `Broker`, `Owner`, `Gross`, `Net` |
 
-1. 구글 드라이브에서 새 **스프레드시트**를 만듭니다. (이곳이 데이터베이스가 됩니다.)
-2. 상단 메뉴에서 `확장 프로그램` > `Apps Script`를 클릭합니다.
-3. 이 저장소의 `backend/Code.js` (또는 `.gs`) 파일의 내용을 복사하여 Apps Script 에디터에 붙여넣습니다.
-4. (선택사항) 초기 시트 탭(예: 내역, 카테고리, 자산)을 스크립트 로직에 맞게 생성해 둡니다.
-5. 우측 상단의 `배포(Deploy)` > `새 배포`를 클릭합니다.
-    - 유형: **웹 앱(Web App)**
-    - 실행할 사용자: **나(Me)**
-    - 액세스 권한이 있는 사용자: **모든 사용자(Anyone)**
-6. 배포 후 생성된 **웹 앱 URL (GAS_URL)**을 복사합니다.
-7. 코드의 `js/config.js` 또는 API 호출 부분의 `GAS_URL` 변수값을 방금 복사한 본인의 URL로 교체합니다.
+`Category` 시트에는 가계부 카테고리와 카드, 자산 설정을 저장합니다. 예를 들어 `Type`은 `expense`, `income`, `card_KR`, `card_CN`, `asset_bank`, `asset_owner`, `asset_type`, `asset_tax`, `asset_broker` 등을 사용합니다. 카드의 `Label`은 `카드명|결제일` 형식입니다.
 
-### 📊 데이터베이스(구글 스프레드시트) 초기 구성 가이드
+### 3. GitHub Pages 배포
 
-앱이 정상적으로 데이터를 읽고 쓰기 위해서는 구글 스프레드시트의 첫 번째 줄(Header)이 아래 구조와 유사하게 세팅되어야 합니다.
+저장소의 **Settings → Pages**에서 `Deploy from a branch`를 선택하고 `main` 브랜치를 지정합니다. 배포가 끝나면 표시된 사이트 주소에서 앱을 엽니다.
 
-#### 1. 내역 시트 (예: `Records` 또는 `내역`)
+## Apps Script 자동 배포
 
-가계부 수입/지출 내역이 쌓이는 메인 시트입니다.
+`.github/workflows/deploy-gas.yml`은 `main` 브랜치에서 `backend/` 파일이 변경될 때 실행됩니다.
 
-| A (ID)    | B (Date)     | C (Type)                | D (Category) | E (Amount) | F (Memo)                             |
-| :-------- | :----------- | :---------------------- | :----------- | :--------- | :----------------------------------- |
-| `고유 ID` | `2026-03-15` | `expense` (또는 income) | `cat_food`   | `15000`    | `항목명\|결제수단\|할인액\|상세메모` |
+1. 로컬에 Node.js와 `@google/clasp`를 설치하고 Google 계정으로 `clasp login`을 실행합니다.
+2. `.clasprc.json`의 내용을 GitHub 저장소 **Settings → Secrets and variables → Actions**에 `CLASPRC_JSON` 시크릿으로 등록합니다.
+3. [`backend/.clasp.json`](backend/.clasp.json)의 `scriptId`를 본인 Apps Script 프로젝트 ID로 바꿉니다.
+4. 워크플로 파일의 배포 ID와 [`js/config.js`](js/config.js)의 `GAS_URL`이 본인의 Apps Script 배포를 가리키는지 확인합니다.
+5. `backend/`를 수정해 `main`에 푸시한 뒤 GitHub Actions 실행 결과를 확인합니다.
 
-#### 2. 예적금 시트 (예: `Assets` 또는 `자산`)
+## 휴대폰 홈 화면에 추가
 
-자산 모드에서 관리하는 가족들의 예적금 상품 내역이 쌓이는 시트입니다.
+- **iPhone/iPad:** Safari의 공유 메뉴에서 **홈 화면에 추가**를 선택합니다.
+- **Android:** Chrome 메뉴에서 **홈 화면에 추가**를 선택합니다. 삼성 인터넷에서는 메뉴의 **현재 페이지 추가 → 홈 화면**을 선택합니다.
 
-| ID        | 가입일       | 만기일       | 종류       | 원금      | 이율   | 과세여부 | 세전이자 | 세후이자 | 명의자   | 은행         | 상태     |
-| :-------- | :----------- | :----------- | :--------- | :-------- | :----- | :------- | :------- | :------- | :------- | :----------- | :------- |
-| `고유 ID` | `2026-03-21` | `2027-03-21` | `정기예금` | `6000000` | `3.40` | `과세`   | `204000` | `172590` | `박준환` | `새마을금고` | `운용중` |
+## 라이선스
 
-#### 3. 설정 시트 (예: `Settings` 또는 `카테고리`)
-
-가계부 카테고리와 신용카드, 자산 모드의 속성 리스트를 관리하는 시트입니다.
-
-| A (Type)      | B (Value)  | C (Label)                           |
-| :------------ | :--------- | :---------------------------------- |
-| `expense`     | `cat_food` | `식비`                              |
-| `card_KR`     | `card_1`   | `신한카드\|14` (카드명\|결제기준일) |
-| `asset_bank`  | `bank_1`   | `신한은행`                          |
-| `asset_owner` | `owner_1`  | `박준환`                            |
-
-- **Type 분류:** `expense`(지출), `income`(수입), `card_KR`(한국 카드) 외에도 자산 모드용 `asset_bank`(은행), `asset_owner`(명의자), `asset_type`(상품종류), `asset_tax`(과세기준) 등을 관리합니다.
-
-### 4️⃣ 프론트엔드 배포 (GitHub Pages)
-
-1. 본인 GitHub 저장소의 `Settings` > `Pages` 메뉴로 이동합니다.
-2. Source를 `Deploy from a branch`로 설정하고, 브랜치를 `main`으로 선택한 뒤 저장합니다.
-3. 1~2분 후 생성되는 웹사이트 주소로 접속하면 본인만의 가계부&자산관리 앱이 실행됩니다!
-
-## 📱 모바일 앱처럼 사용하기 (홈 화면에 추가)
-
-이 가계부는 모바일 환경에 최적화된 웹앱입니다. 스마트폰의 '홈 화면에 추가' 기능을 사용하면 주소창 없이 일반 네이티브 앱처럼 전체 화면으로 더욱 쾌적하게 사용할 수 있습니다.
-
-### 🍎 iOS (아이폰/아이패드) - Safari
-
-1. Safari 브라우저에서 본인 가계부의 웹사이트 주소로 접속합니다.
-2. 화면 하단 메뉴 바에서 **공유하기**(사각형에서 화살표가 위로 향하는 아이콘) 버튼을 누릅니다.
-3. 메뉴를 아래로 스크롤하여 **[홈 화면에 추가]**를 선택합니다.
-4. 우측 상단의 **'추가'**를 누르면 스마트폰 배경화면에 앱 아이콘이 생성됩니다.
-
-### 🤖 Android (갤럭시 등) - 삼성 인터넷 / Chrome
-
-1. 삼성 인터넷 또는 Chrome 브라우저에서 본인 가계부의 웹사이트 주소로 접속합니다.
-2. 브라우저 우측 하단(또는 우측 상단)의 **메뉴**(선 3개 또는 점 3개 아이콘) 버튼을 누릅니다.
-3. 삼성 인터넷: **[현재 페이지 추가]** ➔ **[홈 화면]**을 선택합니다.
-   Chrome: 메뉴에서 바로 **[홈 화면에 추가]**를 선택합니다.
-4. **'추가'**를 누르면 스마트폰 배경화면에 앱 아이콘이 생성됩니다.
-
----
-
-## 🛠 고급 설정: 백엔드 코드 자동 배포 (CI/CD)
-
-GitHub 저장소에서 백엔드 코드를 수정하면 구글 서버(Apps Script)로 자동 덮어쓰기 되도록 설정할 수 있습니다.
-
-1. 로컬 PC에 Node.js를 설치하고 터미널에서 `npm install -g @google/clasp`를 실행합니다.
-2. `clasp login`을 통해 구글 계정을 연동합니다.
-3. PC에 생성된 인증 파일(`.clasprc.json`)의 내용을 복사합니다.
-4. GitHub 저장소 `Settings` > `Secrets and variables` > `Actions`에 `CLASPRC_JSON`이라는 이름으로 해당 내용을 저장합니다.
-5. `backend` 폴더 내의 `.clasp.json` 파일의 `scriptId`를 본인의 앱스 스크립트 ID로 변경합니다.
-6. 이제 `backend/` 폴더 내의 코드를 수정하고 Push하면 GitHub Actions가 자동으로 구글 서버에 배포합니다.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License. 자세한 내용은 [LICENSE](LICENSE)를 참고하세요.

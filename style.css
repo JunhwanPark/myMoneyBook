@@ -3,7 +3,6 @@
    ========================================== */
 :root {
     --theme-color: #4f46e5; /* 기본 테마: Indigo (한국) */
-    --theme-hover: #4338ca;
     --theme-light: #e0e7ff;
     --bg-gray: #f9fafb;
     --text-main: #111827;
@@ -13,14 +12,12 @@
 /* 중국 모드 테마 (Red/Rose) */
 body.theme-cn {
     --theme-color: #e11d48;
-    --theme-hover: #be123c;
     --theme-light: #ffe4e6;
 }
 
 /* 💡 자산 모드 테마 (Emerald) - 변수만 바꿔치기하여 극강의 효율성 달성 */
 body.theme-assets {
     --theme-color: #10b981;
-    --theme-hover: #059669;
     --theme-light: #d1fae5;
     transition: background-color 0.5s ease-in-out;
 }
@@ -69,17 +66,11 @@ body {
 .bg-primary {
     background-color: var(--theme-color) !important;
 }
-.bg-primary-hover:hover {
-    background-color: var(--theme-hover) !important;
-}
 .text-primary {
     color: var(--theme-color) !important;
 }
 .bg-primary-light {
     background-color: var(--theme-light) !important;
-}
-.border-primary {
-    border-color: var(--theme-color) !important;
 }
 
 /* ==========================================
@@ -132,7 +123,8 @@ nav {
     padding: 10px 0 !important;
     font-weight: 700 !important;
     color: var(--text-muted) !important;
-    font-size: 11px;
+    font-size: 12px;
+    background-color: #f9fafb;
 }
 
 .fc-daygrid-day {
@@ -141,8 +133,8 @@ nav {
 
 /* 💡 HTML에 있던 min-height, margin-top 등 미세 조정값 병합 */
 .fc-daygrid-day-frame {
-    background-color: #ffffff;
-    border: 1px solid #f3f4f6 !important;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb !important;
     border-radius: 12px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
     min-height: 45px !important;
@@ -173,15 +165,15 @@ nav {
 }
 
 .fc-daygrid-day-number {
-    font-size: 11px !important;
+    font-size: 12px !important;
     font-weight: 700 !important;
-    color: #9ca3af !important;
+    color: #6b7280 !important;
     padding: 0 !important;
 }
 
 .fc-day-today .fc-daygrid-day-frame {
-    background-color: #ffffff !important;
-    border-color: #f3f4f6 !important;
+    background-color: #f5f3ff !important;
+    border-color: #c4b5fd !important;
 }
 
 .fc-day-today .fc-daygrid-day-number {
@@ -203,8 +195,8 @@ nav {
 
 .fc-event-title {
     font-weight: 800 !important;
-    font-size: 9px !important;
-    letter-spacing: -0.5px;
+    font-size: 10px !important;
+    letter-spacing: -0.2px;
     line-height: 1.1 !important;
 }
 
@@ -337,10 +329,7 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
         height: 44px;
         border-radius: 10px;
     }
-}
-
-/* FEATURE-007: PC 화면 폰트 가독성 개선 */
-@media (min-width: 1024px) {
+    /* FEATURE-007: PC 화면 폰트 가독성 개선 */
     /* 본문: 작은 글자부터 단계적으로 확대 */
     #main-app > main .text-xs {
         font-size: 0.8rem;
@@ -382,34 +371,10 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
 }
 
 /* UI-REFRESH-001: 달력 가독성 개선 */
-.fc-col-header-cell {
-    font-size: 12px;
-}
-
-.fc-daygrid-day-number {
-    font-size: 12px !important;
-    color: #6b7280 !important;
-}
-
-.fc-event-title {
-    font-size: 10px !important;
-    letter-spacing: -0.2px;
-}
 
 /* Fade income and expense amounts in days outside the displayed month. */
 .fc-day-other .fc-daygrid-event {
     opacity: 0.45;
-}
-
-/* Make calendar dates and daily totals easier to distinguish at a glance. */
-.fc-daygrid-day-frame {
-    background-color: #f9fafb;
-    border-color: #e5e7eb !important;
-}
-
-.fc-day-today .fc-daygrid-day-frame {
-    background-color: #f5f3ff !important;
-    border-color: #c4b5fd !important;
 }
 
 .fc-daygrid-event.calendar-expense-event,
@@ -436,10 +401,6 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
 
 .fc-daygrid-event.calendar-empty-event {
     visibility: hidden !important;
-}
-
-.fc-col-header-cell {
-    background-color: #f9fafb;
 }
 
 .fc-col-header-cell:first-child {
@@ -490,7 +451,4 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
         line-height: 1.3;
     }
 
-    nav .nav-btn.text-primary {
-        font-weight: 700;
-    }
 }
