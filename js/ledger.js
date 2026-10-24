@@ -442,6 +442,7 @@ window.renderCalendarEvents = () => {
             start: d,
             allDay: true,
             textColor: t.ex !== 0 ? '#ef4444' : 'transparent',
+            classNames: [t.ex !== 0 ? 'calendar-expense-event' : 'calendar-empty-event'],
             order: 1,
         });
 
@@ -453,6 +454,7 @@ window.renderCalendarEvents = () => {
             start: d,
             allDay: true,
             textColor: t.in !== 0 ? '#3b82f6' : 'transparent',
+            classNames: [t.in !== 0 ? 'calendar-income-event' : 'calendar-empty-event'],
             order: 2,
         });
     }

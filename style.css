@@ -401,6 +401,76 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
     opacity: 0.45;
 }
 
+/* Make calendar dates and daily totals easier to distinguish at a glance. */
+.fc-daygrid-day-frame {
+    background-color: #f9fafb;
+    border-color: #e5e7eb !important;
+}
+
+.fc-day-today .fc-daygrid-day-frame {
+    background-color: #f5f3ff !important;
+    border-color: #c4b5fd !important;
+}
+
+.fc-daygrid-event.calendar-expense-event,
+.fc-daygrid-event.calendar-income-event {
+    border-radius: 5px !important;
+    padding: 1px 3px !important;
+}
+
+.fc-daygrid-event.calendar-expense-event {
+    background-color: #fef2f2 !important;
+}
+
+.fc-daygrid-event.calendar-expense-event .fc-event-title {
+    color: #dc2626 !important;
+}
+
+.fc-daygrid-event.calendar-income-event {
+    background-color: #eff6ff !important;
+}
+
+.fc-daygrid-event.calendar-income-event .fc-event-title {
+    color: #2563eb !important;
+}
+
+.fc-daygrid-event.calendar-empty-event {
+    visibility: hidden !important;
+}
+
+.fc-col-header-cell {
+    background-color: #f9fafb;
+}
+
+.fc-col-header-cell-cushion {
+    display: inline-flex;
+    min-width: 30px;
+    height: 27px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    background-color: #f3f4f6;
+    color: #4b5563 !important;
+}
+
+.fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+    background-color: #fee2e2;
+    color: #dc2626 !important;
+}
+
+.fc-col-header-cell.fc-day-sat .fc-col-header-cell-cushion {
+    background-color: #dbeafe;
+    color: #2563eb !important;
+}
+
+.fc-day-sun:not(.fc-day-today) .fc-daygrid-day-number {
+    color: #dc2626 !important;
+}
+
+.fc-day-sat:not(.fc-day-today) .fc-daygrid-day-number {
+    color: #2563eb !important;
+}
+
 /* UI-REFRESH-002: 하단 내비게이션 가독성 개선 */
 @media (max-width: 1023px) {
     nav .nav-btn .material-symbols-outlined {
