@@ -126,7 +126,7 @@
 
         <div
             id="login-screen"
-            class="h-[100dvh] max-w-md mx-auto flex flex-col items-center justify-center bg-white p-6 shadow-lg"
+            class="relative h-[100dvh] max-w-md mx-auto flex flex-col items-center justify-center bg-white p-6 shadow-lg"
         >
             <div class="bg-primary-light text-primary p-4 rounded-full mb-4">
                 <span class="material-symbols-outlined text-5xl">account_balance_wallet</span>
@@ -146,17 +146,19 @@
                 data-use_fedcm_for_button="true"
                 data-button_auto_select="true"
             ></div>
-            <div
-                class="g_id_signin"
-                data-type="standard"
-                data-shape="rectangular"
-                data-theme="outline"
-                data-text="signin_with"
-                data-size="large"
-            ></div>
-            <p id="login-error" class="text-red-500 text-sm mt-4 hidden">
-                등록되지 않은 계정입니다.
-            </p>
+            <div class="absolute bottom-5 right-5 flex flex-col items-end gap-2">
+                <div
+                    class="g_id_signin"
+                    data-type="standard"
+                    data-shape="rectangular"
+                    data-theme="outline"
+                    data-text="signin_with"
+                    data-size="small"
+                ></div>
+                <p id="login-error" class="text-red-500 text-xs hidden">
+                    등록되지 않은 계정입니다.
+                </p>
+            </div>
         </div>
 
         <div
