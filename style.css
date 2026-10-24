@@ -442,6 +442,14 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
     background-color: #f9fafb;
 }
 
+.fc-col-header-cell:first-child {
+    border-radius: 12px 0 0 12px;
+}
+
+.fc-col-header-cell:last-child {
+    border-radius: 0 12px 12px 0;
+}
+
 .fc-col-header-cell-cushion {
     display: inline-flex;
     min-width: 30px;
