@@ -294,11 +294,12 @@ window.updateSpendingTicker = () => {
     const copyEl = document.getElementById('spending-ticker-copy');
     if (!ticker || !messageEl || !copyEl) return;
 
-    const dailyView = document.getElementById('view-daily');
     const mainApp = document.getElementById('main-app');
-    const isDailyViewActive =
-        window.currentAppMode !== 'ASSETS' && dailyView?.classList.contains('active');
-    if (!isDailyViewActive) {
+    const activeView = document.querySelector('.tab-content.active');
+    const isLedgerViewActive =
+        window.currentAppMode !== 'ASSETS' &&
+        ['view-daily', 'view-monthly', 'view-stats'].includes(activeView?.id);
+    if (!isLedgerViewActive) {
         ticker.classList.add('hidden');
         mainApp?.classList.remove('spending-ticker-visible');
         return;
