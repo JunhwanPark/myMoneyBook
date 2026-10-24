@@ -517,14 +517,20 @@ window.renderDividendsList = () => {
         summaryContainer.insertAdjacentHTML(
             'beforeend',
             `
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-2">
-                <div class="flex justify-between items-center">
-                    <span class="text-sm font-bold text-gray-800 flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-gray-400">person</span>${owner}</span>
-                    <span class="text-xs font-black text-indigo-600">+${totals.pre.toLocaleString()}원</span>
+            <div class="bg-white p-2.5 rounded-lg shadow-sm border border-gray-100 min-w-0">
+                <div class="flex items-center gap-1 min-w-0">
+                    <span class="material-symbols-outlined text-[14px] text-gray-400 shrink-0">person</span>
+                    <span class="text-xs font-bold text-gray-800 truncate">${owner}</span>
                 </div>
-                <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-50 text-[10px]">
-                    <span class="text-gray-400 font-medium">세후 실수령액</span>
-                    <span class="font-black text-gray-800">+${totals.net.toLocaleString()}원</span>
+                <div class="space-y-1 mt-1.5 pt-1.5 border-t border-gray-50">
+                    <div class="flex justify-between items-center gap-1 text-[9px]">
+                        <span class="text-gray-400 font-medium shrink-0">세전</span>
+                        <span class="font-bold text-gray-600 truncate">+${totals.pre.toLocaleString()}원</span>
+                    </div>
+                    <div class="flex justify-between items-center gap-1 text-[9px]">
+                        <span class="text-gray-400 font-medium shrink-0">세후</span>
+                        <span class="font-black text-gray-800 truncate">+${totals.net.toLocaleString()}원</span>
+                    </div>
                 </div>
             </div>
         `
@@ -537,17 +543,17 @@ window.renderDividendsList = () => {
         listContainer.insertAdjacentHTML(
             'beforeend',
             `
-            <div onclick="openDividendModal('${d.ID}')" class="bg-white px-3 py-2.5 rounded-xl border border-gray-100 flex justify-between items-center cursor-pointer mb-2 active:scale-[0.99] transition">
+            <div onclick="openDividendModal('${d.ID}')" class="bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex justify-between items-center cursor-pointer hover:bg-emerald-100 active:bg-emerald-100 active:scale-[0.99] transition">
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-1.5 mb-1">
-                        <span class="text-sm font-black text-gray-800 truncate">${d.Stock}</span>
-                        <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.Owner}</span>
+                    <div class="flex items-center gap-1.5 mb-0.5">
+                        <span class="text-xs font-black text-gray-800 truncate">${d.Stock}</span>
+                        <span class="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.Owner}</span>
                     </div>
-                    <div class="text-[10px] text-gray-400 font-medium">${d.Date} • ${d.Broker}</div>
+                    <div class="text-[9px] text-gray-400 font-medium">${d.Date} • ${d.Broker}</div>
                 </div>
-                <div class="text-right shrink-0 ml-3">
-                    <p class="text-[10px] text-gray-500 font-bold mb-0.5">세전 +${Number(d.Gross).toLocaleString()}원</p>
-                    <p class="text-sm font-black text-indigo-600 leading-none">세후 +${Number(d.Net).toLocaleString()}원</p>
+                <div class="text-right shrink-0 ml-2">
+                    <p class="text-[9px] text-gray-500 font-semibold mb-0.5">세전 +${Number(d.Gross).toLocaleString()}원</p>
+                    <p class="text-xs font-black text-emerald-700 leading-none">세후 +${Number(d.Net).toLocaleString()}원</p>
                 </div>
             </div>
         `
