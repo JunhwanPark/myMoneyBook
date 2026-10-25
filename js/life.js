@@ -26,19 +26,19 @@ const lifeSortAscending = (records) =>
     });
 
 const lifeBalances = (records) => {
-    const balancesByOwner = new Map();
+    const balancesByType = new Map();
     const balanceAtRecord = new Map();
 
     lifeSortAscending(records).forEach((record) => {
         const type = lifeTypeById(record.TypeID);
         if (!type || String(type.Kind).toLowerCase() !== 'counter') return;
-        const key = `${record.TypeID}:${lifePersonKey(record)}`;
-        const nextBalance = (balancesByOwner.get(key) || 0) + (Number(record.Value) || 0);
-        balancesByOwner.set(key, nextBalance);
+        const key = String(record.TypeID);
+        const nextBalance = (balancesByType.get(key) || 0) + (Number(record.Value) || 0);
+        balancesByType.set(key, nextBalance);
         balanceAtRecord.set(String(record.ID), nextBalance);
     });
 
-    return { balancesByOwner, balanceAtRecord };
+    return { balancesByType, balanceAtRecord };
 };
 
 const lifeFormatValue = (value) => {
@@ -75,21 +75,28 @@ window.renderLifeRecords = () => {
         ? previousFilter
         : 'all';
 
-    const { balancesByOwner } = lifeBalances(window.lifeRecords);
+    const { balancesByType } = lifeBalances(window.lifeRecords);
     const counterTypes = activeTypes.filter((type) => String(type.Kind).toLowerCase() === 'counter');
     const balanceCards = [];
     counterTypes.forEach((type) => {
-        const people = [...balancesByOwner.entries()].filter(([key]) => key.startsWith(`${type.ID}:`));
-        if (!people.length) return;
-        const total = people.reduce((sum, [, value]) => sum + value, 0);
-        const byPerson = people
-            .map(([key, value]) => `${lifeEscape(key.slice(String(type.ID).length + 1))} ${lifeFormatValue(value)}${lifeEscape(type.Unit)}`)
+        const typeRecords = window.lifeRecords.filter((record) => String(record.TypeID) === String(type.ID));
+        if (!typeRecords.length) return;
+        const total = balancesByType.get(String(type.ID)) || 0;
+        const usageByPerson = new Map();
+        typeRecords.forEach((record) => {
+            const value = Number(record.Value) || 0;
+            if (value >= 0) return;
+            const person = lifePersonKey(record);
+            usageByPerson.set(person, (usageByPerson.get(person) || 0) + Math.abs(value));
+        });
+        const usageSummary = [...usageByPerson.entries()]
+            .map(([person, value]) => `${lifeEscape(person)} 사용 ${lifeFormatValue(value)}${lifeEscape(type.Unit)}`)
             .join(' · ');
         balanceCards.push(`
             <div class="bg-teal-50 border border-teal-100 rounded-xl px-3 py-2 min-w-0">
                 <p class="text-[9px] font-bold text-teal-700 truncate">${lifeEscape(type.Name)} 잔여</p>
                 <p class="text-sm font-black text-teal-800 truncate">${lifeFormatValue(total)}${lifeEscape(type.Unit)}</p>
-                <p class="text-[8px] text-teal-700/70 truncate">${byPerson}</p>
+                <p class="text-[8px] text-teal-700/70 truncate">${usageSummary || '아직 사용 기록이 없습니다.'}</p>
             </div>
         `);
     });
@@ -226,21 +233,19 @@ window.renderLifeTrend = () => {
     empty.classList.add('hidden');
     const isCounter = String(type.Kind).toLowerCase() === 'counter';
     const dateLabels = [...new Set(records.map((record) => String(record.Date || '').slice(0, 10)))].filter(Boolean);
-    const people = [...new Set(records.map(lifePersonKey))];
+    const people = isCounter ? ['가족 전체'] : [...new Set(records.map(lifePersonKey))];
     const colors = ['#0f766e', '#6366f1', '#e11d48', '#d97706', '#2563eb'];
     const valueByPersonAndDate = new Map(people.map((person) => [person, new Map()]));
     const latestValues = new Map();
 
     if (isCounter) {
-        const balances = new Map();
+        let balance = 0;
         records.forEach((record) => {
-            const person = lifePersonKey(record);
             const date = String(record.Date).slice(0, 10);
-            const balance = (balances.get(person) || 0) + (Number(record.Value) || 0);
-            balances.set(person, balance);
-            valueByPersonAndDate.get(person).set(date, balance);
-            latestValues.set(person, balance);
+            balance += Number(record.Value) || 0;
+            valueByPersonAndDate.get('가족 전체').set(date, balance);
         });
+        latestValues.set('가족 전체', balance);
     } else {
         records.forEach((record) => {
             const person = lifePersonKey(record);
