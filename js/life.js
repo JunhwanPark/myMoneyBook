@@ -292,7 +292,12 @@ window.renderLifeTrend = () => {
             },
             scales: {
                 x: { grid: { display: false }, ticks: { maxTicksLimit: 7, maxRotation: 0, font: { size: 9 } } },
-                y: { ticks: { font: { size: 9 }, callback: (value) => `${value}${type.Unit}` } },
+                y: {
+                    ticks: {
+                        font: { size: 9 },
+                        callback: (value) => `${lifeFormatValue(value)}${type.Unit}`,
+                    },
+                },
             },
         },
     });
