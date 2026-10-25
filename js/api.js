@@ -41,36 +41,41 @@ window._lastRateFetchedCountry = null;
 // 무료 API를 이용한 실시간 환율 호출 함수 (오프라인 캐싱 & 3초 타임아웃 적용)
 // ==========================================
 window.fetchExchangeRate = async () => {
+    const rateValue = document.getElementById('ticker-exchange-value');
+    const rateContainer = document.getElementById('ticker-exchange-rate');
+    const canShowExchangeRate = () =>
+        currentCountry === 'CN' && window.currentAppMode === 'LEDGER';
+    const showRate = (value, isStale = false, title = '') => {
+        if (rateValue) {
+            rateValue.innerText = value;
+            rateValue.classList.toggle('is-stale', isStale);
+            rateValue.title = title;
+        }
+        rateContainer?.classList.toggle('hidden', !canShowExchangeRate());
+        if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
+    };
+
     try {
-        const badge = document.getElementById('exchange-rate-badge');
-        const rateValue = document.getElementById('cny-rate-value');
-
-        if (!badge || !rateValue) return;
-        const canShowExchangeRate = () =>
-            currentCountry === 'CN' && window.currentAppMode === 'LEDGER';
-
-        // 1. 한국 모드일 때: 뱃지를 숨기고, 기억해둔 상태를 'KR'로 변경
+        if (!rateValue || !rateContainer) return;
         if (!canShowExchangeRate()) {
-            badge.classList.add('hidden');
+            rateContainer.classList.add('hidden');
             if (currentCountry !== 'CN') window._lastRateFetchedCountry = 'KR';
             return;
         }
 
-        // 2. 이미 통신 성공했던 경우 캐싱 (함수 조기 종료)
         if (
             window._lastRateFetchedCountry === 'CN' &&
-            rateValue.innerText !== '...' &&
-            rateValue.innerText !== '오류'
+            rateValue.innerText !== '...'
         ) {
-            badge.classList.remove('hidden');
+            rateContainer.classList.remove('hidden');
             return;
         }
 
         window._lastRateFetchedCountry = 'CN';
-        rateValue.innerText = '...';
-        rateValue.classList.remove('text-red-400'); // 에러/캐시 색상 초기화
+        const cachedRate = localStorage.getItem('cachedCnyRate');
+        const cachedDate = localStorage.getItem('cachedCnyDate');
+        showRate(cachedRate ? `${cachedRate}*` : '불러오는 중', Boolean(cachedRate), cachedDate ? `마지막 업데이트: ${cachedDate}` : '');
 
-        // 💡 3초 타임아웃 엔진: 중국 네트워크 지연 시 무한 로딩 방지!
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
 
@@ -78,12 +83,9 @@ window.fetchExchangeRate = async () => {
             const res = await fetch('https://open.er-api.com/v6/latest/CNY', {
                 signal: controller.signal,
             });
-            clearTimeout(timeoutId); // 통신 성공 시 타이머 해제
+            clearTimeout(timeoutId);
             const data = await res.json();
-            if (!canShowExchangeRate()) {
-                badge.classList.add('hidden');
-                return;
-            }
+            if (!canShowExchangeRate()) return;
 
             if (data && data.rates && data.rates.KRW) {
                 const rate = data.rates.KRW;
@@ -92,45 +94,26 @@ window.fetchExchangeRate = async () => {
                     maximumFractionDigits: 2,
                 });
 
-                rateValue.innerText = formattedRate;
-                badge.classList.remove('hidden');
-
-                // 💡 통신에 성공했으니 이 소중한 환율을 스마트폰에 기록해 둡니다!
+                showRate(formattedRate);
                 localStorage.setItem('cachedCnyRate', formattedRate);
                 localStorage.setItem('cachedCnyDate', new Date().toLocaleDateString());
             }
         } catch (networkError) {
             clearTimeout(timeoutId);
             console.warn('환율 API 통신 지연 또는 실패. 캐시된 데이터를 확인합니다.', networkError);
-            if (!canShowExchangeRate()) {
-                badge.classList.add('hidden');
-                return;
-            }
-
-            // 💡 통신 실패 시 스마트폰(localStorage)에서 마지막으로 성공했던 환율을 꺼내옵니다.
-            const cachedRate = localStorage.getItem('cachedCnyRate');
-            const cachedDate = localStorage.getItem('cachedCnyDate');
+            if (!canShowExchangeRate()) return;
 
             if (cachedRate) {
-                // 캐시 데이터가 있으면 그걸 보여주되, 끝에 '*'를 붙이고 살짝 붉은 톤으로 오프라인임을 알립니다.
-                rateValue.innerText = `${cachedRate}*`;
-                rateValue.title = `마지막 업데이트: ${cachedDate}`; // PC에서는 마우스 올리면 확인 가능
-                rateValue.classList.add('text-red-400');
-                badge.classList.remove('hidden');
+                showRate(`${cachedRate}*`, true, cachedDate ? `마지막 업데이트: ${cachedDate}` : '저장된 환율');
             } else {
-                // 앱을 처음 켰는데 오프라인이라 캐시조차 없다면? 안전한 임시 환율(185.00)을 제공합니다.
-                rateValue.innerText = '185.00*';
-                rateValue.classList.add('text-red-400');
-                badge.classList.remove('hidden');
+                showRate('185.00*', true, '환율을 불러오지 못해 임시 기준값을 표시합니다.');
             }
         }
     } catch (e) {
         console.error('환율 처리 중 치명적 에러:', e);
-        const badge = document.getElementById('exchange-rate-badge');
-        const rateValue = document.getElementById('cny-rate-value');
-        if (badge && rateValue && currentCountry === 'CN' && window.currentAppMode === 'LEDGER') {
-            rateValue.innerText = '오류';
-            badge.classList.remove('hidden');
+        if (rateValue && canShowExchangeRate()) {
+            const cachedRate = localStorage.getItem('cachedCnyRate');
+            showRate(cachedRate ? `${cachedRate}*` : '환율 오류', true);
         }
     }
 };

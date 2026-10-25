@@ -55,14 +55,17 @@ window.handleNavSettings = () => {
     else switchTab('settings', '설정', btn);
 };
 
-window.syncAppModeSelect = () => {
-    const select = document.getElementById('app-mode-select');
-    if (!select) return;
-    select.value = window.currentAppMode === 'LIFE'
-        ? 'LIFE'
+window.syncAppModeButtons = () => {
+    const activeMode = window.currentAppMode === 'LIFE'
+        ? 'life'
         : window.currentAppMode === 'ASSETS'
-          ? 'ASSETS'
-          : currentCountry;
+          ? 'assets'
+          : String(currentCountry || 'KR').toLowerCase();
+    document.querySelectorAll('.app-mode-switcher button').forEach((button) => {
+        const isActive = button.id === `mode-btn-${activeMode}`;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', String(isActive));
+    });
 };
 
 window.switchAppMode = (mode) => {
@@ -76,9 +79,7 @@ window.switchAppMode = (mode) => {
     document.body.classList.remove('theme-cn', 'theme-assets');
     document.body.classList.add('theme-life');
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0f766e');
-    document.getElementById('exchange-rate-badge')?.classList.add('hidden');
-    document.getElementById('exchange-chart-popup')?.classList.add('hidden');
-    window.syncAppModeSelect();
+    window.syncAppModeButtons();
 
     document.getElementById('nav-icon-main').innerText = 'edit_note';
     document.getElementById('nav-label-main').innerText = '기록';
@@ -107,6 +108,7 @@ window.switchAppMode = (mode) => {
             : 'nav-btn-main';
     document.getElementById(navId)?.classList.replace('text-gray-400', 'text-primary');
     if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
+    if (typeof window.fetchExchangeRate === 'function') window.fetchExchangeRate();
     if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
     if (typeof window.loadDailyRecords === 'function') window.loadDailyRecords();
 };
@@ -159,12 +161,10 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         document.getElementById('app-title').innerText = '변민삼박 가계부';
         document.body.classList.remove('theme-assets');
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-        const badge = document.getElementById('exchange-rate-badge');
-        window.syncAppModeSelect();
+        window.syncAppModeButtons();
         if (currentCountry === 'KR') {
             document.body.classList.remove('theme-cn');
             if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
-            if (badge) badge.classList.add('hidden');
         } else {
             document.body.classList.add('theme-cn');
             if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
@@ -253,12 +253,10 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
 window.switchCountry = function (mode) {
     const previousAppMode = window.currentAppMode;
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    const badge = document.getElementById('exchange-rate-badge');
 
     if (mode === 'ASSETS') {
         window.currentAppMode = 'ASSETS';
         document.getElementById('app-title').innerText = '변민삼박 자산';
-        if (badge) badge.classList.add('hidden');
 
         document.getElementById('nav-icon-main').innerText = 'savings';
         document.getElementById('nav-label-main').innerText = '예적금';
@@ -271,7 +269,7 @@ window.switchCountry = function (mode) {
         document.body.classList.add('theme-assets');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981');
 
-        window.syncAppModeSelect();
+        window.syncAppModeButtons();
 
         document
             .querySelectorAll('.tab-content')
@@ -297,7 +295,7 @@ window.switchCountry = function (mode) {
     window.currentAppMode = 'LEDGER';
     document.getElementById('app-title').innerText = '변민삼박 가계부';
     document.body.classList.remove('theme-assets', 'theme-life');
-    window.syncAppModeSelect();
+    window.syncAppModeButtons();
 
     document.getElementById('nav-icon-main').innerText = 'list_alt';
     document.getElementById('nav-label-main').innerText = '내역';
@@ -319,7 +317,7 @@ window.switchCountry = function (mode) {
         if (currentMonthOnly) currentMonthOnly.checked = false;
 
         currentCountry = mode;
-        window.syncAppModeSelect();
+        window.syncAppModeButtons();
 
         if (typeof loadDailyRecords === 'function') {
             loadDailyRecords();
@@ -331,7 +329,6 @@ window.switchCountry = function (mode) {
     if (mode === 'KR') {
         document.body.classList.remove('theme-cn');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
-        if (badge) badge.classList.add('hidden');
     } else {
         document.body.classList.add('theme-cn');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
@@ -397,7 +394,7 @@ window.initCountryByTimezone = () => {
         } else {
             document.body.classList.add('theme-cn');
         }
-        if (typeof window.syncAppModeSelect === 'function') window.syncAppModeSelect();
+        if (typeof window.syncAppModeButtons === 'function') window.syncAppModeButtons();
     } catch (e) {
         console.warn('타임존 인식 실패, 기본값으로 시작합니다.');
     }

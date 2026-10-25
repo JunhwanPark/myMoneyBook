@@ -294,6 +294,12 @@ window.updateSpendingTicker = () => {
     const copyEl = document.getElementById('spending-ticker-copy');
     if (!ticker || !messageEl || !copyEl) return;
 
+    const exchangeRate = document.getElementById('ticker-exchange-rate');
+    exchangeRate?.classList.toggle(
+        'hidden',
+        !(currentCountry === 'CN' && window.currentAppMode === 'LEDGER')
+    );
+
     const mainApp = document.getElementById('main-app');
     const activeView = document.querySelector('.tab-content.active');
     const isLedgerViewActive =

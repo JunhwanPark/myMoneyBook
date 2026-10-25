@@ -176,53 +176,11 @@
                     </div>
                 </div>
 
-                <div class="flex items-center gap-2 relative">
-                    <button
-                        id="exchange-rate-badge"
-                        onclick="toggleExchangeRateChart()"
-                        class="hidden bg-white/20 hover:bg-white/30 rounded-md px-1.5 py-0.5 flex items-center gap-0.5 text-[9px] whitespace-nowrap transition-all cursor-pointer"
-                    >
-                        <span class="opacity-80 font-bold">¥</span>
-                        <span id="cny-rate-value" class="font-bold text-white tracking-tight"
-                            >...</span
-                        >
-                        <span class="material-symbols-outlined text-[11px] ml-0.5 opacity-90"
-                            >monitoring</span
-                        >
-                    </button>
-
-                    <div
-                        id="exchange-chart-popup"
-                        class="hidden absolute top-[120%] right-10 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 z-[100] w-52 transition-opacity origin-top-right"
-                    >
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-extrabold text-gray-800"
-                                >최근 7일 환율 흐름</span
-                            >
-                            <span
-                                class="text-[9px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded-md"
-                                >CNY/KRW</span
-                            >
-                        </div>
-                        <div class="h-20 w-full relative">
-                            <canvas id="exchangeMiniChart"></canvas>
-                        </div>
-                    </div>
-
-                    <label class="relative shrink-0">
-                        <span class="sr-only">앱 모드</span>
-                        <select
-                            id="app-mode-select"
-                            onchange="switchAppMode(this.value)"
-                            class="appearance-none max-w-[108px] bg-white/20 hover:bg-white/30 text-white rounded-lg py-1.5 pl-2 pr-6 text-[11px] font-bold outline-none cursor-pointer transition-colors"
-                        >
-                            <option value="KR" class="text-gray-800">🇰🇷 한국</option>
-                            <option value="CN" class="text-gray-800">🇨🇳 중국</option>
-                            <option value="LIFE" class="text-gray-800">생활기록</option>
-                            <option value="ASSETS" class="text-gray-800">자산</option>
-                        </select>
-                        <span class="material-symbols-outlined pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[15px] text-white/80">expand_more</span>
-                    </label>
+                <div class="app-mode-switcher" role="group" aria-label="앱 모드">
+                    <button id="mode-btn-kr" onclick="switchAppMode('KR')" aria-label="한국 모드">KR 🇰🇷</button>
+                    <button id="mode-btn-cn" onclick="switchAppMode('CN')" aria-label="중국 모드">CN 🇨🇳</button>
+                    <button id="mode-btn-life" onclick="switchAppMode('LIFE')" aria-label="생활 모드">생활</button>
+                    <button id="mode-btn-assets" onclick="switchAppMode('ASSETS')" aria-label="자산 모드">자산</button>
                 </div>
             </div>
 
@@ -751,6 +709,10 @@
                         <span id="spending-ticker-message"></span>
                         <span id="spending-ticker-copy" aria-hidden="true"></span>
                     </div>
+                </div>
+                <div id="ticker-exchange-rate" class="ticker-exchange-rate hidden" aria-label="오늘의 위안화 환율">
+                    <span>¥→₩</span>
+                    <strong id="ticker-exchange-value">...</strong>
                 </div>
             </div>
 
