@@ -169,7 +169,7 @@
                 class="bg-primary text-white px-4 py-2 flex justify-between items-center z-20 relative transition-colors duration-300"
             >
                 <div class="flex items-center gap-1.5 shrink-0">
-                    <span class="font-bold text-sm">변민삼박 가계부</span>
+                    <span id="app-title" class="font-bold text-sm">변민삼박 가계부</span>
                     <div id="sync-status" role="status" aria-live="polite" title="동기화 상태" class="flex items-center gap-1 text-[9px] font-bold whitespace-nowrap">
                         <span id="sync-status-icon" class="material-symbols-outlined text-[13px] text-emerald-300">check_circle</span>
                         <span id="sync-status-text" class="hidden sm:inline text-white/90">동기화 완료</span>
@@ -209,29 +209,20 @@
                         </div>
                     </div>
 
-                    <div class="flex bg-white/20 rounded-lg p-1 shrink-0">
-                        <button
-                            id="btn-kr"
-                            onclick="switchCountry('KR')"
-                            class="px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all"
+                    <label class="relative shrink-0">
+                        <span class="sr-only">앱 모드</span>
+                        <select
+                            id="app-mode-select"
+                            onchange="switchAppMode(this.value)"
+                            class="appearance-none max-w-[108px] bg-white/20 hover:bg-white/30 text-white rounded-lg py-1.5 pl-2 pr-6 text-[11px] font-bold outline-none cursor-pointer transition-colors"
                         >
-                            KR 🇰🇷
-                        </button>
-                        <button
-                            id="btn-cn"
-                            onclick="switchCountry('CN')"
-                            class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all"
-                        >
-                            CN 🇨🇳
-                        </button>
-                        <button
-                            id="btn-assets"
-                            onclick="switchCountry('ASSETS')"
-                            class="px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all"
-                        >
-                            자산 💰
-                        </button>
-                    </div>
+                            <option value="KR" class="text-gray-800">🇰🇷 한국</option>
+                            <option value="CN" class="text-gray-800">🇨🇳 중국</option>
+                            <option value="LIFE" class="text-gray-800">생활기록</option>
+                            <option value="ASSETS" class="text-gray-800">자산</option>
+                        </select>
+                        <span class="material-symbols-outlined pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 text-[15px] text-white/80">expand_more</span>
+                    </label>
                 </div>
             </div>
 
@@ -564,6 +555,43 @@
                     </div>
                 </section>
 
+                <section id="view-life-records" class="tab-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-md font-semibold text-gray-700">가족 생활기록</h2>
+                            <p class="text-[10px] text-gray-400 mt-0.5">반복해서 기록하고 싶은 것을 모아보세요</p>
+                        </div>
+                        <select id="life-record-type-filter" onchange="renderLifeRecords()" class="max-w-[130px] bg-white border border-gray-200 text-xs font-bold text-gray-600 px-2 py-2 rounded-xl outline-none">
+                            <option value="all">모든 기록</option>
+                        </select>
+                    </div>
+                    <div id="life-balance-summary" class="grid grid-cols-2 gap-2 mb-3"></div>
+                    <div id="life-record-list" class="space-y-1.5 pb-4"></div>
+                </section>
+
+                <section id="view-life-trends" class="tab-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-md font-semibold text-gray-700">기록 추이</h2>
+                        <select id="life-trend-type-select" onchange="renderLifeTrend()" class="max-w-[150px] bg-white border border-gray-200 text-xs font-bold text-gray-600 px-2 py-2 rounded-xl outline-none"></select>
+                    </div>
+                    <div id="life-trend-summary" class="mb-3"></div>
+                    <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="relative h-[260px] w-full"><canvas id="life-trend-chart"></canvas></div>
+                        <p id="life-trend-empty" class="hidden text-center text-gray-400 text-xs py-12">표시할 기록이 아직 없습니다.</p>
+                    </div>
+                </section>
+
+                <section id="view-life-types" class="tab-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 class="text-md font-semibold text-gray-700">기록 종류</h2>
+                            <p class="text-[10px] text-gray-400 mt-0.5">가족이 기록할 항목을 관리합니다</p>
+                        </div>
+                        <button onclick="openLifeTypeModal()" class="bg-primary text-white px-3 py-2 rounded-xl text-xs font-bold shadow-sm active:scale-95 transition">종류 추가</button>
+                    </div>
+                    <div id="life-types-list" class="space-y-2 pb-4"></div>
+                </section>
+
                 <section id="view-settings" class="tab-content">
                     <h2 class="text-md font-semibold text-gray-700 mb-4">설정</h2>
                     <div
@@ -763,7 +791,7 @@
                     onclick="handleNavStats()"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1 transition-all"
                 >
-                    <span class="material-symbols-outlined mb-1">pie_chart</span>
+                    <span id="nav-icon-stats" class="material-symbols-outlined mb-1">pie_chart</span>
                     <span id="nav-label-stats" class="text-[10px]">통계</span>
                 </button>
 
@@ -772,8 +800,8 @@
                     onclick="handleNavSettings()"
                     class="nav-btn text-gray-400 flex flex-col items-center flex-1 py-1 transition-all"
                 >
-                    <span class="material-symbols-outlined mb-1">settings</span>
-                    <span class="text-[10px]">설정</span>
+                    <span id="nav-icon-settings" class="material-symbols-outlined mb-1">settings</span>
+                    <span id="nav-label-settings" class="text-[10px]">설정</span>
                 </button>
             </nav>
         </div>
@@ -983,6 +1011,95 @@
                     </button>
                 </div>
                 <div id="weekly-list-container" class="flex-1 overflow-y-auto"></div>
+            </div>
+        </div>
+        <div
+            id="life-record-modal"
+            class="hidden fixed inset-0 bg-black/40 z-[92] flex items-end justify-center transition-opacity opacity-0 p-0 sm:p-4"
+        >
+            <div
+                id="life-record-modal-content"
+                class="bg-white w-full max-w-md max-h-[88dvh] overflow-y-auto no-scrollbar rounded-t-3xl sm:rounded-3xl p-5 transform translate-y-full transition-transform shadow-2xl"
+            >
+                <div class="flex justify-between items-center mb-5">
+                    <div>
+                        <h3 id="life-record-modal-title" class="text-lg font-bold">생활기록 추가</h3>
+                        <p id="life-record-modal-subtitle" class="text-xs text-gray-400 mt-1"></p>
+                    </div>
+                    <button type="button" onclick="closeLifeRecordModal()" class="text-gray-400 p-2" aria-label="닫기">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form id="life-record-form" class="space-y-3" onsubmit="event.preventDefault(); saveLifeRecord();">
+                    <input type="hidden" id="life-record-id" />
+                    <label class="block text-xs font-bold text-gray-500">기록 종류
+                        <select id="life-record-type" onchange="updateLifeRecordForm()" class="mt-1 w-full border border-gray-200 bg-white p-3 rounded-xl text-sm text-gray-800" required></select>
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="block text-xs font-bold text-gray-500">날짜
+                            <input id="life-record-date" type="date" class="mt-1 w-full border border-gray-200 p-3 rounded-xl text-sm" required />
+                        </label>
+                        <label class="block text-xs font-bold text-gray-500">사람 <span class="font-normal text-gray-400">(선택)</span>
+                            <input id="life-record-person" type="text" list="life-person-options" autocomplete="off" placeholder="이름" class="mt-1 w-full border border-gray-200 p-3 rounded-xl text-sm" />
+                            <datalist id="life-person-options"></datalist>
+                        </label>
+                    </div>
+                    <div id="life-record-counter-action-wrap" class="hidden">
+                        <label class="block text-xs font-bold text-gray-500">기록 방식
+                            <select id="life-record-counter-action" class="mt-1 w-full border border-gray-200 bg-white p-3 rounded-xl text-sm">
+                                <option value="increase">충전 / 증가</option>
+                                <option value="decrease">사용 / 감소</option>
+                            </select>
+                        </label>
+                    </div>
+                    <label class="block text-xs font-bold text-gray-500"><span id="life-record-value-label">기록값</span>
+                        <div class="relative mt-1">
+                            <input id="life-record-value" type="number" inputmode="decimal" step="any" placeholder="값 입력" class="w-full border border-gray-200 p-3 pr-14 rounded-xl text-sm font-bold" required />
+                            <span id="life-record-unit" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400"></span>
+                        </div>
+                    </label>
+                    <label class="block text-xs font-bold text-gray-500">메모 <span class="font-normal text-gray-400">(선택)</span>
+                        <textarea id="life-record-memo" rows="2" placeholder="간단한 메모" class="mt-1 w-full border border-gray-200 p-3 rounded-xl text-sm resize-none"></textarea>
+                    </label>
+                    <div class="flex gap-2 pt-1">
+                        <button id="life-record-delete" type="button" onclick="deleteLifeRecord()" class="hidden bg-red-50 text-red-600 px-4 py-3 rounded-xl font-bold text-sm">삭제</button>
+                        <button id="life-record-save" type="submit" class="flex-1 bg-primary text-white py-3 rounded-xl font-bold text-sm shadow-md">저장하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div
+            id="life-type-modal"
+            class="hidden fixed inset-0 bg-black/40 z-[93] flex items-end justify-center transition-opacity opacity-0 p-0 sm:p-4"
+        >
+            <div
+                id="life-type-modal-content"
+                class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 transform translate-y-full transition-transform shadow-2xl"
+            >
+                <div class="flex justify-between items-center mb-5">
+                    <div>
+                        <h3 class="text-lg font-bold">기록 종류 추가</h3>
+                        <p class="text-xs text-gray-400 mt-1">측정값 또는 횟수 변화를 기록할 수 있어요.</p>
+                    </div>
+                    <button type="button" onclick="closeLifeTypeModal()" class="text-gray-400 p-2" aria-label="닫기">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form id="life-type-form" class="space-y-3" onsubmit="event.preventDefault(); saveLifeType();">
+                    <label class="block text-xs font-bold text-gray-500">이름
+                        <input id="life-type-name" type="text" maxlength="40" placeholder="예: 몸무게, 골프 이용권" class="mt-1 w-full border border-gray-200 p-3 rounded-xl text-sm" required />
+                    </label>
+                    <label class="block text-xs font-bold text-gray-500">기록 방식
+                        <select id="life-type-kind" class="mt-1 w-full border border-gray-200 bg-white p-3 rounded-xl text-sm">
+                            <option value="measurement">측정값 · 날짜별 수치와 추이</option>
+                            <option value="counter">횟수·잔여량 · 증가와 사용 누적</option>
+                        </select>
+                    </label>
+                    <label class="block text-xs font-bold text-gray-500">단위
+                        <input id="life-type-unit" type="text" maxlength="12" placeholder="예: kg, 회, km" class="mt-1 w-full border border-gray-200 p-3 rounded-xl text-sm" required />
+                    </label>
+                    <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm shadow-md">종류 저장</button>
+                </form>
             </div>
         </div>
         <div
@@ -1506,6 +1623,7 @@
         <script src="js/chart.js"></script>
         <script src="js/modals.js"></script>
         <script src="js/ledger.js"></script>
+        <script src="js/life.js"></script>
         <script src="js/ui.js"></script>
         <script src="js/app.js"></script>
         <script async src="https://accounts.google.com/gsi/client"></script>

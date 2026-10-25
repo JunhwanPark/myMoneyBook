@@ -22,6 +22,11 @@ body.theme-assets {
     transition: background-color 0.5s ease-in-out;
 }
 
+body.theme-life {
+    --theme-color: #0f766e;
+    --theme-light: #ccfbf1;
+}
+
 /* ==========================================
    2. 기본 레이아웃 및 유틸리티
    ========================================== */

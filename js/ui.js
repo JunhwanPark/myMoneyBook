@@ -4,6 +4,10 @@
 window.currentAppMode = 'LEDGER';
 
 window.handleMainPlusClick = () => {
+    if (window.currentAppMode === 'LIFE') {
+        if (typeof window.openLifeRecordModal === 'function') window.openLifeRecordModal();
+        return;
+    }
     if (window.currentAppMode === 'ASSETS') {
         // 💡 현재 어떤 자산 탭(예적금 vs 배당금)이 활성화되어 있는지 정확히 체크합니다.
         const activeTab = document.querySelector('.tab-content.active');
@@ -26,19 +30,22 @@ window.handleMainPlusClick = () => {
 
 window.handleNavMain = () => {
     const btn = document.getElementById('nav-btn-main');
-    if (window.currentAppMode === 'ASSETS') switchTab('assets', '예적금', btn);
+    if (window.currentAppMode === 'LIFE') switchTab('life-records', '기록', btn);
+    else if (window.currentAppMode === 'ASSETS') switchTab('assets', '예적금', btn);
     else switchTab('daily', '내역', btn);
 };
 
 window.handleNavSub = () => {
     const btn = document.getElementById('nav-btn-sub');
-    if (window.currentAppMode === 'ASSETS') switchTab('assets-dividends', '배당금', btn);
+    if (window.currentAppMode === 'LIFE') switchTab('life-trends', '추이', btn);
+    else if (window.currentAppMode === 'ASSETS') switchTab('assets-dividends', '배당금', btn);
     else switchTab('monthly', '달력', btn);
 };
 
 window.handleNavStats = () => {
     const btn = document.getElementById('nav-btn-stats');
-    if (window.currentAppMode === 'ASSETS') switchTab('assets-stats', '자산통계', btn);
+    if (window.currentAppMode === 'LIFE') switchTab('life-types', '기록 종류', btn);
+    else if (window.currentAppMode === 'ASSETS') switchTab('assets-stats', '자산통계', btn);
     else switchTab('stats', '통계', btn);
 };
 
@@ -46,6 +53,62 @@ window.handleNavSettings = () => {
     const btn = document.getElementById('nav-btn-settings');
     if (window.currentAppMode === 'ASSETS') switchTab('assets-settings', '자산설정', btn);
     else switchTab('settings', '설정', btn);
+};
+
+window.syncAppModeSelect = () => {
+    const select = document.getElementById('app-mode-select');
+    if (!select) return;
+    select.value = window.currentAppMode === 'LIFE'
+        ? 'LIFE'
+        : window.currentAppMode === 'ASSETS'
+          ? 'ASSETS'
+          : currentCountry;
+};
+
+window.switchAppMode = (mode) => {
+    if (mode !== 'LIFE') {
+        window.switchCountry(mode);
+        return;
+    }
+
+    window.currentAppMode = 'LIFE';
+    document.getElementById('app-title').innerText = '변민삼박 생활기록';
+    document.body.classList.remove('theme-cn', 'theme-assets');
+    document.body.classList.add('theme-life');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#0f766e');
+    document.getElementById('exchange-rate-badge')?.classList.add('hidden');
+    document.getElementById('exchange-chart-popup')?.classList.add('hidden');
+    window.syncAppModeSelect();
+
+    document.getElementById('nav-icon-main').innerText = 'edit_note';
+    document.getElementById('nav-label-main').innerText = '기록';
+    document.getElementById('nav-icon-sub').innerText = 'show_chart';
+    document.getElementById('nav-label-sub').innerText = '추이';
+    document.getElementById('nav-icon-stats').innerText = 'category';
+    document.getElementById('nav-label-stats').innerText = '유형';
+    document.getElementById('nav-icon-settings').innerText = 'settings';
+    document.getElementById('nav-label-settings').innerText = '설정';
+
+    const targetTab = window.currentLifeTab || 'life-records';
+    document.querySelectorAll('.tab-content').forEach((el) =>
+        el.classList.remove('active', 'slide-in-right', 'slide-in-left')
+    );
+    document.getElementById(`view-${targetTab}`)?.classList.add('active', 'slide-in-right');
+    document.querySelectorAll('.nav-btn').forEach((btn) => {
+        btn.classList.remove('text-primary');
+        btn.classList.add('text-gray-400');
+    });
+    const navId = targetTab === 'life-trends'
+        ? 'nav-btn-sub'
+        : targetTab === 'life-types'
+          ? 'nav-btn-stats'
+          : targetTab === 'settings'
+            ? 'nav-btn-settings'
+            : 'nav-btn-main';
+    document.getElementById(navId)?.classList.replace('text-gray-400', 'text-primary');
+    if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
+    if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
+    if (typeof window.loadDailyRecords === 'function') window.loadDailyRecords();
 };
 
 // ==========================================
@@ -93,28 +156,16 @@ window.applyTopRanks = (list) => {
 window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
     if (window.currentAppMode === 'ASSETS' && !tabId.startsWith('assets')) {
         window.currentAppMode = 'LEDGER';
+        document.getElementById('app-title').innerText = '변민삼박 가계부';
         document.body.classList.remove('theme-assets');
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-
-        const btnKr = document.getElementById('btn-kr');
-        const btnCn = document.getElementById('btn-cn');
-        const btnAssets = document.getElementById('btn-assets');
         const badge = document.getElementById('exchange-rate-badge');
-
-        if (btnAssets)
-            btnAssets.className =
-                'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
+        window.syncAppModeSelect();
         if (currentCountry === 'KR') {
-            if (btnKr)
-                btnKr.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
             document.body.classList.remove('theme-cn');
             if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
             if (badge) badge.classList.add('hidden');
         } else {
-            if (btnCn)
-                btnCn.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
             document.body.classList.add('theme-cn');
             if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
             if (typeof fetchExchangeRate === 'function') fetchExchangeRate();
@@ -153,6 +204,9 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
         targetTab.classList.add('active');
         targetTab.classList.add(direction === 'right' ? 'slide-in-right' : 'slide-in-left');
     }
+    if (window.currentAppMode === 'LIFE' && tabId.startsWith('life-')) {
+        window.currentLifeTab = tabId;
+    }
     if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
 
     document.querySelectorAll('.nav-btn').forEach((btn) => {
@@ -187,43 +241,37 @@ window.switchTab = (tabId, title, btnElement, forceDirection = null) => {
     } else if (tabId === 'assets-dividends') {
         // 👇 배당금 탭으로 진입 시 배당금 리스트 그리기 함수 호출!
         if (typeof renderDividendsList === 'function') renderDividendsList();
+    } else if (tabId === 'life-records' && typeof window.renderLifeRecords === 'function') {
+        window.renderLifeRecords();
+    } else if (tabId === 'life-trends' && typeof window.renderLifeTrend === 'function') {
+        window.renderLifeTrend();
+    } else if (tabId === 'life-types' && typeof window.renderLifeTypes === 'function') {
+        window.renderLifeTypes();
     }
 };
 
 window.switchCountry = function (mode) {
-    const btnKr = document.getElementById('btn-kr');
-    const btnCn = document.getElementById('btn-cn');
-    const btnAssets = document.getElementById('btn-assets');
+    const previousAppMode = window.currentAppMode;
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     const badge = document.getElementById('exchange-rate-badge');
 
-    if (btnKr)
-        btnKr.className =
-            'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
-    if (btnCn)
-        btnCn.className =
-            'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
-    if (btnAssets)
-        btnAssets.className =
-            'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
-
     if (mode === 'ASSETS') {
         window.currentAppMode = 'ASSETS';
+        document.getElementById('app-title').innerText = '변민삼박 자산';
         if (badge) badge.classList.add('hidden');
 
         document.getElementById('nav-icon-main').innerText = 'savings';
         document.getElementById('nav-label-main').innerText = '예적금';
         document.getElementById('nav-icon-sub').innerText = 'payments';
         document.getElementById('nav-label-sub').innerText = '배당금';
+        document.getElementById('nav-icon-stats').innerText = 'pie_chart';
         document.getElementById('nav-label-stats').innerText = '통계';
 
-        document.body.classList.remove('theme-cn');
+        document.body.classList.remove('theme-cn', 'theme-life');
         document.body.classList.add('theme-assets');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#10b981');
 
-        if (btnAssets)
-            btnAssets.className =
-                'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
+        window.syncAppModeSelect();
 
         document
             .querySelectorAll('.tab-content')
@@ -247,13 +295,18 @@ window.switchCountry = function (mode) {
     }
 
     window.currentAppMode = 'LEDGER';
-    document.body.classList.remove('theme-assets');
+    document.getElementById('app-title').innerText = '변민삼박 가계부';
+    document.body.classList.remove('theme-assets', 'theme-life');
+    window.syncAppModeSelect();
 
     document.getElementById('nav-icon-main').innerText = 'list_alt';
     document.getElementById('nav-label-main').innerText = '내역';
     document.getElementById('nav-icon-sub').innerText = 'calendar_month';
     document.getElementById('nav-label-sub').innerText = '달력';
+    document.getElementById('nav-icon-stats').innerText = 'pie_chart';
     document.getElementById('nav-label-stats').innerText = '통계';
+    document.getElementById('nav-icon-settings').innerText = 'settings';
+    document.getElementById('nav-label-settings').innerText = '설정';
 
     if (typeof currentCountry !== 'undefined' && currentCountry !== mode) {
         // 국가 전환 시 이전 국가의 검색 조건 초기화
@@ -266,6 +319,7 @@ window.switchCountry = function (mode) {
         if (currentMonthOnly) currentMonthOnly.checked = false;
 
         currentCountry = mode;
+        window.syncAppModeSelect();
 
         if (typeof loadDailyRecords === 'function') {
             loadDailyRecords();
@@ -277,20 +331,18 @@ window.switchCountry = function (mode) {
     if (mode === 'KR') {
         document.body.classList.remove('theme-cn');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#4f46e5');
-        if (btnKr)
-            btnKr.className =
-                'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
         if (badge) badge.classList.add('hidden');
     } else {
         document.body.classList.add('theme-cn');
         if (metaThemeColor) metaThemeColor.setAttribute('content', '#ef4444');
-        if (btnCn)
-            btnCn.className =
-                'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
     }
 
     const activeTab = document.querySelector('.tab-content.active');
-    if (activeTab && activeTab.id.startsWith('view-assets')) {
+    if (
+        activeTab &&
+        (activeTab.id.startsWith('view-assets') ||
+            (previousAppMode === 'LIFE' && activeTab.id.startsWith('view-life')))
+    ) {
         const mainNavBtn = document.getElementById('nav-btn-main');
         switchTab('daily', '내역', mainNavBtn);
     }
@@ -340,26 +392,12 @@ window.initCountryByTimezone = () => {
             currentCountry = detectedCountry;
         }
 
-        const btnKr = document.getElementById('btn-kr');
-        const btnCn = document.getElementById('btn-cn');
-
         if (detectedCountry === 'KR') {
             document.body.classList.remove('theme-cn');
-            if (btnKr)
-                btnKr.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
-            if (btnCn)
-                btnCn.className =
-                    'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
         } else {
             document.body.classList.add('theme-cn');
-            if (btnCn)
-                btnCn.className =
-                    'px-3 py-1 rounded-md text-xs font-bold bg-white text-primary shadow transition-all';
-            if (btnKr)
-                btnKr.className =
-                    'px-3 py-1 rounded-md text-xs font-bold text-white opacity-70 transition-all';
         }
+        if (typeof window.syncAppModeSelect === 'function') window.syncAppModeSelect();
     } catch (e) {
         console.warn('타임존 인식 실패, 기본값으로 시작합니다.');
     }
@@ -412,6 +450,9 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
             if (window.currentAppMode === 'ASSETS') {
                 tabOrder = ['assets', 'assets-dividends', 'assets-stats', 'assets-settings'];
                 tabNames = ['예적금', '배당금', '통계', '설정'];
+            } else if (window.currentAppMode === 'LIFE') {
+                tabOrder = ['life-records', 'life-trends', 'life-types', 'settings'];
+                tabNames = ['기록', '추이', '유형', '설정'];
             }
 
             let currentIndex = tabOrder.indexOf(activeTabId);
@@ -446,6 +487,8 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
         'card-modal',
         'category-modal',
         'weekly-modal',
+        'life-record-modal',
+        'life-type-modal',
         'card-detail-modal',
         'deposit-modal',
         'dividend-modal',
@@ -496,6 +539,10 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
                 closeCategoryModal();
             else if (topModalId === 'weekly-modal' && typeof closeWeeklyModal === 'function')
                 closeWeeklyModal();
+            else if (topModalId === 'life-record-modal' && typeof closeLifeRecordModal === 'function')
+                closeLifeRecordModal();
+            else if (topModalId === 'life-type-modal' && typeof closeLifeTypeModal === 'function')
+                closeLifeTypeModal();
             else if (
                 topModalId === 'card-detail-modal' &&
                 typeof closeCardDetailModal === 'function'

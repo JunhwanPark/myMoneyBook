@@ -47,7 +47,7 @@ window.fetchExchangeRate = async () => {
 
         if (!badge || !rateValue) return;
         const canShowExchangeRate = () =>
-            currentCountry === 'CN' && window.currentAppMode !== 'ASSETS';
+            currentCountry === 'CN' && window.currentAppMode === 'LEDGER';
 
         // 1. 한국 모드일 때: 뱃지를 숨기고, 기억해둔 상태를 'KR'로 변경
         if (!canShowExchangeRate()) {
@@ -128,7 +128,7 @@ window.fetchExchangeRate = async () => {
         console.error('환율 처리 중 치명적 에러:', e);
         const badge = document.getElementById('exchange-rate-badge');
         const rateValue = document.getElementById('cny-rate-value');
-        if (badge && rateValue && currentCountry === 'CN' && window.currentAppMode !== 'ASSETS') {
+        if (badge && rateValue && currentCountry === 'CN' && window.currentAppMode === 'LEDGER') {
             rateValue.innerText = '오류';
             badge.classList.remove('hidden');
         }
@@ -151,6 +151,8 @@ window.loadDailyRecords = async (isSilent = false) => {
                 globalData = result.data || [];
                 window.globalDeposits = result.deposits || [];
                 window.globalDividends = result.dividends || [];
+                window.lifeTypes = result.lifeTypes || [];
+                window.lifeRecords = result.lifeRecords || [];
                 globalCategories = (result.categories || []).filter(
                     (c) => !c.Type.startsWith('card')
                 );
@@ -180,6 +182,7 @@ window.loadDailyRecords = async (isSilent = false) => {
                 ) {
                     window.renderAssetsList();
                 }
+                if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
 
                 // 이미 화면이 떴으므로, 이어지는 백그라운드 동기화는 무음(Silent) 모드로 강제 전환!
                 isSilent = true;
@@ -222,6 +225,8 @@ window.loadDailyRecords = async (isSilent = false) => {
         globalData = result.data || [];
         window.globalDeposits = result.deposits || [];
         window.globalDividends = result.dividends || [];
+        window.lifeTypes = result.lifeTypes || [];
+        window.lifeRecords = result.lifeRecords || [];
         globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
         globalCards = (result.categories || [])
             .filter((c) => {
@@ -253,6 +258,7 @@ window.loadDailyRecords = async (isSilent = false) => {
         if (window.currentAppMode === 'ASSETS' && typeof window.renderAssetsList === 'function') {
             window.renderAssetsList();
         }
+        if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
 
         window.setSyncStatus('synced');
         return true;

@@ -8,6 +8,7 @@ Google 스프레드시트에 데이터를 저장하고 GitHub Pages에서 실행
 - 날짜별 내역 목록과 달력 보기
 - 월별 통계, 카테고리별 비교, 누적 추이
 - 예적금 및 배당금 관리와 명의자별 자산 통계
+- 가족 생활기록: 날짜별 측정값 추이와 횟수·잔여량 관리
 - 모바일 화면과 홈 화면 바로가기 지원
 
 ## 데이터 흐름
@@ -43,6 +44,12 @@ Google 스프레드시트에 데이터를 저장하고 GitHub Pages에서 실행
 | `Category` | `Type`, `Value`, `Label` |
 | `Deposits` | `ID`, `가입일`, `만기일`, `종류`, `원금`, `이율`, `과세여부`, `세전이자`, `세후이자`, `명의자`, `은행`, `상태` |
 | `Dividends` | `ID`, `Date`, `Stock`, `Broker`, `Owner`, `Gross`, `Net` |
+| `LifeTypes` | `ID`, `Name`, `Kind`, `Unit`, `Active` |
+| `LifeRecords` | `ID`, `TypeID`, `Date`, `Person`, `Value`, `Memo`, `UpdatedAt` |
+
+`LifeTypes`는 생활기록 종류를 정의합니다. `Kind`는 측정값 기록인 `measurement` 또는 증감량을 누적하는 `counter`를 사용하고, `Active`는 체크박스로 관리합니다. 예: `golf-pass`, `골프 이용권`, `counter`, `회`, 체크됨; `body-weight`, `몸무게`, `measurement`, `kg`, 체크됨.
+
+`LifeRecords`의 `TypeID`는 `LifeTypes`의 `ID`와 연결됩니다. `measurement`의 `Value`는 측정값이고, `counter`는 충전·사용량을 부호 있는 숫자로 기록합니다. 예를 들어 이용권 20회를 충전하면 `20`, 한 번 사용하면 `-1`입니다. `Date`는 `YYYY-MM-DD` 형식으로 저장합니다.
 
 `Category` 시트에는 가계부 카테고리와 카드, 자산 설정을 저장합니다. 예를 들어 `Type`은 `expense`, `income`, `card_KR`, `card_CN`, `asset_bank`, `asset_owner`, `asset_type`, `asset_tax`, `asset_broker` 등을 사용합니다. 카드의 `Label`은 `카드명|결제일` 형식입니다.
 
