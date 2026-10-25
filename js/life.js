@@ -279,7 +279,7 @@ window.renderLifeTrend = () => {
                 pointRadius: 3,
                 pointHoverRadius: 5,
                 tension: 0.25,
-                spanGaps: false,
+                spanGaps: true,
             })),
         },
         options: {
