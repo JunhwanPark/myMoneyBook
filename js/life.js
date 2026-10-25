@@ -303,6 +303,9 @@ window.openLifeRecordModal = (id = null) => {
     const modal = document.getElementById('life-record-modal');
     if (!form || !modal) return;
     form.reset();
+    const saveButton = document.getElementById('life-record-save');
+    saveButton.disabled = false;
+    saveButton.textContent = '저장하기';
     document.getElementById('life-record-id').value = '';
     document.getElementById('life-record-date').value = lifeToday();
     document.getElementById('life-record-modal-title').textContent = id ? '생활기록 수정' : '생활기록 추가';
@@ -382,7 +385,7 @@ window.closeLifeRecordModal = () => {
     setTimeout(() => modal.classList.add('hidden'), 250);
 };
 
-window.saveLifeRecord = async () => {
+window.saveLifeRecord = () => {
     const saveButton = document.getElementById('life-record-save');
     if (saveButton.disabled) return;
     const type = lifeTypeById(document.getElementById('life-record-type').value);
@@ -414,24 +417,61 @@ window.saveLifeRecord = async () => {
     };
 
     saveButton.disabled = true;
-    saveButton.textContent = '저장 중...';
-    window.setSyncStatus('syncing');
-    try {
-        const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-        const result = await response.json();
-        if (!response.ok || result.status !== 'success') throw new Error(result.message || '저장에 실패했습니다.');
-        window.closeLifeRecordModal();
-        const synced = await window.loadDailyRecords(true);
-        if (!synced) throw new Error('저장 후 새 기록을 불러오지 못했습니다.');
-        window.showToast('생활기록을 저장했습니다.', 'success');
-    } catch (error) {
-        console.error('생활기록 저장 실패:', error);
-        window.setSyncStatus('error');
-        window.showToast(error.message || '생활기록 저장에 실패했습니다.');
-    } finally {
-        saveButton.disabled = false;
-        saveButton.textContent = '저장하기';
+    const previousRecord = payload.id
+        ? window.lifeRecords.find((record) => String(record.ID) === String(payload.id))
+        : null;
+    const pendingId = `pending_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const optimisticRecord = {
+        ID: payload.id || pendingId,
+        TypeID: payload.typeId,
+        Date: payload.date,
+        Person: payload.person,
+        Value: payload.value,
+        Memo: payload.memo,
+        UpdatedAt: new Date().toISOString(),
+        _pendingSaveId: pendingId,
+    };
+
+    if (payload.id) {
+        const recordIndex = window.lifeRecords.findIndex((record) => String(record.ID) === String(payload.id));
+        if (recordIndex >= 0) window.lifeRecords[recordIndex] = optimisticRecord;
+    } else {
+        window.lifeRecords.push(optimisticRecord);
     }
+
+    window.setSyncStatus('syncing');
+    window.closeLifeRecordModal();
+    window.renderLifeMode();
+
+    // 화면은 먼저 갱신하고 저장 요청과 최신 데이터 동기화는 백그라운드에서 처리합니다.
+    void (async () => {
+        try {
+            const response = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+            const result = await response.json();
+            if (!response.ok || result.status !== 'success') {
+                throw new Error(result.message || '저장에 실패했습니다.');
+            }
+            const synced = await window.loadDailyRecords(true);
+            if (synced) {
+                window.showToast('생활기록을 저장했습니다.', 'success');
+            } else {
+                window.showToast('저장은 완료되었지만 최신 기록을 불러오지 못했습니다. 새로고침 후 확인해 주세요.');
+            }
+        } catch (error) {
+            console.error('생활기록 저장 실패:', error);
+            const currentIndex = window.lifeRecords.findIndex(
+                (record) => String(record.ID) === String(optimisticRecord.ID) && record._pendingSaveId === pendingId
+            );
+            if (currentIndex >= 0) {
+                if (previousRecord) window.lifeRecords[currentIndex] = previousRecord;
+                else window.lifeRecords.splice(currentIndex, 1);
+                window.renderLifeMode();
+            }
+            window.setSyncStatus('error');
+            window.showToast('저장 결과를 확인할 수 없습니다. 서버 기록을 다시 확인해 주세요.');
+            await window.loadDailyRecords(true);
+        }
+    })();
 };
 
 window.deleteLifeRecord = async () => {
