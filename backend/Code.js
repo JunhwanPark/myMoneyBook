@@ -24,6 +24,179 @@ function verifyGoogleToken(token) {
     }
 }
 
+function readLifeSheet(sheet) {
+    if (!sheet || sheet.getLastRow() < 2) return [];
+
+    const values = sheet.getDataRange().getValues();
+    const headers = values[0].map((header) => String(header).trim());
+    return values.slice(1).map((row) => {
+        const record = {};
+        headers.forEach((header, index) => {
+            const value = row[index];
+            if (value instanceof Date) {
+                const format = header === 'UpdatedAt' ? "yyyy-MM-dd'T'HH:mm:ss" : 'yyyy-MM-dd';
+                record[header] = Utilities.formatDate(value, Session.getScriptTimeZone(), format);
+            } else {
+                record[header] = value;
+            }
+        });
+        return record;
+    });
+}
+
+function getLifeSheetWithHeaders(ss, name, requiredHeaders) {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) throw new Error(`생활기록 시트 '${name}'을(를) 찾을 수 없습니다.`);
+
+    const headers = sheet.getLastColumn() > 0
+        ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map((h) => String(h).trim())
+        : [];
+    const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+    if (missingHeaders.length) {
+        throw new Error(`${name} 시트의 헤더를 확인해 주세요: ${missingHeaders.join(', ')}`);
+    }
+
+    return { sheet, headers, columns: Object.fromEntries(headers.map((header, i) => [header, i])) };
+}
+
+function getLifeTypeById(ss, typeId) {
+    const typeSheet = ss.getSheetByName('LifeTypes');
+    if (!typeSheet) throw new Error("생활기록 시트 'LifeTypes'을(를) 찾을 수 없습니다.");
+    const types = readLifeSheet(typeSheet);
+    return types.find((type) => String(type.ID) === String(typeId));
+}
+
+function handleLifeTypeAction(ss, action, payload) {
+    const schema = getLifeSheetWithHeaders(ss, 'LifeTypes', ['ID', 'Name', 'Kind', 'Unit', 'Active']);
+    const { sheet, columns } = schema;
+
+    if (action === 'create_life_type') {
+        const name = String(payload.name || '').trim();
+        const kind = String(payload.kind || '').trim().toLowerCase();
+        const unit = String(payload.unit || '').trim();
+        if (!name || !unit) throw new Error('기록 종류 이름과 단위를 입력해 주세요.');
+        if (!['measurement', 'counter'].includes(kind)) {
+            throw new Error('기록 종류는 measurement 또는 counter여야 합니다.');
+        }
+        const duplicateName = readLifeSheet(sheet).some(
+            (type) => String(type.Name).trim().toLowerCase() === name.toLowerCase()
+        );
+        if (duplicateName) throw new Error('이미 같은 이름의 기록 종류가 있습니다.');
+
+        const id = Utilities.getUuid();
+        const row = new Array(sheet.getLastColumn()).fill('');
+        row[columns.ID] = id;
+        row[columns.Name] = name;
+        row[columns.Kind] = kind;
+        row[columns.Unit] = unit;
+        row[columns.Active] = true;
+        sheet.appendRow(row);
+        return { status: 'success', id };
+    }
+
+    const id = String(payload.id || '');
+    const values = sheet.getDataRange().getValues();
+    const rowIndex = values.findIndex((row, index) => index > 0 && String(row[columns.ID]) === id);
+    if (rowIndex < 1) throw new Error('변경할 기록 종류를 찾을 수 없습니다.');
+
+    if (action === 'update_life_type') {
+        const row = values[rowIndex];
+        row[columns.Active] = payload.active === true || String(payload.active).toUpperCase() === 'TRUE';
+        sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
+        return { status: 'success', id };
+    }
+
+    throw new Error('지원하지 않는 기록 종류 요청입니다.');
+}
+
+function handleLifeRecordAction(ss, action, payload) {
+    const schema = getLifeSheetWithHeaders(ss, 'LifeRecords', [
+        'ID', 'TypeID', 'Date', 'Person', 'Value', 'Memo', 'UpdatedAt',
+    ]);
+    const { sheet, columns } = schema;
+
+    if (action === 'create_life_record' || action === 'update_life_record') {
+        const typeId = String(payload.typeId || '').trim();
+        const date = String(payload.date || '').trim();
+        const person = String(payload.person || '').trim();
+        const value = Number(payload.value);
+        const memo = String(payload.memo || '').trim();
+        const type = typeId ? getLifeTypeById(ss, typeId) : null;
+
+        if (!type) throw new Error('기록 종류를 확인할 수 없습니다.');
+        if (!['measurement', 'counter'].includes(String(type.Kind).toLowerCase())) {
+            throw new Error('기록 종류의 Kind는 measurement 또는 counter여야 합니다.');
+        }
+        const dateParts = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const parsedDate = dateParts
+            ? new Date(Date.UTC(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3])))
+            : null;
+        if (
+            !parsedDate ||
+            parsedDate.getUTCFullYear() !== Number(dateParts[1]) ||
+            parsedDate.getUTCMonth() !== Number(dateParts[2]) - 1 ||
+            parsedDate.getUTCDate() !== Number(dateParts[3])
+        ) {
+            throw new Error('날짜를 확인해 주세요.');
+        }
+        if (payload.value === '' || payload.value === null || payload.value === undefined || !Number.isFinite(value)) {
+            throw new Error('기록값을 확인해 주세요.');
+        }
+        if (
+            String(type.Kind).toLowerCase() === 'counter' &&
+            (!Number.isInteger(value) || value === 0)
+        ) {
+            throw new Error('횟수·수량 기록은 0이 아닌 정수로 입력해 주세요.');
+        }
+        if (
+            action === 'create_life_record' &&
+            !(type.Active === true || String(type.Active).toUpperCase() === 'TRUE' || type.Active === 1)
+        ) {
+            throw new Error('비활성화된 기록 종류입니다.');
+        }
+
+        if (action === 'create_life_record') {
+            const id = Utilities.getUuid();
+            const row = new Array(sheet.getLastColumn()).fill('');
+            row[columns.ID] = id;
+            row[columns.TypeID] = typeId;
+            row[columns.Date] = date;
+            row[columns.Person] = person;
+            row[columns.Value] = value;
+            row[columns.Memo] = memo;
+            row[columns.UpdatedAt] = new Date();
+            sheet.appendRow(row);
+            return { status: 'success', id };
+        }
+
+        const id = String(payload.id || '');
+        const values = sheet.getDataRange().getValues();
+        const rowIndex = values.findIndex((row, index) => index > 0 && String(row[columns.ID]) === id);
+        if (rowIndex < 1) throw new Error('수정할 생활기록을 찾을 수 없습니다.');
+
+        const row = values[rowIndex];
+        row[columns.TypeID] = typeId;
+        row[columns.Date] = date;
+        row[columns.Person] = person;
+        row[columns.Value] = value;
+        row[columns.Memo] = memo;
+        row[columns.UpdatedAt] = new Date();
+        sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
+        return { status: 'success', id };
+    }
+
+    if (action === 'delete_life_record') {
+        const id = String(payload.id || '');
+        const values = sheet.getDataRange().getValues();
+        const rowIndex = values.findIndex((row, index) => index > 0 && String(row[columns.ID]) === id);
+        if (rowIndex < 1) throw new Error('삭제할 생활기록을 찾을 수 없습니다.');
+        sheet.deleteRow(rowIndex + 1);
+        return { status: 'success', id };
+    }
+
+    throw new Error('지원하지 않는 생활기록 요청입니다.');
+}
+
 function doGet(e) {
     try {
         // 🛡️ 보안 검문소: 토큰이 없거나 가짜면 즉시 쫓아냄
@@ -128,6 +301,11 @@ function doGet(e) {
             }
         }
 
+        // 5. 생활기록 데이터는 전용 시트에서 가져옵니다. 시트가 아직 없으면 빈 목록으로 응답합니다.
+        const lifeTypes = readLifeSheet(ss.getSheetByName('LifeTypes'));
+        const lifeRecords = readLifeSheet(ss.getSheetByName('LifeRecords'));
+        lifeRecords.sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')));
+
         // 응답 JSON에 deposits 항목을 추가해서 리턴합니다.
         return ContentService.createTextOutput(
             JSON.stringify({
@@ -136,6 +314,8 @@ function doGet(e) {
                 categories: catData,
                 deposits: depositData,
                 dividends: divData, // 👈 추가!
+                lifeTypes: lifeTypes,
+                lifeRecords: lifeRecords,
             })
         ).setMimeType(ContentService.MimeType.JSON);
     } catch (error) {
@@ -159,6 +339,25 @@ function doPost(e) {
         const action = payload.action || 'create';
         const country = payload.country || 'KR';
         const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+        // 생활기록 CRUD는 가계부 국가별 데이터와 분리된 전용 시트에서 처리합니다.
+        if (action === 'create_life_type' || action === 'update_life_type') {
+            const result = handleLifeTypeAction(ss, action, payload);
+            return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(
+                ContentService.MimeType.JSON
+            );
+        }
+
+        if (
+            action === 'create_life_record' ||
+            action === 'update_life_record' ||
+            action === 'delete_life_record'
+        ) {
+            const result = handleLifeRecordAction(ss, action, payload);
+            return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(
+                ContentService.MimeType.JSON
+            );
+        }
 
         // 1. 카테고리 추가/삭제 (항상 공통 Category 시트)
         if (action === 'add_category' || action === 'delete_category') {
