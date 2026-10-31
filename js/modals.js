@@ -648,8 +648,10 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
     if (titleEl) titleEl.innerText = `${categoryLabel} 상세 내역`;
 
     const [year, month] = prefix.split('-');
-    document.getElementById('weekly-date-range').innerText =
-        `${year}년 ${parseInt(month)}월 ${typeName}`;
+    const periodLabel = prefix.endsWith('-')
+        ? `${year}년 연간 ${typeName}`
+        : `${year}년 ${parseInt(month)}월 ${typeName}`;
+    document.getElementById('weekly-date-range').innerText = periodLabel;
 
     const catData = globalData.filter((item) => {
         if (!item.Date.startsWith(prefix) || item.Type !== type) return false;

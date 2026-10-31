@@ -345,9 +345,14 @@
                 <section id="view-stats" class="tab-content">
                     <div class="flex justify-between items-end mb-4">
                         <h2 class="text-md font-semibold text-gray-700">통계</h2>
+                        <div class="flex rounded-lg bg-gray-100 p-0.5 text-[10px] font-bold">
+                            <button id="stats-period-month" onclick="setStatsPeriod('month')" class="rounded-md bg-white px-3 py-1 text-gray-800 shadow-sm">월별</button>
+                            <button id="stats-period-year" onclick="setStatsPeriod('year')" class="rounded-md px-3 py-1 text-gray-400">연간</button>
+                        </div>
                     </div>
 
                     <div
+                        id="stats-month-nav"
                         class="flex justify-between items-center mb-4 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
                     >
                         <button
@@ -368,6 +373,18 @@
                             <span class="material-symbols-outlined text-[22px]">chevron_right</span>
                         </button>
                     </div>
+                    <div
+                        id="stats-year-nav"
+                        class="hidden flex justify-between items-center mb-4 bg-white py-1.5 px-3 rounded-2xl shadow-sm border border-gray-100"
+                    >
+                        <button onclick="changeStatsYear(-1)" class="p-1 text-gray-400 hover:text-primary transition-colors" aria-label="이전 연도">
+                            <span class="material-symbols-outlined text-[22px]">chevron_left</span>
+                        </button>
+                        <h2 id="stats-year-title" onclick="goToCurrentStatsYear()" class="text-base font-extrabold text-gray-800 cursor-pointer hover:text-primary active:scale-95 transition-all"></h2>
+                        <button onclick="changeStatsYear(1)" class="p-1 text-gray-400 hover:text-primary transition-colors" aria-label="다음 연도">
+                            <span class="material-symbols-outlined text-[22px]">chevron_right</span>
+                        </button>
+                    </div>
 
                     <div class="mb-6">
                         <div class="flex justify-between items-end mb-2 px-1">
@@ -385,6 +402,13 @@
                                     class="text-gray-400 hover:text-gray-600 px-3 py-1 transition-all"
                                 >
                                     수입
+                                </button>
+                                <button
+                                    id="btn-tab-annual-trend"
+                                    onclick="setChartMode('annualTrend')"
+                                    class="hidden text-gray-400 hover:text-gray-600 px-3 py-1 transition-all"
+                                >
+                                    월별추이
                                 </button>
                                 <button
                                     id="btn-tab-cum"

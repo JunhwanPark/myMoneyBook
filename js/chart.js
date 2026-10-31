@@ -5,6 +5,33 @@
 // 💡 지출/수입 차트 토글 함수
 window.setChartMode = (mode) => {
     window.chartStatMode = mode;
+    if (window.statsPeriod === 'year' && ['expense', 'income'].includes(mode)) {
+        window.statsMonthlyChartMode = mode;
+    }
+    if (typeof renderChart === 'function') renderChart();
+};
+
+window.setStatsPeriod = (period) => {
+    const nextPeriod = period === 'year' ? 'year' : 'month';
+    if (window.statsPeriod === nextPeriod) return;
+    if (nextPeriod === 'year') {
+        window.statsMonthlyChartMode = window.chartStatMode || 'expense';
+        window.statsYear = currentDisplayDate.getFullYear();
+        if (!['expense', 'income'].includes(window.chartStatMode)) window.chartStatMode = 'expense';
+    } else if (window.statsMonthlyChartMode) {
+        window.chartStatMode = window.statsMonthlyChartMode;
+    }
+    window.statsPeriod = nextPeriod;
+    if (typeof renderChart === 'function') renderChart();
+};
+
+window.changeStatsYear = (offset) => {
+    window.statsYear = (window.statsYear || currentDisplayDate.getFullYear()) + offset;
+    if (typeof renderChart === 'function') renderChart();
+};
+
+window.goToCurrentStatsYear = () => {
+    window.statsYear = new Date().getFullYear();
     if (typeof renderChart === 'function') renderChart();
 };
 
@@ -32,15 +59,38 @@ window.toggleCumIncome = (checked) => {
 // ==========================================
 window.renderChart = function () {
     if (typeof updateMonthTitles === 'function') updateMonthTitles();
-    const targetY = currentDisplayDate.getFullYear();
+    window.statsPeriod = window.statsPeriod || 'month';
+    const isAnnual = window.statsPeriod === 'year';
+    if (isAnnual && !['expense', 'income', 'annualTrend'].includes(window.chartStatMode)) {
+        window.chartStatMode = 'expense';
+    }
+    const targetY = isAnnual
+        ? (window.statsYear || currentDisplayDate.getFullYear())
+        : currentDisplayDate.getFullYear();
+    window.statsYear = targetY;
     const targetM = currentDisplayDate.getMonth();
     const prefix = `${targetY}-${String(targetM + 1).padStart(2, '0')}`;
+    const statsMonthNav = document.getElementById('stats-month-nav');
+    const statsYearNav = document.getElementById('stats-year-nav');
+    const statsYearTitle = document.getElementById('stats-year-title');
+    const monthPeriodButton = document.getElementById('stats-period-month');
+    const yearPeriodButton = document.getElementById('stats-period-year');
+    statsMonthNav?.classList.toggle('hidden', isAnnual);
+    statsYearNav?.classList.toggle('hidden', !isAnnual);
+    if (statsYearTitle) statsYearTitle.textContent = `${targetY}년`;
+    if (monthPeriodButton) monthPeriodButton.className = isAnnual
+        ? 'rounded-md px-3 py-1 text-gray-400'
+        : 'rounded-md bg-white px-3 py-1 text-gray-800 shadow-sm';
+    if (yearPeriodButton) yearPeriodButton.className = isAnnual
+        ? 'rounded-md bg-white px-3 py-1 text-gray-800 shadow-sm'
+        : 'rounded-md px-3 py-1 text-gray-400';
 
     window.chartStatMode = window.chartStatMode || 'expense';
     const mode = window.chartStatMode;
 
     const btnExp = document.getElementById('btn-tab-expense');
     const btnInc = document.getElementById('btn-tab-income');
+    const btnAnnualTrend = document.getElementById('btn-tab-annual-trend');
     const btnCum = document.getElementById('btn-tab-cum');
     const btnComparison = document.getElementById('btn-tab-comparison');
 
@@ -50,8 +100,14 @@ window.renderChart = function () {
     if (btnExp && btnInc && btnCum && btnComparison) {
         btnExp.className = mode === 'expense' ? btnClassOn : btnClassOff;
         btnInc.className = mode === 'income' ? btnClassOn : btnClassOff;
+        if (btnAnnualTrend) {
+            btnAnnualTrend.className = mode === 'annualTrend' ? btnClassOn : btnClassOff;
+            btnAnnualTrend.classList.toggle('hidden', !isAnnual);
+        }
         btnCum.className = mode === 'cumulative' ? btnClassOn : btnClassOff;
         btnComparison.className = mode === 'comparison' ? btnClassOn : btnClassOff;
+        btnCum.classList.toggle('hidden', isAnnual);
+        btnComparison.classList.toggle('hidden', isAnnual);
     }
 
     const chartEl = document.getElementById('mainChart');
@@ -63,7 +119,87 @@ window.renderChart = function () {
     const existingChart = Chart.getChart(chartEl);
     if (existingChart) existingChart.destroy();
 
-    if (mode === 'comparison') {
+    if (isAnnual && mode === 'annualTrend') {
+        if (comparisonToggle) comparisonToggle.classList.add('hidden');
+        const oldToggle = document.getElementById('chart-income-toggle');
+        if (oldToggle) oldToggle.remove();
+        if (totalAmountEl) {
+            totalAmountEl.innerHTML = `<span class="text-sm font-bold text-gray-600 truncate">${targetY}년 월별 수입·지출</span>`;
+            totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
+        }
+
+        const monthlyIncome = Array(12).fill(0);
+        const monthlyExpense = Array(12).fill(0);
+        globalData.forEach((item) => {
+            if (!item.Date?.startsWith(`${targetY}-`)) return;
+            const monthIndex = Number(item.Date.substring(5, 7)) - 1;
+            if (monthIndex < 0 || monthIndex > 11) return;
+            const amount = Number(item.Amount) || 0;
+            if (item.Type === 'income') monthlyIncome[monthIndex] += amount;
+            else if (item.Type === 'expense') monthlyExpense[monthIndex] += amount;
+        });
+
+        if (chartWrapper) chartWrapper.style.display = 'flex';
+        if (noDataEl) {
+            const hasData = monthlyIncome.some((amount) => amount > 0) || monthlyExpense.some((amount) => amount > 0);
+            noDataEl.classList.toggle('hidden', hasData);
+            if (!hasData) noDataEl.innerText = '해당 연도에 수입·지출 내역이 없습니다.';
+            if (chartWrapper && !hasData) chartWrapper.style.display = 'none';
+        }
+        new Chart(chartEl.getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: Array.from({ length: 12 }, (_, index) => `${index + 1}월`),
+                datasets: [
+                    {
+                        label: '수입',
+                        data: monthlyIncome,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        tension: 0.3,
+                        fill: true,
+                    },
+                    {
+                        label: '지출',
+                        data: monthlyExpense,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        borderWidth: 2.5,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        tension: 0.3,
+                        fill: true,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: { boxWidth: 8, usePointStyle: true, font: { size: 9 } },
+                    },
+                    datalabels: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => ` ${context.dataset.label}: ${typeof formatMoney === 'function' ? formatMoney(context.parsed.y) : context.parsed.y.toLocaleString()}`,
+                        },
+                    },
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#9ca3af' } },
+                    y: { beginAtZero: true, ticks: { font: { size: 9 }, callback: (value) => typeof formatMoney === 'function' ? formatMoney(value) : value.toLocaleString() } },
+                },
+            },
+        });
+    } else if (mode === 'comparison') {
         window.comparisonType = window.comparisonType || 'expense';
         if (comparisonToggle) comparisonToggle.classList.remove('hidden');
         const comparisonExpense = document.getElementById('btn-comparison-expense');
@@ -290,8 +426,9 @@ window.renderChart = function () {
         if (oldToggle) oldToggle.remove();
 
         const isExpense = mode === 'expense';
+        const periodPrefix = isAnnual ? `${targetY}-` : prefix;
         const filteredData = globalData.filter(
-            (d) => d.Type === mode && d.Date?.startsWith(prefix)
+            (d) => d.Type === mode && d.Date?.startsWith(periodPrefix)
         );
 
         let sum = 0;
@@ -304,7 +441,8 @@ window.renderChart = function () {
 
         if (totalAmountEl) {
             const textColor = isExpense ? 'text-red-500' : 'text-blue-500';
-            totalAmountEl.innerHTML = `<span class="text-sm font-bold ${textColor} truncate">총 ${typeof formatMoney === 'function' ? formatMoney(sum) : sum.toLocaleString()}</span>`;
+            const periodLabel = isAnnual ? `${targetY}년 연간 합계` : '총';
+            totalAmountEl.innerHTML = `<span class="text-sm font-bold ${textColor} truncate">${periodLabel} ${typeof formatMoney === 'function' ? formatMoney(sum) : sum.toLocaleString()}</span>`;
             totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
         }
 
@@ -370,7 +508,7 @@ window.renderChart = function () {
                             const index = elements[0].index;
                             const categoryLabel = chart.data.labels[index];
                             if (typeof openCategoryDetailModal === 'function')
-                                openCategoryDetailModal(categoryLabel, mode, prefix);
+                                openCategoryDetailModal(categoryLabel, mode, isAnnual ? `${targetY}-` : prefix);
                         }
                     },
                     onHover: (event, elements) => {
@@ -424,6 +562,12 @@ window.renderChart = function () {
     try {
         const container = document.getElementById('card-stats-container');
         if (!container) return;
+        if (isAnnual) {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+            return;
+        }
+        container.classList.remove('hidden');
 
         window.cardStatMode = window.cardStatMode || 'calendar';
         const isBilling = window.cardStatMode === 'billing';
