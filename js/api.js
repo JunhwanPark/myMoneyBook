@@ -1,5 +1,9 @@
 // js/api.js 최상단
 window.googleAuthToken = null; // 👈 신규: 토큰 저장용 변수
+window.countryDataVersions = window.countryDataVersions || { KR: 0, CN: 0 };
+window.markCountryDataChanged = (country) => {
+    window.countryDataVersions[country] = (window.countryDataVersions[country] || 0) + 1;
+};
 
 window.setSyncStatus = (status) => {
     const icon = document.getElementById('sync-status-icon');
@@ -123,6 +127,7 @@ window.fetchExchangeRate = async () => {
 // ==========================================
 window.loadDailyRecords = async (isSilent = false) => {
     const requestedCountry = currentCountry;
+    const requestedDataVersion = window.countryDataVersions[requestedCountry] || 0;
     const cacheKey = `ledgerCache_${requestedCountry}`;
 
     // 💡 1. 앱을 켜자마자 로컬 스토리지에 캐시된 어제 데이터가 있다면 즉시 화면에 렌더링!
@@ -200,6 +205,10 @@ window.loadDailyRecords = async (isSilent = false) => {
             console.log(
                 `[Load] 이전 국가의 응답 무시: ${requestedCountry}, 현재 국가: ${currentCountry}`
             );
+            return false;
+        }
+        if (requestedDataVersion !== (window.countryDataVersions[requestedCountry] || 0)) {
+            console.log(`[Load] 변경 전 데이터 응답 무시: ${requestedCountry}`);
             return false;
         }
         // 💡 2. 통신에 성공하면 최신 데이터를 로컬 스토리지에 조용히 덮어씌워 둡니다 (다음 접속을 위해)
@@ -372,6 +381,7 @@ window.saveRecord = async (e) => {
 
     const originalGlobalData = [...globalData];
     const saveCountry = currentCountry;
+    window.markCountryDataChanged(saveCountry);
 
     // 🚀 2단계: 딜레이 제로(0초) 낙관적 업데이트 시작!
     closeAddModal(); // 모달창 즉시 닫기
@@ -440,6 +450,7 @@ window.saveRecord = async (e) => {
             throw new Error(`서버 저장 실패: ${responseText.slice(0, 500)}`);
         }
 
+        window.markCountryDataChanged(saveCountry);
         const syncSuccess = await loadDailyRecords(true);
 
         if (!syncSuccess) {
@@ -452,6 +463,7 @@ window.saveRecord = async (e) => {
         }
     } catch (e) {
         console.error('Data sync failed:', e);
+        window.markCountryDataChanged(saveCountry);
 
         // 국가가 바뀌지 않은 경우에만 원본 데이터 복구
         if (currentCountry === saveCountry) {
@@ -500,6 +512,7 @@ window.deleteRecord = async () => {
     const recordId = document.getElementById('input-id').value;
     const originalGlobalData = [...globalData];
     const deleteCountry = currentCountry;
+    window.markCountryDataChanged(deleteCountry);
 
     // 🚀 1. 즉시 모달 닫기
     closeAddModal();
@@ -531,6 +544,7 @@ window.deleteRecord = async () => {
             throw new Error(data.message || `HTTP ${response.status}`);
         }
 
+        window.markCountryDataChanged(deleteCountry);
         const syncSuccess = await loadDailyRecords(true);
         if (syncSuccess) {
             window.showToast('삭제 후 목록을 갱신했습니다', 'success');
@@ -539,6 +553,7 @@ window.deleteRecord = async () => {
         }
     } catch (e) {
         console.error('Record deletion failed:', e);
+        window.markCountryDataChanged(deleteCountry);
 
         if (currentCountry === deleteCountry) {
             globalData = originalGlobalData;
