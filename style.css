@@ -179,7 +179,7 @@ nav {
     padding: 0 !important;
 }
 
-.calendar-payday-badge {
+.calendar-anniversary-marker {
     display: inline-flex;
     align-items: center;
     border-radius: 4px;
@@ -191,7 +191,7 @@ nav {
     white-space: nowrap;
 }
 
-.fc-day-other .calendar-payday-badge {
+.fc-day-other .calendar-anniversary-marker {
     opacity: 0.45;
 }
 

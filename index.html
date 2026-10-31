@@ -594,6 +594,17 @@
                         </li>
                     </ul>
 
+                    <section class="mt-5 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+                        <div class="mb-3 flex items-center justify-between gap-2">
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-800">기념일 관리</h3>
+                                <p class="mt-0.5 text-[10px] text-gray-500">급여일과 가족 생일을 달력에 표시합니다.</p>
+                            </div>
+                            <button type="button" onclick="openAnniversaryModal()" class="shrink-0 rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-sm active:scale-95">추가</button>
+                        </div>
+                        <div id="anniversary-list" class="space-y-2"></div>
+                    </section>
+
                     <div
                         class="mt-12 mb-6 flex flex-col items-center justify-center opacity-50 hover:opacity-100 transition-opacity duration-300"
                     >
@@ -1061,6 +1072,61 @@
                         <input id="life-type-unit" type="text" maxlength="12" placeholder="예: kg, 회, km" class="mt-1 w-full border border-gray-200 p-3 rounded-xl text-sm" required />
                     </label>
                     <button type="submit" class="w-full bg-primary text-white py-3 rounded-xl font-bold text-sm shadow-md">종류 저장</button>
+                </form>
+            </div>
+        </div>
+        <div
+            id="anniversary-modal"
+            class="hidden fixed inset-0 bg-black/40 z-[94] flex items-end justify-center transition-opacity opacity-0 p-0 sm:p-4"
+        >
+            <div
+                id="anniversary-modal-content"
+                class="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 transform translate-y-full transition-transform shadow-2xl"
+            >
+                <div class="mb-5 flex items-center justify-between">
+                    <div>
+                        <h3 id="anniversary-modal-title" class="text-lg font-bold">기념일 추가</h3>
+                        <p class="mt-1 text-xs text-gray-400">달력에 반복 표시할 날짜를 등록합니다.</p>
+                    </div>
+                    <button type="button" onclick="closeAnniversaryModal()" class="p-2 text-gray-400" aria-label="닫기">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form id="anniversary-form" class="space-y-3" onsubmit="event.preventDefault(); saveAnniversary();">
+                    <input id="anniversary-id" type="hidden" />
+                    <label class="block text-xs font-bold text-gray-500">이름
+                        <input id="anniversary-name" type="text" maxlength="40" placeholder="예: 월급, 아이 생일" class="mt-1 w-full rounded-xl border border-gray-200 p-3 text-sm" required />
+                    </label>
+                    <label class="block text-xs font-bold text-gray-500">반복 주기
+                        <select id="anniversary-repeat" onchange="updateAnniversaryForm()" class="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">
+                            <option value="yearly">매년</option>
+                            <option value="monthly">매월</option>
+                        </select>
+                    </label>
+                    <label id="anniversary-month-wrap" class="block text-xs font-bold text-gray-500">월
+                        <select id="anniversary-month" class="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">
+                            <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option><option value="4">4월</option>
+                            <option value="5">5월</option><option value="6">6월</option><option value="7">7월</option><option value="8">8월</option>
+                            <option value="9">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+                        </select>
+                    </label>
+                    <label class="block text-xs font-bold text-gray-500">날짜
+                        <input id="anniversary-day" type="number" min="1" max="31" inputmode="numeric" class="mt-1 w-full rounded-xl border border-gray-200 p-3 text-sm" required />
+                    </label>
+                    <label class="block text-xs font-bold text-gray-500">달력 아이콘
+                        <select id="anniversary-icon" class="mt-1 w-full rounded-xl border border-gray-200 bg-white p-3 text-sm">
+                            <option value="💰">💰 급여</option>
+                            <option value="🎂">🎂 생일</option>
+                            <option value="🎉">🎉 기념일</option>
+                            <option value="💍">💍 결혼기념일</option>
+                            <option value="🎓">🎓 기념 날짜</option>
+                        </select>
+                    </label>
+                    <label id="anniversary-weekend-wrap" class="flex items-center gap-2 rounded-xl bg-gray-50 p-3 text-xs font-bold text-gray-600">
+                        <input id="anniversary-weekend-rule" type="checkbox" class="rounded border-gray-300 text-amber-500 focus:ring-amber-400" />
+                        주말이면 직전 금요일에 표시
+                    </label>
+                    <button id="anniversary-save-button" type="submit" class="w-full rounded-xl bg-amber-500 py-3 text-sm font-bold text-white shadow-md">저장하기</button>
                 </form>
             </div>
         </div>
@@ -1584,6 +1650,7 @@
         <script src="js/assets.js"></script>
         <script src="js/chart.js"></script>
         <script src="js/modals.js"></script>
+        <script src="js/anniversaries.js"></script>
         <script src="js/ledger.js"></script>
         <script src="js/life.js"></script>
         <script src="js/ui.js"></script>

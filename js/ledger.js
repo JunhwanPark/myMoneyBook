@@ -486,21 +486,8 @@ window.initCalendar = () => {
         headerToolbar: false,
         height: 'auto',
         fixedWeekCount: false,
-        dayCellContent: (info) => {
-            const date = info.date;
-            const payday = new Date(date.getFullYear(), date.getMonth(), 21);
-            if (payday.getDay() === 6) payday.setDate(20);
-            else if (payday.getDay() === 0) payday.setDate(19);
-
-            const isPayday =
-                date.getFullYear() === payday.getFullYear() &&
-                date.getMonth() === payday.getMonth() &&
-                date.getDate() === payday.getDate();
-            const dayNumber = info.dayNumberText.replace('일', '');
-            return {
-                html: `${dayNumber}${isPayday ? '<span class="calendar-payday-badge" aria-label="월급날" title="월급날">💰</span>' : ''}`,
-            };
-        },
+        dayCellContent: (info) => info.dayNumberText.replace('일', ''),
+        dayCellDidMount: (info) => window.renderCalendarAnniversaryMarker?.(info.el, info.date),
         eventDidMount: (info) => {
             const digitCount = info.event.title.replace(/\D/g, '').length;
             if (digitCount < 7) return;
