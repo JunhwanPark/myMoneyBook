@@ -141,7 +141,6 @@ window.loadDailyRecords = async (isSilent = false) => {
                 window.globalDividends = result.dividends || [];
                 window.lifeTypes = result.lifeTypes || [];
                 window.lifeRecords = result.lifeRecords || [];
-                window.anniversaries = result.anniversaries || [];
                 globalCategories = (result.categories || []).filter(
                     (c) => !c.Type.startsWith('card')
                 );
@@ -172,7 +171,6 @@ window.loadDailyRecords = async (isSilent = false) => {
                     window.renderAssetsList();
                 }
                 if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
-                if (typeof window.renderAnniversaryList === 'function') window.renderAnniversaryList();
 
                 // 이미 화면이 떴으므로, 이어지는 백그라운드 동기화는 무음(Silent) 모드로 강제 전환!
                 isSilent = true;
@@ -221,7 +219,6 @@ window.loadDailyRecords = async (isSilent = false) => {
         window.globalDividends = result.dividends || [];
         window.lifeTypes = result.lifeTypes || [];
         window.lifeRecords = result.lifeRecords || [];
-        window.anniversaries = result.anniversaries || [];
         globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
         globalCards = (result.categories || [])
             .filter((c) => {
@@ -254,7 +251,6 @@ window.loadDailyRecords = async (isSilent = false) => {
             window.renderAssetsList();
         }
         if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
-        if (typeof window.renderAnniversaryList === 'function') window.renderAnniversaryList();
 
         window.setSyncStatus('synced');
         return true;

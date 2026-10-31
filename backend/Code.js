@@ -197,85 +197,6 @@ function handleLifeRecordAction(ss, action, payload) {
     throw new Error('지원하지 않는 생활기록 요청입니다.');
 }
 
-function getAnniversarySheet(ss) {
-    let sheet = ss.getSheetByName('Anniversaries');
-    if (sheet && sheet.getLastRow() > 0) return sheet;
-
-    const lock = LockService.getScriptLock();
-    lock.waitLock(10000);
-    try {
-        sheet = ss.getSheetByName('Anniversaries');
-        if (!sheet) sheet = ss.insertSheet('Anniversaries');
-        if (sheet.getLastRow() === 0) {
-            sheet.appendRow(['ID', 'Name', 'Repeat', 'Month', 'Day', 'Icon', 'WeekendRule', 'UpdatedAt']);
-            sheet.appendRow(['payday-default', '월급', 'monthly', '', 21, '💰', 'previous_friday', new Date()]);
-        }
-        return sheet;
-    } finally {
-        lock.releaseLock();
-    }
-}
-
-function handleAnniversaryAction(ss, action, payload) {
-    const sheet = getAnniversarySheet(ss);
-    const requiredHeaders = ['ID', 'Name', 'Repeat', 'Month', 'Day', 'Icon', 'WeekendRule', 'UpdatedAt'];
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map((h) => String(h).trim());
-    const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
-    if (missingHeaders.length) throw new Error(`Anniversaries 시트 헤더를 확인해 주세요: ${missingHeaders.join(', ')}`);
-    const columns = Object.fromEntries(headers.map((header, index) => [header, index]));
-
-    if (action === 'delete_anniversary') {
-        const id = String(payload.id || '');
-        const values = sheet.getDataRange().getValues();
-        const rowIndex = values.findIndex((row, index) => index > 0 && String(row[columns.ID]) === id);
-        if (rowIndex < 1) throw new Error('삭제할 기념일을 찾을 수 없습니다.');
-        sheet.deleteRow(rowIndex + 1);
-        return { status: 'success', id };
-    }
-
-    const name = String(payload.name || '').trim();
-    const repeat = String(payload.repeat || '');
-    const month = repeat === 'yearly' ? Number(payload.month) : '';
-    const day = Number(payload.day);
-    const icon = String(payload.icon || '🎉');
-    const weekendRule = repeat === 'monthly' && payload.weekendRule === 'previous_friday'
-        ? 'previous_friday'
-        : 'none';
-    const allowedIcons = ['💰', '🎂', '🎉', '💍', '🎓'];
-    if (!name || name.length > 40) throw new Error('기념일 이름을 확인해 주세요.');
-    if (!['monthly', 'yearly'].includes(repeat)) throw new Error('반복 주기를 확인해 주세요.');
-    if (!Number.isInteger(day) || day < 1 || day > 31) throw new Error('날짜를 확인해 주세요.');
-    if (repeat === 'yearly') {
-        if (!Number.isInteger(month) || month < 1 || month > 12) throw new Error('월을 확인해 주세요.');
-        const daysInMonth = new Date(Date.UTC(2024, month, 0)).getUTCDate();
-        if (day > daysInMonth) throw new Error('선택한 월에 없는 날짜입니다.');
-    }
-    if (!allowedIcons.includes(icon)) throw new Error('기념일 아이콘을 확인해 주세요.');
-
-    const id = action === 'create_anniversary' ? Utilities.getUuid() : String(payload.id || '');
-    if (!id) throw new Error('수정할 기념일을 찾을 수 없습니다.');
-    const row = new Array(sheet.getLastColumn()).fill('');
-    row[columns.ID] = id;
-    row[columns.Name] = name;
-    row[columns.Repeat] = repeat;
-    row[columns.Month] = month;
-    row[columns.Day] = day;
-    row[columns.Icon] = icon;
-    row[columns.WeekendRule] = weekendRule;
-    row[columns.UpdatedAt] = new Date();
-
-    if (action === 'create_anniversary') {
-        sheet.appendRow(row);
-        return { status: 'success', id };
-    }
-
-    const values = sheet.getDataRange().getValues();
-    const rowIndex = values.findIndex((valuesRow, index) => index > 0 && String(valuesRow[columns.ID]) === id);
-    if (rowIndex < 1) throw new Error('수정할 기념일을 찾을 수 없습니다.');
-    sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
-    return { status: 'success', id };
-}
-
 function doGet(e) {
     try {
         // 🛡️ 보안 검문소: 토큰이 없거나 가짜면 즉시 쫓아냄
@@ -384,8 +305,6 @@ function doGet(e) {
         const lifeTypes = readLifeSheet(ss.getSheetByName('LifeTypes'));
         const lifeRecords = readLifeSheet(ss.getSheetByName('LifeRecords'));
         lifeRecords.sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')));
-        const anniversaries = readLifeSheet(getAnniversarySheet(ss));
-        anniversaries.sort((a, b) => Number(a.Month || 0) - Number(b.Month || 0) || Number(a.Day || 0) - Number(b.Day || 0));
 
         // 응답 JSON에 deposits 항목을 추가해서 리턴합니다.
         return ContentService.createTextOutput(
@@ -397,7 +316,6 @@ function doGet(e) {
                 dividends: divData, // 👈 추가!
                 lifeTypes: lifeTypes,
                 lifeRecords: lifeRecords,
-                anniversaries: anniversaries,
             })
         ).setMimeType(ContentService.MimeType.JSON);
     } catch (error) {
@@ -421,17 +339,6 @@ function doPost(e) {
         const action = payload.action || 'create';
         const country = payload.country || 'KR';
         const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-        if (
-            action === 'create_anniversary' ||
-            action === 'update_anniversary' ||
-            action === 'delete_anniversary'
-        ) {
-            const result = handleAnniversaryAction(ss, action, payload);
-            return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(
-                ContentService.MimeType.JSON
-            );
-        }
 
         // 생활기록 CRUD는 가계부 국가별 데이터와 분리된 전용 시트에서 처리합니다.
         if (action === 'create_life_type' || action === 'update_life_type') {
