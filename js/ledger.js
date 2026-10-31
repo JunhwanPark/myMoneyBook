@@ -328,25 +328,39 @@ window.updateSpendingTicker = () => {
     const previousPrefix = dateKey(previousStartDate).slice(0, 7);
     let currentExpense = 0;
     let previousExpense = 0;
+    let currentIncome = 0;
+    let previousIncome = 0;
     const currentByCategory = new Map();
     const previousByCategory = new Map();
+    const dailyExpenseTotals = new Map();
 
     (globalData || []).forEach((item) => {
-        if (item.Type !== 'expense' || !item.Date) return;
+        if (!item.Date) return;
         const date = String(item.Date).slice(0, 10);
         const amount = Number(item.Amount) || 0;
+        const isCurrentPeriod = date >= currentStart && date <= dateKey(today);
+        const isPreviousPeriod = date.startsWith(previousPrefix) && date <= previousCutoff;
+
+        if (item.Type === 'income') {
+            if (isCurrentPeriod) currentIncome += amount;
+            else if (isPreviousPeriod) previousIncome += amount;
+            return;
+        }
+        if (item.Type !== 'expense') return;
+
         const categoryKey = item.Category || '__uncategorized__';
         const categoryLabel =
             globalCategories.find((category) => category.Value === item.Category)?.Label ||
             item.Category ||
             '미분류';
 
-        if (date >= currentStart && date <= dateKey(today)) {
+        if (isCurrentPeriod) {
             currentExpense += amount;
+            dailyExpenseTotals.set(date, (dailyExpenseTotals.get(date) || 0) + amount);
             const entry = currentByCategory.get(categoryKey) || { label: categoryLabel, amount: 0 };
             entry.amount += amount;
             currentByCategory.set(categoryKey, entry);
-        } else if (date.startsWith(previousPrefix) && date <= previousCutoff) {
+        } else if (isPreviousPeriod) {
             previousExpense += amount;
             const entry = previousByCategory.get(categoryKey) || { label: categoryLabel, amount: 0 };
             entry.amount += amount;
@@ -355,18 +369,32 @@ window.updateSpendingTicker = () => {
     });
 
     const difference = currentExpense - previousExpense;
+    const rotationSeed = today.getDate() + (currentCountry === 'CN' ? 2 : 0);
+    const phraseVariant = rotationSeed % 3;
+    const formattedDifference = escapeHTML(formatMoney(Math.abs(difference)));
     let headline;
     if (difference < 0) {
         ticker.dataset.trend = 'less';
-        headline = `🎉 절약 중! 전월 같은 기간보다 <span class="spending-ticker-delta spending-ticker-delta--less">${escapeHTML(formatMoney(Math.abs(difference)))}</span> 덜 쓰고 있어요.`;
+        const phrases = [
+            `🎉 소비 페이스가 좋아요! 전월보다 <span class="spending-ticker-delta spending-ticker-delta--less">${formattedDifference}</span> 덜 썼어요.`,
+            `🌿 지갑이 한결 가벼워요. 같은 기간보다 <span class="spending-ticker-delta spending-ticker-delta--less">${formattedDifference}</span> 아꼈어요.`,
+            `👏 이번 달은 절약 흐름! 전월 동기간보다 <span class="spending-ticker-delta spending-ticker-delta--less">${formattedDifference}</span> 적게 썼어요.`,
+        ];
+        headline = phrases[phraseVariant];
     } else if (difference > 0) {
         ticker.dataset.trend = 'more';
-        headline = `⚠️ 지출 페이스가 빨라요! 전월 같은 기간보다 <span class="spending-ticker-delta spending-ticker-delta--more">${escapeHTML(formatMoney(difference))}</span> 더 쓰고 있어요.`;
+        const phrases = [
+            `⚠️ 지출 페이스가 빨라요! 전월보다 <span class="spending-ticker-delta spending-ticker-delta--more">${formattedDifference}</span> 더 썼어요.`,
+            `🚦잠깐 점검! 같은 기간보다 지출이 <span class="spending-ticker-delta spending-ticker-delta--more">${formattedDifference}</span> 늘었어요.`,
+            `🧐 소비가 한발 앞서가요. 전월 동기간보다 <span class="spending-ticker-delta spending-ticker-delta--more">${formattedDifference}</span> 더 썼어요.`,
+        ];
+        headline = phrases[phraseVariant];
     } else {
         ticker.dataset.trend = 'same';
-        headline = currentExpense === 0
-            ? '😌 이번 달은 아직 지출이 없어요.'
-            : '😌 전월 같은 기간과 지출이 같아요.';
+        const phrases = currentExpense === 0
+            ? ['😌 이번 달은 아직 지출이 없어요.', '🫧 조용한 소비 흐름, 아직 지출이 없어요.', '🌱 이번 달 지출은 출발 전이에요.']
+            : ['😌 전월 같은 기간과 지출이 같아요.', '⚖️ 이번 달과 전월의 소비가 나란해요.', '🎯 지출이 전월 동기간과 딱 맞아요.'];
+        headline = phrases[phraseVariant];
     }
 
     const categoryChanges = new Map();
@@ -386,10 +414,89 @@ window.updateSpendingTicker = () => {
                 `${escapeHTML(label)} <span class="spending-ticker-delta ${amount > 0 ? 'spending-ticker-delta--more' : 'spending-ticker-delta--less'}">${amount > 0 ? '+' : '−'}${escapeHTML(formatMoney(Math.abs(amount)))}</span>`
         )
         .join(' · ');
-    const totals = `전월 같은 기간 ${escapeHTML(formatMoney(previousExpense))} → 이번 달 ${escapeHTML(formatMoney(currentExpense))}.`;
-    const message = categorySummary
-        ? `${headline} ${totals} 카테고리 변화: ${categorySummary}.`
-        : `${headline} ${totals} 카테고리별 큰 변화는 없어요.`;
+    const comparisonPhrases = [
+        `전월 같은 기간 ${escapeHTML(formatMoney(previousExpense))} → 이번 달 ${escapeHTML(formatMoney(currentExpense))}.`,
+        `지금까지 전월 ${escapeHTML(formatMoney(previousExpense))}, 이번 달 ${escapeHTML(formatMoney(currentExpense))}을 썼어요.`,
+        `전월 동기간과 비교하면 ${escapeHTML(formatMoney(previousExpense))}에서 ${escapeHTML(formatMoney(currentExpense))}으로 바뀌었어요.`,
+    ];
+
+    const insights = [];
+    const highestDay = [...dailyExpenseTotals.entries()]
+        .filter(([, amount]) => amount > 0)
+        .sort((a, b) => b[1] - a[1])[0];
+    if (highestDay) {
+        const [date, amount] = highestDay;
+        const [, month, day] = date.split('-').map(Number);
+        const dayPhrases = [
+            `🗓️ 이번 달 지출 1위는 ${month}/${day} · ${escapeHTML(formatMoney(amount))}예요.`,
+            `💸 가장 많이 쓴 날은 ${month}월 ${day}일(${escapeHTML(formatMoney(amount))})이에요.`,
+            `📍 ${month}/${day}에 ${escapeHTML(formatMoney(amount))}을 써서 이번 달 최고 지출일로 기록됐어요.`,
+        ];
+        insights.push(dayPhrases[phraseVariant]);
+    }
+
+    const topCategory = [...currentByCategory.values()]
+        .filter((entry) => entry.amount > 0)
+        .sort((a, b) => b.amount - a.amount)[0];
+    const positiveCategoryTotal = [...currentByCategory.values()]
+        .reduce((sum, entry) => sum + Math.max(0, entry.amount), 0);
+    if (topCategory && positiveCategoryTotal > 0) {
+        const categoryShare = Math.round((topCategory.amount / positiveCategoryTotal) * 100);
+        insights.push(
+            `🏷️ ${escapeHTML(topCategory.label)} 지출이 ${categoryShare}%로 가장 큰 비중이에요.`
+        );
+    }
+
+    const activeSpendDays = [...dailyExpenseTotals.values()].filter((amount) => amount > 0).length;
+    const noSpendDays = Math.max(0, today.getDate() - activeSpendDays);
+    if (noSpendDays > 0) {
+        insights.push(
+            `🌼 오늘까지 ${noSpendDays}일은 지출 없이 보냈어요${noSpendDays >= 10 ? ' — 훌륭한 방어력!' : '.'}`
+        );
+    }
+
+    const previousDaysElapsed = Math.min(today.getDate(), previousEndDay);
+    const currentDailyAverage = currentExpense / today.getDate();
+    const previousDailyAverage = previousExpense / previousDaysElapsed;
+    if (currentExpense > 0 || previousExpense > 0) {
+        const averageDifference = currentDailyAverage - previousDailyAverage;
+        const averageComparison = averageDifference < 0
+            ? '전월보다 낮아요'
+            : averageDifference > 0
+              ? '전월보다 높아요'
+              : '전월과 같아요';
+        insights.push(
+            `📊 하루 평균 지출은 ${escapeHTML(formatMoney(currentDailyAverage))}이에요. ${averageComparison}`
+        );
+    }
+
+    if (currentIncome > 0) {
+        const netAmount = currentIncome - currentExpense;
+        insights.push(
+            netAmount >= 0
+                ? `💵 이번 달 수입 ${escapeHTML(formatMoney(currentIncome))}, 지출 후 ${escapeHTML(formatMoney(netAmount))}이 남았어요.`
+                : `💵 이번 달 지출이 수입보다 ${escapeHTML(formatMoney(Math.abs(netAmount)))} 많아요.`
+        );
+    }
+
+    if (currentIncome > 0 || previousIncome > 0) {
+        const incomeDifference = currentIncome - previousIncome;
+        insights.push(
+            incomeDifference > 0
+                ? `📥 이번 달 수입이 전월 동기간보다 ${escapeHTML(formatMoney(incomeDifference))} 많아요.`
+                : incomeDifference < 0
+                  ? `📥 이번 달 수입은 전월 동기간보다 ${escapeHTML(formatMoney(Math.abs(incomeDifference)))} 적어요.`
+                  : `📥 이번 달 수입이 전월 동기간과 같아요: ${escapeHTML(formatMoney(currentIncome))}.`
+        );
+    }
+
+    if (categorySummary) insights.push(`🔎 카테고리 증감: ${categorySummary}.`);
+    else if (currentExpense > 0) insights.push('🔎 카테고리별 큰 증감은 아직 없어요.');
+
+    const insightOffset = insights.length ? rotationSeed % insights.length : 0;
+    const rotatedInsights = [...insights.slice(insightOffset), ...insights.slice(0, insightOffset)];
+    const selectedInsights = rotatedInsights.slice(0, Math.min(2, rotatedInsights.length));
+    const message = [headline, comparisonPhrases[phraseVariant], ...selectedInsights].join(' ');
 
     messageEl.innerHTML = message;
     copyEl.innerHTML = message;
