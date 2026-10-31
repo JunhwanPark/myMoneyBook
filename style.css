@@ -593,37 +593,19 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
 }
 
 .fc-daygrid-event.calendar-expense-event {
-    background-color: #fef2f2;
+    background-color: #fef2f2 !important;
 }
 
 .fc-daygrid-event.calendar-expense-event .fc-event-title {
     color: #dc2626 !important;
 }
 
-.fc-daygrid-event.calendar-expense-peak {
-    border: 1px solid #b91c1c !important;
-    box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.12);
-}
-
-.fc-daygrid-event.calendar-expense-peak .fc-event-title {
-    font-weight: 900;
-}
-
 .fc-daygrid-event.calendar-income-event {
-    background-color: #eff6ff;
+    background-color: #eff6ff !important;
 }
 
 .fc-daygrid-event.calendar-income-event .fc-event-title {
     color: #2563eb !important;
-}
-
-.fc-daygrid-event.calendar-income-peak {
-    border: 1px solid #1d4ed8 !important;
-    box-shadow: inset 0 0 0 1px rgba(29, 78, 216, 0.12);
-}
-
-.fc-daygrid-event.calendar-income-peak .fc-event-title {
-    font-weight: 900;
 }
 
 .fc-daygrid-event.calendar-empty-event {

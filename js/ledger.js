@@ -546,9 +546,6 @@ window.renderCalendarEvents = () => {
     calendar.removeAllEvents();
 
     const totals = {};
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const currentMonthKey = todayKey.slice(0, 7);
     if (typeof globalData !== 'undefined') {
         globalData.forEach((item) => {
             const date = item.Date.substring(0, 10);
@@ -559,28 +556,10 @@ window.renderCalendarEvents = () => {
         });
     }
 
-    const monthToDateExpenses = Object.entries(totals)
-        .filter(([date, total]) => date.startsWith(currentMonthKey) && date <= todayKey && total.ex > 0)
-        .map(([, total]) => total.ex);
-    const monthToDateIncomes = Object.entries(totals)
-        .filter(([date, total]) => date.startsWith(currentMonthKey) && date <= todayKey && total.in > 0)
-        .map(([, total]) => total.in);
-    const highestDailyExpense = Math.max(0, ...monthToDateExpenses);
-    const highestDailyIncome = Math.max(0, ...monthToDateIncomes);
-    const heatColor = (amount, maximum, pale, strong) => {
-        if (maximum <= 0 || amount <= 0) return `rgb(${pale.join(', ')})`;
-        const strength = Math.sqrt(Math.min(amount / maximum, 1));
-        const rgb = pale.map((start, index) => Math.round(start + (strong[index] - start) * strength));
-        return `rgb(${rgb.join(', ')})`;
-    };
-
     const events = [];
     for (const [d, t] of Object.entries(totals)) {
         if (t.in === 0 && t.ex === 0) continue;
 
-        const isMonthToDate = d.startsWith(currentMonthKey) && d <= todayKey;
-        const isHighestExpense = isMonthToDate && highestDailyExpense > 0 && t.ex === highestDailyExpense;
-        const isHighestIncome = isMonthToDate && highestDailyIncome > 0 && t.in === highestDailyIncome;
         events.push({
             title:
                 t.ex !== 0
@@ -589,16 +568,7 @@ window.renderCalendarEvents = () => {
             start: d,
             allDay: true,
             textColor: t.ex !== 0 ? '#ef4444' : 'transparent',
-            backgroundColor: heatColor(
-                isMonthToDate ? t.ex : 0,
-                highestDailyExpense,
-                [255, 241, 242],
-                [251, 113, 133]
-            ),
-            classNames: [
-                t.ex !== 0 ? 'calendar-expense-event' : 'calendar-empty-event',
-                ...(isHighestExpense ? ['calendar-expense-peak'] : []),
-            ],
+            classNames: [t.ex !== 0 ? 'calendar-expense-event' : 'calendar-empty-event'],
             order: 1,
         });
 
@@ -610,16 +580,7 @@ window.renderCalendarEvents = () => {
             start: d,
             allDay: true,
             textColor: t.in !== 0 ? '#3b82f6' : 'transparent',
-            backgroundColor: heatColor(
-                isMonthToDate ? t.in : 0,
-                highestDailyIncome,
-                [239, 246, 255],
-                [96, 165, 250]
-            ),
-            classNames: [
-                t.in !== 0 ? 'calendar-income-event' : 'calendar-empty-event',
-                ...(isHighestIncome ? ['calendar-income-peak'] : []),
-            ],
+            classNames: [t.in !== 0 ? 'calendar-income-event' : 'calendar-empty-event'],
             order: 2,
         });
     }
