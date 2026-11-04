@@ -672,6 +672,7 @@ window.updateMonthlyTotals = function () {
 window.initCalendar = () => {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
+    const birthdayDates = new Set(['1-15', '9-14', '5-22', '10-18']);
 
     // 💡 window.calendar가 아닌, 원본에서 쓰던 진짜 calendar 변수 사용!
     calendar = new FullCalendar.Calendar(calendarEl, {
@@ -690,9 +691,10 @@ window.initCalendar = () => {
                 date.getFullYear() === payday.getFullYear() &&
                 date.getMonth() === payday.getMonth() &&
                 date.getDate() === payday.getDate();
+            const isBirthday = birthdayDates.has(`${date.getMonth() + 1}-${date.getDate()}`);
             const dayNumber = info.dayNumberText.replace('일', '');
             return {
-                html: `${dayNumber}${isPayday ? '<span class="calendar-payday-badge" aria-label="월급날" title="월급날">💰</span>' : ''}`,
+                html: `${dayNumber}${isPayday ? '<span class="calendar-payday-badge" aria-label="월급날" title="월급날">💵</span>' : ''}${isBirthday ? '<span class="calendar-birthday-badge" aria-label="가족 생일" title="가족 생일">🎂</span>' : ''}`,
             };
         },
         eventDidMount: (info) => {
