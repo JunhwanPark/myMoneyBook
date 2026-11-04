@@ -192,6 +192,15 @@ window.renderLifeMode = () => {
     else if (activeViewId === 'view-life-types') window.renderLifeTypes();
 };
 
+window.toggleLifeTrendPerson = (person) => {
+    const typeId = String(document.getElementById('life-trend-type-select')?.value || '');
+    const currentSelection = window.lifeTrendSelectedPerson;
+    window.lifeTrendSelectedPerson = currentSelection?.typeId === typeId && currentSelection.person === person
+        ? null
+        : { typeId, person };
+    window.renderLifeTrend();
+};
+
 window.renderLifeTrend = () => {
     const typeSelect = document.getElementById('life-trend-type-select');
     const canvas = document.getElementById('life-trend-chart');
@@ -206,6 +215,10 @@ window.renderLifeTrend = () => {
         .join('');
     if (activeTypes.some((type) => String(type.ID) === selectedTypeId)) typeSelect.value = selectedTypeId;
     const type = activeTypes.find((item) => String(item.ID) === typeSelect.value) || activeTypes[0];
+    summary.onclick = (event) => {
+        const card = event.target.closest('[data-life-person]');
+        if (card) window.toggleLifeTrendPerson(card.dataset.lifePerson);
+    };
 
     if (window.lifeTrendChart) {
         window.lifeTrendChart.destroy();
@@ -235,6 +248,15 @@ window.renderLifeTrend = () => {
     const dateLabels = [...new Set(records.map((record) => String(record.Date || '').slice(0, 10)))].filter(Boolean);
     const people = isCounter ? ['가족 전체'] : [...new Set(records.map(lifePersonKey))];
     const colors = ['#0f766e', '#6366f1', '#e11d48', '#d97706', '#2563eb'];
+    if (
+        window.lifeTrendSelectedPerson &&
+        (window.lifeTrendSelectedPerson.typeId !== String(type.ID) || !people.includes(window.lifeTrendSelectedPerson.person))
+    ) {
+        window.lifeTrendSelectedPerson = null;
+    }
+    const selectedPerson = window.lifeTrendSelectedPerson?.typeId === String(type.ID)
+        ? window.lifeTrendSelectedPerson.person
+        : null;
     const valueByPersonAndDate = new Map(people.map((person) => [person, new Map()]));
     const latestValues = new Map();
 
@@ -257,7 +279,16 @@ window.renderLifeTrend = () => {
     }
 
     summary.innerHTML = [...latestValues.entries()]
-        .map(([person, value]) => `<span class="inline-flex items-center gap-1 bg-white border border-gray-100 rounded-lg px-2.5 py-1.5 mr-1.5 mb-1.5 text-[10px]"><span class="font-bold text-gray-500">${lifeEscape(person)}</span><span class="font-black text-teal-700">${lifeFormatValue(value)}${lifeEscape(type.Unit)}</span></span>`)
+        .map(([person, value], index) => {
+            const color = colors[index % colors.length];
+            const isSelected = window.lifeTrendSelectedPerson?.typeId === String(type.ID) &&
+                window.lifeTrendSelectedPerson.person === person;
+            return `<button type="button" data-life-person="${lifeEscape(person)}" aria-pressed="${isSelected}" class="inline-flex items-center gap-1.5 bg-white border rounded-lg px-2.5 py-1.5 mr-1.5 mb-1.5 text-[10px] transition shadow-sm ${isSelected ? 'ring-1' : 'border-gray-100 hover:border-gray-300'}" style="${isSelected ? `border-color:${color};--tw-ring-color:${color}` : ''}" title="${lifeEscape(person)} 그래프 ${isSelected ? '선택됨' : '보기'}">
+                <span class="w-2 h-2 rounded-full shrink-0" style="background:${color}"></span>
+                <span class="font-bold text-gray-500">${lifeEscape(person)}</span>
+                <span class="font-black" style="color:${color}">${lifeFormatValue(value)}${lifeEscape(type.Unit)}</span>
+            </button>`;
+        })
         .join('');
 
     if (typeof Chart !== 'function') {
@@ -271,11 +302,13 @@ window.renderLifeTrend = () => {
         type: 'line',
         data: {
             labels: dateLabels,
-            datasets: people.map((person, index) => ({
+            datasets: people
+                .filter((person) => !selectedPerson || person === selectedPerson)
+                .map((person) => ({
                 label: person,
                 data: dateLabels.map((date) => valueByPersonAndDate.get(person).get(date) ?? null),
-                borderColor: colors[index % colors.length],
-                backgroundColor: colors[index % colors.length],
+                borderColor: colors[people.indexOf(person) % colors.length],
+                backgroundColor: colors[people.indexOf(person) % colors.length],
                 pointRadius: 3,
                 pointHoverRadius: 5,
                 tension: 0.25,
@@ -287,7 +320,7 @@ window.renderLifeTrend = () => {
             maintainAspectRatio: false,
             interaction: { mode: 'nearest', intersect: false },
             plugins: {
-                legend: { display: people.length > 1, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                legend: { display: !selectedPerson && people.length > 1, position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
                 tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${lifeFormatValue(context.parsed.y)}${type.Unit}` } },
             },
             scales: {
