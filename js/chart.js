@@ -345,7 +345,8 @@ window.renderChart = function () {
                 borderColor: '#3b82f6',
                 backgroundColor: 'rgba(59, 130, 246, 0.08)',
                 borderWidth: 2.5,
-                pointRadius: 0,
+                pointRadius: (context) =>
+                    isActualCurrentMonth && context.dataIndex === todayDate - 1 ? 2.5 : 0,
                 pointHoverRadius: 5,
                 fill: true,
                 tension: 0.3,
@@ -369,6 +370,8 @@ window.renderChart = function () {
             borderColor: '#ef4444',
             backgroundColor: 'rgba(239, 68, 68, 0.08)',
             borderWidth: 2.5,
+            pointRadius: (context) =>
+                isActualCurrentMonth && context.dataIndex === todayDate - 1 ? 2.5 : 0,
             pointHoverRadius: 5,
             fill: true,
             tension: 0.3,
