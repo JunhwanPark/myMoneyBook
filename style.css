@@ -290,6 +290,16 @@ nav {
     color: #047857;
 }
 
+.spending-ticker[data-context='life'] {
+    border-color: #99f6e4;
+    background: rgba(240, 253, 250, 0.97);
+}
+
+.spending-ticker[data-context='life'] .spending-ticker-label,
+.spending-ticker[data-context='life'] .spending-ticker-track {
+    color: #0f766e;
+}
+
 .spending-ticker-label {
     flex: 0 0 auto;
     color: #6b7280;

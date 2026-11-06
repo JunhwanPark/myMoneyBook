@@ -312,6 +312,21 @@ window.updateSpendingTicker = () => {
         return;
     }
 
+    if (window.currentAppMode === 'LIFE') {
+        ticker.dataset.context = 'life';
+        ticker.dataset.trend = 'same';
+        if (labelEl) labelEl.textContent = '생활 리포트';
+        exchangeRate?.classList.add('hidden');
+        const lifeMessage = typeof window.getLifeTickerInsights === 'function'
+            ? window.getLifeTickerInsights()
+            : '생활 기록을 불러오는 중입니다.';
+        messageEl.innerHTML = lifeMessage;
+        copyEl.innerHTML = lifeMessage;
+        ticker.classList.remove('hidden');
+        mainApp?.classList.add('spending-ticker-visible');
+        return;
+    }
+
     if (window.currentAppMode === 'ASSETS') {
         ticker.dataset.context = 'assets';
         ticker.dataset.trend = 'same';

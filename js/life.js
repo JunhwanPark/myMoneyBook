@@ -56,6 +56,58 @@ const lifeFormatDate = (dateString) => {
         : `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
+window.getLifeTickerInsights = () => {
+    const activeTypes = window.lifeTypes.filter(lifeIsActive);
+    const records = window.lifeRecords;
+    const insights = [];
+
+    const weightType = activeTypes.find((type) =>
+        String(type.Name || '').match(/몸무게|체중|weight/i) || String(type.Unit || '').toLowerCase() === 'kg'
+    );
+    if (weightType) {
+        const weightRecords = lifeSortAscending(
+            records.filter((record) => String(record.TypeID) === String(weightType.ID))
+        );
+        const byPerson = new Map();
+        weightRecords.forEach((record) => {
+            const person = lifePersonKey(record);
+            if (!byPerson.has(person)) byPerson.set(person, []);
+            byPerson.get(person).push(record);
+        });
+        const summaries = [...byPerson.entries()].map(([person, personRecords]) => {
+            const latest = personRecords[personRecords.length - 1];
+            const value = Number(latest.Value);
+            const previous = personRecords.length > 1 ? Number(personRecords[personRecords.length - 2].Value) : NaN;
+            const delta = Number.isFinite(previous) ? value - previous : null;
+            const change = delta === null ? '' : ` (${delta > 0 ? '+' : ''}${lifeFormatValue(delta)}${lifeEscape(weightType.Unit || 'kg')})`;
+            return `${lifeEscape(person)} ${lifeFormatValue(value)}${lifeEscape(weightType.Unit || 'kg')}${change}`;
+        });
+        if (summaries.length) insights.push(`⚖️ 최근 몸무게 · ${summaries.join(' / ')}`);
+    }
+
+    const golfType = activeTypes.find((type) =>
+        String(type.Kind).toLowerCase() === 'counter' && /골프|이용권/i.test(String(type.Name || ''))
+    );
+    if (golfType) {
+        const golfRecords = lifeSortAscending(
+            records.filter((record) => String(record.TypeID) === String(golfType.ID))
+        );
+        if (golfRecords.length) {
+            const remaining = lifeBalances(records).balancesByType.get(String(golfType.ID)) || 0;
+            const latest = golfRecords[golfRecords.length - 1];
+            const value = Number(latest.Value) || 0;
+            const action = value < 0
+                ? `${lifeEscape(lifePersonKey(latest))}님이 ${lifeFormatDate(latest.Date)} ${lifeFormatValue(Math.abs(value))}${lifeEscape(golfType.Unit)} 사용`
+                : `${lifeFormatDate(latest.Date)} ${lifeFormatValue(value)}${lifeEscape(golfType.Unit)} 충전`;
+            insights.push(`⛳ ${lifeEscape(golfType.Name)} 잔여 ${lifeFormatValue(remaining)}${lifeEscape(golfType.Unit)} · 최근 ${action}`);
+        }
+    }
+
+    return insights.length
+        ? insights.join('　　✦　　')
+        : '생활기록을 추가하면 가족의 최근 몸무게와 이용권 잔여량을 여기에 표시합니다.';
+};
+
 window.renderLifeRecords = () => {
     const list = document.getElementById('life-record-list');
     const filter = document.getElementById('life-record-type-filter');
