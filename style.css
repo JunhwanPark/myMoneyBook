@@ -280,6 +280,16 @@ nav {
     background: rgba(236, 253, 245, 0.97);
 }
 
+.spending-ticker[data-context='assets'] {
+    border-color: #a7f3d0;
+    background: rgba(236, 253, 245, 0.97);
+}
+
+.spending-ticker[data-context='assets'] .spending-ticker-label,
+.spending-ticker[data-context='assets'] .spending-ticker-track {
+    color: #047857;
+}
+
 .spending-ticker-label {
     flex: 0 0 auto;
     color: #6b7280;

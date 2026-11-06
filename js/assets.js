@@ -17,6 +17,103 @@ window.getDepositCalc = (d) => {
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
 
+window.getAssetsTickerInsights = () => {
+    const deposits = window.globalDeposits || [];
+    const dividends = window.globalDividends || [];
+    const currentYear = new Date().getFullYear();
+    const money = (value) => `${(Number(value) || 0).toLocaleString('ko-KR')}원`;
+    const escape = (value) => window.escapeHTML(value || '미상');
+    const dateOrdinal = (value) => {
+        const match = String(value || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return NaN;
+        return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])) / 86400000;
+    };
+    const today = new Date();
+    const todayOrdinal = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) / 86400000;
+    const activeDeposits = deposits.filter((deposit) => deposit.상태 !== '중도해지' && deposit.상태 !== '만기');
+    const nextMaturity = activeDeposits
+        .map((deposit) => ({ deposit, daysLeft: dateOrdinal(deposit.만기일) - todayOrdinal }))
+        .filter((item) => Number.isFinite(item.daysLeft) && item.daysLeft >= 0)
+        .sort((a, b) => a.daysLeft - b.daysLeft)[0];
+    const overdueCount = activeDeposits.filter((deposit) => {
+        const date = dateOrdinal(deposit.만기일);
+        return Number.isFinite(date) && date < todayOrdinal;
+    }).length;
+    const activePrincipal = activeDeposits.reduce((sum, deposit) => sum + (Number(deposit.원금) || 0), 0);
+
+    const ownerIncome = new Map();
+    deposits.forEach((deposit) => {
+        if (Number(String(deposit.만기일 || '').slice(0, 4)) !== currentYear) return;
+        const owner = String(deposit.명의자 || '미상');
+        const value = ownerIncome.get(owner) || { deposit: 0, dividend: 0 };
+        value.deposit += Number(deposit.세전이자) || 0;
+        ownerIncome.set(owner, value);
+    });
+    const yearDividends = dividends.filter(
+        (dividend) => Number(String(dividend.Date || '').slice(0, 4)) === currentYear
+    );
+    yearDividends.forEach((dividend) => {
+        const owner = String(dividend.Owner || '미상');
+        const value = ownerIncome.get(owner) || { deposit: 0, dividend: 0 };
+        value.dividend += Number(dividend.Gross) || 0;
+        ownerIncome.set(owner, value);
+    });
+
+    const ownerTotals = [...ownerIncome.entries()]
+        .map(([owner, amounts]) => ({ owner, total: amounts.deposit + amounts.dividend }))
+        .sort((a, b) => b.total - a.total);
+    const totalFinancialIncome = ownerTotals.reduce((sum, item) => sum + item.total, 0);
+    const taxLimit = 20000000;
+    const topOwnerPercent = ownerTotals.length
+        ? Math.round((ownerTotals[0].total / taxLimit) * 100)
+        : 0;
+
+    const latestDividend = [...dividends]
+        .filter((dividend) => dateOrdinal(dividend.Date) <= todayOrdinal)
+        .sort((a, b) => String(b.Date).localeCompare(String(a.Date)))[0];
+    const yearGrossDividends = yearDividends.reduce((sum, dividend) => sum + (Number(dividend.Gross) || 0), 0);
+    const yearNetDividends = yearDividends.reduce((sum, dividend) => sum + (Number(dividend.Net) || 0), 0);
+
+    const rotation = (Date.now() + (window.assetsTickerRotationIndex = (window.assetsTickerRotationIndex || 0) + 1)) % 3;
+    const maturityMessages = nextMaturity
+        ? [
+              `🔔 다음 만기는 <b>${escape(nextMaturity.deposit.은행)} ${escape(nextMaturity.deposit.종류)}</b> · ${escape(nextMaturity.deposit.명의자)} 명의 · ${escape(String(nextMaturity.deposit.만기일).slice(0, 10))} (${nextMaturity.daysLeft === 0 ? '오늘' : `${nextMaturity.daysLeft}일 남음`})이에요.`,
+              `📅 예적금 만기 예정: ${escape(String(nextMaturity.deposit.만기일).slice(0, 10))} · ${escape(nextMaturity.deposit.은행)} ${escape(nextMaturity.deposit.종류)} (${escape(nextMaturity.deposit.명의자)} 명의, ${nextMaturity.daysLeft === 0 ? '오늘 만기' : `${nextMaturity.daysLeft}일 후`}).`,
+              `⏳ 가장 가까운 만기는 ${escape(nextMaturity.deposit.명의자)} 명의 ${escape(nextMaturity.deposit.은행)} ${escape(nextMaturity.deposit.종류)}예요. ${nextMaturity.daysLeft === 0 ? '오늘 만기입니다.' : `${nextMaturity.daysLeft}일 뒤 만기예요.`}`,
+          ]
+        : overdueCount > 0
+          ? [`⚠️ 만기도래 후 확인이 필요한 예적금이 ${overdueCount}건 있어요.`, `🟠 만기일이 지난 예적금 ${overdueCount}건을 확인해 주세요.`, `📌 만기도래 상태인 예적금 ${overdueCount}건이 남아 있어요.`]
+          : ['🫧 예정된 예적금 만기가 없습니다.', '🌿 현재 다가오는 예적금 만기는 없어요.', '📅 등록된 예적금 중 예정된 만기가 없습니다.'];
+    const financialMessages = totalFinancialIncome > 0
+        ? [
+              `💹 ${currentYear}년 종합 금융소득 가족 합계는 ${money(totalFinancialIncome)}이에요. 가장 큰 명의자는 ${escape(ownerTotals[0].owner)}님(${money(ownerTotals[0].total)})이며 개인 2천만원 기준 ${topOwnerPercent}%예요.`,
+              `📊 올해 예적금 이자·배당 가족 합계는 ${money(totalFinancialIncome)}. 가장 큰 명의자는 ${escape(ownerTotals[0].owner)}님(${money(ownerTotals[0].total)})이며, 개인 2천만원 기준 ${topOwnerPercent}%예요.`,
+              `🧾 ${currentYear}년 등록 금융소득 가족 합계 ${money(totalFinancialIncome)} · ${escape(ownerTotals[0].owner)}님 ${money(ownerTotals[0].total)} · 해당 명의자 기준 ${topOwnerPercent}%예요.`,
+          ]
+        : [`📊 ${currentYear}년 종합 금융소득 내역은 아직 없어요.`, `🧾 올해 등록된 예적금 이자와 배당은 아직 없습니다.`, `💹 ${currentYear}년 금융소득 집계 자료를 기다리는 중이에요.`];
+
+    let dividendMessage;
+    if (yearDividends.length > 0) {
+        const netDifference = yearGrossDividends - yearNetDividends;
+        const dividendMessages = [
+            `💸 올해 배당은 ${yearDividends.length}회 수령했어요 · 세전 ${money(yearGrossDividends)} / 세후 ${money(yearNetDividends)}${netDifference > 0 ? ` (세금 등 ${money(netDifference)})` : ''}.`,
+            `📥 ${currentYear}년 배당 수령 합계: 세후 ${money(yearNetDividends)} (세전 ${money(yearGrossDividends)}), 총 ${yearDividends.length}회예요.`,
+            `🌱 올해 ${yearDividends.length}번 배당을 받았고, 실제 수령액은 ${money(yearNetDividends)}이에요 (세전 ${money(yearGrossDividends)}).`,
+        ];
+        dividendMessage = dividendMessages[rotation];
+    } else if (latestDividend) {
+        dividendMessage = `📥 올해 배당 수령은 아직 없고, 최근 기록은 ${escape(String(latestDividend.Date).slice(0, 10))} ${escape(latestDividend.Stock)} · ${escape(latestDividend.Owner)} · 세후 ${money(latestDividend.Net)}예요.`;
+    } else {
+        dividendMessage = '📥 아직 등록된 배당 수령 기록이 없습니다.';
+    }
+
+    const principalMessage = activeDeposits.length > 0
+        ? `🏦 운용 중인 예적금 ${activeDeposits.length}건, 원금 합계 ${money(activePrincipal)}예요.`
+        : '🏦 현재 운용 중인 예적금이 없습니다.';
+
+    return [maturityMessages[rotation], financialMessages[rotation], dividendMessage, principalMessage].join('　•　');
+};
+
 window.assetSortMode = window.assetSortMode || 'end';
 window.expandedAssetYears = window.expandedAssetYears || new Set();
 window.assetYearExpansionInitialized = window.assetYearExpansionInitialized || false;

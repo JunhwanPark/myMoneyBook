@@ -312,6 +312,21 @@ window.updateSpendingTicker = () => {
         return;
     }
 
+    if (window.currentAppMode === 'ASSETS') {
+        ticker.dataset.context = 'assets';
+        ticker.dataset.trend = 'same';
+        if (labelEl) labelEl.textContent = '자산 리포트';
+        exchangeRate?.classList.add('hidden');
+        const assetMessage = typeof window.getAssetsTickerInsights === 'function'
+            ? window.getAssetsTickerInsights()
+            : '자산 정보를 불러오는 중입니다.';
+        messageEl.innerHTML = assetMessage;
+        copyEl.innerHTML = assetMessage;
+        ticker.classList.remove('hidden');
+        mainApp?.classList.add('spending-ticker-visible');
+        return;
+    }
+
     ticker.dataset.context = 'spending';
     if (labelEl) labelEl.textContent = '이번 달 소비 리포트';
     exchangeRate?.classList.toggle(
