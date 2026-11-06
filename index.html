@@ -576,18 +576,21 @@
 
                 <section id="view-settings" class="tab-content">
                     <h2 class="text-md font-semibold text-gray-700 mb-4">설정</h2>
-                    <div
-                        class="bg-gray-50 p-4 rounded-xl mb-6 flex items-center gap-4 border border-gray-100"
-                    >
-                        <div
-                            class="bg-primary-light text-primary p-3 rounded-full flex items-center justify-center"
-                        >
-                            <span class="material-symbols-outlined text-2xl">person</span>
+                    <div class="grid grid-cols-2 gap-2 mb-5">
+                        <div class="min-w-0 min-h-[68px] bg-gray-50 px-3 py-2.5 rounded-xl flex items-center gap-2 border border-gray-100">
+                            <span class="shrink-0 bg-primary-light text-primary w-8 h-8 rounded-full flex items-center justify-center">
+                                <span class="material-symbols-outlined text-lg">person</span>
+                            </span>
+                            <span class="min-w-0">
+                                <span class="block text-[10px] text-gray-500 mb-0.5">현재 계정</span>
+                                <span id="settings-user-email" class="block truncate font-bold text-gray-800 text-xs"></span>
+                            </span>
                         </div>
-                        <div>
-                            <p class="text-xs text-gray-500 mb-0.5">현재 계정</p>
-                            <p id="settings-user-email" class="font-bold text-gray-800 text-sm"></p>
-                        </div>
+
+                        <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="min-w-0 min-h-[68px] bg-white border border-gray-100 rounded-xl px-2.5 py-2 flex items-center justify-center gap-2 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
+                            <span data-sync-icon class="material-symbols-outlined text-primary text-xl">sync</span>
+                            <span data-sync-label class="text-xs font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
+                        </button>
                     </div>
 
                     <ul class="divide-y divide-gray-100">
@@ -634,7 +637,13 @@
                 </section>
 
                 <section id="view-assets-settings" class="tab-content">
-                    <h2 class="text-md font-semibold text-gray-700 mb-4">자산 설정</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-md font-semibold text-gray-700">자산 설정</h2>
+                        <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="bg-white border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-1.5 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
+                            <span data-sync-icon class="material-symbols-outlined text-primary text-lg">sync</span>
+                            <span data-sync-label class="text-xs font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
+                        </button>
+                    </div>
                     <ul
                         class="divide-y divide-gray-100 bg-white border border-gray-100 rounded-xl px-2 shadow-sm"
                     >

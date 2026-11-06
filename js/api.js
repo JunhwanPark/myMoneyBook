@@ -262,6 +262,36 @@ window.loadDailyRecords = async (isSilent = false) => {
     }
 };
 
+window.forceSyncAllData = async () => {
+    const buttons = [...document.querySelectorAll('[data-force-sync]')];
+    if (buttons.some((button) => button.disabled)) return;
+
+    buttons.forEach((button) => {
+        button.disabled = true;
+        const label = button.querySelector('[data-sync-label]');
+        const icon = button.querySelector('[data-sync-icon]');
+        if (label) label.textContent = '동기화 중...';
+        icon?.classList.add('animate-spin');
+    });
+
+    try {
+        const synced = await window.loadDailyRecords(true);
+        if (!synced) throw new Error('데이터를 동기화하지 못했습니다. 연결 상태를 확인해 주세요.');
+        window.showToast('모든 모드의 데이터를 동기화했습니다.', 'success');
+    } catch (error) {
+        console.error('강제 동기화 실패:', error);
+        window.showToast(error.message || '동기화에 실패했습니다. 다시 시도해 주세요.');
+    } finally {
+        buttons.forEach((button) => {
+            button.disabled = false;
+            const label = button.querySelector('[data-sync-label]');
+            const icon = button.querySelector('[data-sync-icon]');
+            if (label) label.textContent = '강제 동기화';
+            icon?.classList.remove('animate-spin');
+        });
+    }
+};
+
 let saveSuccessToastTimer;
 let saveSuccessToastHideTimer;
 
