@@ -575,20 +575,10 @@
                 </section>
 
                 <section id="view-settings" class="tab-content">
-                    <h2 class="text-md font-semibold text-gray-700 mb-4">설정</h2>
-                    <div class="grid grid-cols-2 gap-2 mb-5">
-                        <div class="min-w-0 min-h-[68px] bg-gray-50 px-3 py-2.5 rounded-xl flex items-center gap-2 border border-gray-100">
-                            <span class="shrink-0 bg-primary-light text-primary w-8 h-8 rounded-full flex items-center justify-center">
-                                <span class="material-symbols-outlined text-lg">person</span>
-                            </span>
-                            <span class="min-w-0">
-                                <span class="block text-[10px] text-gray-500 mb-0.5">현재 계정</span>
-                                <span id="settings-user-email" class="block truncate font-bold text-gray-800 text-xs"></span>
-                            </span>
-                        </div>
-
-                        <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="min-w-0 min-h-[68px] bg-white border border-gray-100 rounded-xl px-2.5 py-2 flex items-center justify-center gap-2 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
-                            <span data-sync-icon class="material-symbols-outlined text-primary text-xl">sync</span>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-md font-semibold text-gray-700">설정</h2>
+                        <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="bg-white border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-1.5 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
+                            <span data-sync-icon class="material-symbols-outlined text-primary text-lg">sync</span>
                             <span data-sync-label class="text-xs font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
                         </button>
                     </div>
@@ -736,7 +726,7 @@
                 aria-live="polite"
                 aria-label="이번 달 지출 비교"
             >
-                <span class="spending-ticker-label">이번 달 소비 리포트</span>
+                <span id="spending-ticker-label" class="spending-ticker-label">이번 달 소비 리포트</span>
                 <div class="spending-ticker-window">
                     <div class="spending-ticker-track">
                         <span id="spending-ticker-message"></span>

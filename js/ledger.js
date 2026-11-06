@@ -294,14 +294,31 @@ window.updateSpendingTicker = () => {
     const copyEl = document.getElementById('spending-ticker-copy');
     if (!ticker || !messageEl || !copyEl) return;
 
+    const mainApp = document.getElementById('main-app');
+    const activeView = document.querySelector('.tab-content.active');
+    const labelEl = document.getElementById('spending-ticker-label');
     const exchangeRate = document.getElementById('ticker-exchange-rate');
+    const isSettingsView = ['view-settings', 'view-assets-settings'].includes(activeView?.id);
+
+    if (isSettingsView) {
+        ticker.dataset.context = 'account';
+        ticker.dataset.trend = 'same';
+        if (labelEl) labelEl.textContent = '로그인 계정';
+        exchangeRate?.classList.add('hidden');
+        messageEl.textContent = currentUserEmail || '계정 정보 없음';
+        copyEl.textContent = currentUserEmail || '계정 정보 없음';
+        ticker.classList.remove('hidden');
+        mainApp?.classList.add('spending-ticker-visible');
+        return;
+    }
+
+    ticker.dataset.context = 'spending';
+    if (labelEl) labelEl.textContent = '이번 달 소비 리포트';
     exchangeRate?.classList.toggle(
         'hidden',
         !(currentCountry === 'CN' && window.currentAppMode === 'LEDGER')
     );
 
-    const mainApp = document.getElementById('main-app');
-    const activeView = document.querySelector('.tab-content.active');
     const isLedgerViewActive =
         window.currentAppMode !== 'ASSETS' &&
         ['view-daily', 'view-monthly', 'view-stats'].includes(activeView?.id);

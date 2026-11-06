@@ -63,7 +63,6 @@ window.handleCredentialResponse = (response) => {
         currentUserEmail = payload.email;
         window.googleAuthToken = response.credential; // 👈 신규: 로그인 시 발급받은 마패를 저장!
 
-        document.getElementById('settings-user-email').innerText = currentUserEmail;
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
         loadDailyRecords();

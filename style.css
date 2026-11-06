@@ -370,6 +370,20 @@ nav {
     font-weight: 700;
 }
 
+.spending-ticker[data-context='account'] .spending-ticker-window {
+    flex: 1;
+}
+
+.spending-ticker[data-context='account'] .spending-ticker-track {
+    width: 100%;
+    gap: 0;
+    animation: none;
+}
+
+.spending-ticker[data-context='account'] #spending-ticker-copy {
+    display: none;
+}
+
 .spending-ticker[data-trend='more'] .spending-ticker-track {
     color: #b45309;
 }
