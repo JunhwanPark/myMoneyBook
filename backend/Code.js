@@ -197,6 +197,33 @@ function handleLifeRecordAction(ss, action, payload) {
     throw new Error('지원하지 않는 생활기록 요청입니다.');
 }
 
+function readCountryLedgerData(ss, country) {
+    const dataSheet = ss.getSheetByName('Data_' + country);
+    if (!dataSheet) return [];
+
+    const dataValues = dataSheet.getDataRange().getValues();
+    if (dataValues.length <= 1) return [];
+
+    const headers = dataValues[0];
+    const jsonData = dataValues.slice(1).map((row) => {
+        const record = {};
+        headers.forEach((header, index) => {
+            if (row[index] instanceof Date) {
+                record[header] = Utilities.formatDate(
+                    row[index],
+                    Session.getScriptTimeZone(),
+                    'yyyy-MM-dd'
+                );
+            } else {
+                record[header] = row[index];
+            }
+        });
+        return record;
+    });
+    jsonData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    return jsonData;
+}
+
 function doGet(e) {
     try {
         // 🛡️ 보안 검문소: 토큰이 없거나 가짜면 즉시 쫓아냄
@@ -209,30 +236,13 @@ function doGet(e) {
         const country = e.parameter.country || 'KR';
         const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-        // 1. 가계부 내역은 국가별 시트에서 가져오기
-        const dataSheet = ss.getSheetByName('Data_' + country);
-        let jsonData = [];
-        if (dataSheet) {
-            const dataValues = dataSheet.getDataRange().getValues();
-            if (dataValues.length > 1) {
-                const headers = dataValues[0];
-                const rows = dataValues.slice(1);
-                jsonData = rows.map((row) => {
-                    let obj = {};
-                    headers.forEach((header, index) => {
-                        if (row[index] instanceof Date)
-                            obj[header] = Utilities.formatDate(
-                                row[index],
-                                Session.getScriptTimeZone(),
-                                'yyyy-MM-dd'
-                            );
-                        else obj[header] = row[index];
-                    });
-                    return obj;
-                });
-                jsonData.sort((a, b) => new Date(b.Date) - new Date(a.Date));
-            }
-        }
+        // 초기 동기화에서는 한국·중국 내역을 함께 읽고, 기존 호출은 요청 국가만 읽습니다.
+        const countries = country === 'ALL' ? ['KR', 'CN'] : [country];
+        const dataByCountry = {};
+        countries.forEach((dataCountry) => {
+            dataByCountry[dataCountry] = readCountryLedgerData(ss, dataCountry);
+        });
+        const jsonData = dataByCountry[country] || [];
 
         // 2. 카테고리는 항상 공통 Category 시트에서 가져오기
         const catSheet = ss.getSheetByName('Category');
@@ -307,17 +317,20 @@ function doGet(e) {
         lifeRecords.sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')));
 
         // 응답 JSON에 deposits 항목을 추가해서 리턴합니다.
-        return ContentService.createTextOutput(
-            JSON.stringify({
-                status: 'success',
-                data: jsonData,
-                categories: catData,
-                deposits: depositData,
-                dividends: divData, // 👈 추가!
-                lifeTypes: lifeTypes,
-                lifeRecords: lifeRecords,
-            })
-        ).setMimeType(ContentService.MimeType.JSON);
+        const response = {
+            status: 'success',
+            data: jsonData,
+            categories: catData,
+            deposits: depositData,
+            dividends: divData,
+            lifeTypes: lifeTypes,
+            lifeRecords: lifeRecords,
+        };
+        if (country === 'ALL') response.dataByCountry = dataByCountry;
+
+        return ContentService.createTextOutput(JSON.stringify(response)).setMimeType(
+            ContentService.MimeType.JSON
+        );
     } catch (error) {
         return ContentService.createTextOutput(
             JSON.stringify({ status: 'error', message: error.message })

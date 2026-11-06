@@ -110,7 +110,6 @@ window.switchAppMode = (mode) => {
     if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
     if (typeof window.fetchExchangeRate === 'function') window.fetchExchangeRate();
     if (typeof window.renderLifeMode === 'function') window.renderLifeMode();
-    if (typeof window.loadDailyRecords === 'function') window.loadDailyRecords();
 };
 
 // ==========================================
@@ -284,11 +283,9 @@ window.switchCountry = function (mode) {
         const mainNavBtn = document.getElementById('nav-btn-main');
         if (mainNavBtn) mainNavBtn.classList.replace('text-gray-400', 'text-primary');
 
-        if (typeof loadDailyRecords === 'function') {
-            loadDailyRecords();
-        } else if (typeof renderAssetsList === 'function') {
-            renderAssetsList();
-        }
+        if (typeof window.renderAssetsList === 'function') window.renderAssetsList();
+        if (typeof window.fetchExchangeRate === 'function') window.fetchExchangeRate();
+        if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
         return;
     }
 
@@ -306,7 +303,8 @@ window.switchCountry = function (mode) {
     document.getElementById('nav-icon-settings').innerText = 'settings';
     document.getElementById('nav-label-settings').innerText = '설정';
 
-    if (typeof currentCountry !== 'undefined' && currentCountry !== mode) {
+    const countryChanged = typeof currentCountry !== 'undefined' && currentCountry !== mode;
+    if (countryChanged) {
         // 국가 전환 시 이전 국가의 검색 조건 초기화
         const searchInput = document.getElementById('search-input');
         const clearBtn = document.getElementById('search-clear-btn');
@@ -318,12 +316,7 @@ window.switchCountry = function (mode) {
 
         currentCountry = mode;
         window.syncAppModeButtons();
-
-        if (typeof loadDailyRecords === 'function') {
-            loadDailyRecords();
-        }
-    } else if (mode === 'CN' && typeof fetchExchangeRate === 'function') {
-        fetchExchangeRate();
+        if (typeof window.selectCountryData === 'function') window.selectCountryData(mode);
     }
 
     if (mode === 'KR') {
@@ -342,7 +335,18 @@ window.switchCountry = function (mode) {
     ) {
         const mainNavBtn = document.getElementById('nav-btn-main');
         switchTab('daily', '내역', mainNavBtn);
+    } else if (countryChanged) {
+        if (typeof window.renderDailyList === 'function') window.renderDailyList(globalData);
+        if (typeof window.updateMonthlyTotals === 'function') window.updateMonthlyTotals();
+        if (activeTab?.id === 'view-monthly' && typeof calendar !== 'undefined' && calendar) {
+            window.renderCalendarEvents?.();
+        } else if (activeTab?.id === 'view-stats' && typeof window.renderChart === 'function') {
+            window.renderChart();
+        }
     }
+
+    if (typeof window.fetchExchangeRate === 'function') window.fetchExchangeRate();
+    if (typeof window.updateSpendingTicker === 'function') window.updateSpendingTicker();
 };
 
 // ==========================================

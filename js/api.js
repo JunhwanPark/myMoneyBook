@@ -1,8 +1,42 @@
 // js/api.js 최상단
 window.googleAuthToken = null; // 👈 신규: 토큰 저장용 변수
 window.countryDataVersions = window.countryDataVersions || { KR: 0, CN: 0 };
+window.allCountryData = window.allCountryData || { KR: [], CN: [] };
+window.allCategories = window.allCategories || [];
+window.hasLoadedAllCountryData = false;
 window.markCountryDataChanged = (country) => {
     window.countryDataVersions[country] = (window.countryDataVersions[country] || 0) + 1;
+};
+
+window.selectCountryData = (preferredCountry = currentCountry) => {
+    globalData = [...(window.allCountryData[preferredCountry] || [])];
+    globalCards = window.allCategories
+        .filter((category) => {
+            if (preferredCountry === 'KR') return category.Type === 'card' || category.Type === 'card_KR';
+            if (preferredCountry === 'CN') return category.Type === 'card_CN';
+            return false;
+        })
+        .sort((a, b) => a.Label.split('|')[0].localeCompare(b.Label.split('|')[0]));
+};
+
+window.applyLoadedData = (result, preferredCountry = currentCountry) => {
+    if (result.dataByCountry) {
+        window.allCountryData = {
+            KR: result.dataByCountry.KR || [],
+            CN: result.dataByCountry.CN || [],
+        };
+        window.hasLoadedAllCountryData = true;
+    } else {
+        window.allCountryData[preferredCountry] = result.data || [];
+    }
+
+    window.globalDeposits = result.deposits || [];
+    window.globalDividends = result.dividends || [];
+    window.lifeTypes = result.lifeTypes || [];
+    window.lifeRecords = result.lifeRecords || [];
+    window.allCategories = result.categories || window.allCategories;
+    globalCategories = window.allCategories.filter((category) => !category.Type.startsWith('card'));
+    window.selectCountryData(preferredCountry);
 };
 
 window.setSyncStatus = (status) => {
@@ -127,35 +161,17 @@ window.fetchExchangeRate = async () => {
 // ==========================================
 window.loadDailyRecords = async (isSilent = false) => {
     const requestedCountry = currentCountry;
-    const requestedDataVersion = window.countryDataVersions[requestedCountry] || 0;
-    const cacheKey = `ledgerCache_${requestedCountry}`;
+    const requestedDataVersions = { ...window.countryDataVersions };
+    const cacheKey = 'ledgerCache_ALL';
 
     // 💡 1. 앱을 켜자마자 로컬 스토리지에 캐시된 어제 데이터가 있다면 즉시 화면에 렌더링!
     if (!isSilent) {
-        const cachedString = localStorage.getItem(cacheKey);
+        const cachedString =
+            localStorage.getItem(cacheKey) || localStorage.getItem(`ledgerCache_${requestedCountry}`);
         if (cachedString) {
             try {
                 const result = JSON.parse(cachedString);
-                globalData = result.data || [];
-                window.globalDeposits = result.deposits || [];
-                window.globalDividends = result.dividends || [];
-                window.lifeTypes = result.lifeTypes || [];
-                window.lifeRecords = result.lifeRecords || [];
-                globalCategories = (result.categories || []).filter(
-                    (c) => !c.Type.startsWith('card')
-                );
-                globalCards = (result.categories || [])
-                    .filter((c) => {
-                        if (currentCountry === 'KR')
-                            return c.Type === 'card' || c.Type === 'card_KR';
-                        if (currentCountry === 'CN') return c.Type === 'card_CN';
-                        return false;
-                    })
-                    .sort((a, b) => {
-                        const nameA = a.Label.split('|')[0];
-                        const nameB = b.Label.split('|')[0];
-                        return nameA.localeCompare(nameB);
-                    });
+                window.applyLoadedData(result, currentCountry);
 
                 // 캐시 데이터로 즉시 화면 그리기 (0.1초 컷)
                 renderDailyList(globalData);
@@ -187,9 +203,7 @@ window.loadDailyRecords = async (isSilent = false) => {
     try {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
-        const res = await fetch(
-            `${GAS_URL}?country=${requestedCountry}&token=${window.googleAuthToken}`
-        );
+        const res = await fetch(`${GAS_URL}?country=ALL&token=${window.googleAuthToken}`);
 
         if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
@@ -200,37 +214,17 @@ window.loadDailyRecords = async (isSilent = false) => {
         if (result.status !== 'success') {
             throw new Error(`서버 데이터 조회 실패: ${JSON.stringify(result).slice(0, 300)}`);
         }
-        // 요청 이후 국가가 바뀌었다면 이전 요청의 결과는 적용하지 않음
-        if (requestedCountry !== currentCountry) {
-            console.log(
-                `[Load] 이전 국가의 응답 무시: ${requestedCountry}, 현재 국가: ${currentCountry}`
-            );
-            return false;
-        }
-        if (requestedDataVersion !== (window.countryDataVersions[requestedCountry] || 0)) {
-            console.log(`[Load] 변경 전 데이터 응답 무시: ${requestedCountry}`);
+        const dataChangedDuringRequest = ['KR', 'CN'].some(
+            (country) => requestedDataVersions[country] !== (window.countryDataVersions[country] || 0)
+        );
+        if (dataChangedDuringRequest) {
+            console.log('[Load] 데이터 변경 중에 시작된 이전 동기화 응답을 무시합니다.');
             return false;
         }
         // 💡 2. 통신에 성공하면 최신 데이터를 로컬 스토리지에 조용히 덮어씌워 둡니다 (다음 접속을 위해)
         localStorage.setItem(cacheKey, JSON.stringify(result));
 
-        globalData = result.data || [];
-        window.globalDeposits = result.deposits || [];
-        window.globalDividends = result.dividends || [];
-        window.lifeTypes = result.lifeTypes || [];
-        window.lifeRecords = result.lifeRecords || [];
-        globalCategories = (result.categories || []).filter((c) => !c.Type.startsWith('card'));
-        globalCards = (result.categories || [])
-            .filter((c) => {
-                if (currentCountry === 'KR') return c.Type === 'card' || c.Type === 'card_KR';
-                if (currentCountry === 'CN') return c.Type === 'card_CN';
-                return false;
-            })
-            .sort((a, b) => {
-                const nameA = a.Label.split('|')[0];
-                const nameB = b.Label.split('|')[0];
-                return nameA.localeCompare(nameB);
-            });
+        window.applyLoadedData(result, currentCountry);
 
         // 데이터가 변경되었을 수 있으니 화면을 다시 한번 살짝(Silent) 새로고침 합니다.
         renderDailyList(globalData);
@@ -256,7 +250,7 @@ window.loadDailyRecords = async (isSilent = false) => {
         return true;
     } catch (error) {
         console.error('데이터 로드 중 에러 발생:', error);
-        if (requestedCountry === currentCountry) window.setSyncStatus('error');
+        window.setSyncStatus('error');
 
         if (!isSilent) {
             window.showToast('데이터를 불러오는 중 문제가 발생했습니다. 새로고침 해주세요.');
