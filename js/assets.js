@@ -344,7 +344,7 @@ window.renderAssetsList = () => {
         currentYearList.insertAdjacentHTML(
             'beforeend',
             `
-            <div onclick="openDepositModal('${d.ID}')" class="bg-white px-2.5 py-2 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition mb-1.5 ${opacityClass}">
+            <div onclick="openDepositModal('${d.ID}')" class="bg-white px-2.5 py-1.5 rounded-xl border border-gray-100 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition mb-1.5 ${opacityClass}">
                 <div class="flex items-center justify-between gap-2">
                     <div class="flex min-w-0 items-center gap-1.5">
                         <span class="shrink-0 inline-flex items-center gap-1 rounded-md ${isClosed ? (isCanceled ? 'bg-red-50 border-red-200 text-red-600' : 'bg-gray-100 border-gray-300 text-gray-500') : isDue ? 'bg-amber-50 border-amber-300 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-800'} border px-1.5 py-0.5 text-[9px] font-extrabold font-mono tabular-nums shadow-sm ${isDue ? 'ring-1 ring-amber-200' : ''}" ${isClosed ? `title="${isCanceled ? '중도해지' : '만기수령'} 완료"` : isDue ? 'title="만기 도래 · 확인 필요"' : ''}>
@@ -649,17 +649,17 @@ window.renderDividendsList = () => {
         listContainer.insertAdjacentHTML(
             'beforeend',
             `
-            <div onclick="openDividendModal('${d.ID}')" class="bg-emerald-50 px-2.5 py-2 rounded-lg border border-emerald-100 flex justify-between items-center cursor-pointer hover:bg-emerald-100 active:bg-emerald-100 active:scale-[0.99] transition">
+            <div onclick="openDividendModal('${d.ID}')" class="bg-emerald-50 px-2.5 py-1.5 rounded-xl border border-emerald-100 flex justify-between items-center cursor-pointer hover:bg-emerald-100 active:bg-emerald-100 active:scale-[0.99] transition">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5 mb-0.5">
-                        <span class="text-xs font-black text-gray-800 truncate">${d.Stock}</span>
-                        <span class="text-[8px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.Owner}</span>
+                        <span class="text-sm font-black text-gray-800 truncate">${d.Stock}</span>
+                        <span class="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">${d.Owner}</span>
                     </div>
-                    <div class="text-[9px] text-gray-400 font-medium">${d.Date} • ${d.Broker}</div>
+                    <div class="text-[10px] text-gray-400 font-medium">${d.Date} • ${d.Broker}</div>
                 </div>
                 <div class="text-right shrink-0 ml-2">
-                    <p class="text-[9px] text-gray-500 font-semibold mb-0.5">세전 +${Number(d.Gross).toLocaleString()}원</p>
-                    <p class="text-xs font-black text-emerald-700 leading-none">세후 +${Number(d.Net).toLocaleString()}원</p>
+                    <p class="text-[10px] text-gray-500 font-semibold mb-0.5">세전 +${Number(d.Gross).toLocaleString()}원</p>
+                    <p class="text-sm font-black text-emerald-700 leading-none">세후 +${Number(d.Net).toLocaleString()}원</p>
                 </div>
             </div>
         `

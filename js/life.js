@@ -197,7 +197,7 @@ window.renderLifeRecords = () => {
 
         list.insertAdjacentHTML(
             'beforeend',
-            `<button type="button" onclick="openLifeRecordModal('${lifeEscape(record.ID)}')" class="w-full text-left bg-white px-3 py-2 rounded-xl mb-1.5 flex justify-between items-center gap-2 border border-gray-100 shadow-sm active:bg-gray-50 transition">
+            `<button type="button" onclick="openLifeRecordModal('${lifeEscape(record.ID)}')" class="w-full text-left bg-white px-2.5 py-1.5 rounded-xl mb-1.5 flex justify-between items-center gap-2 border border-gray-100 shadow-sm active:bg-gray-50 transition">
                 <span class="flex-1 min-w-0">
                     <span class="flex items-center gap-1.5 min-w-0">
                         <span class="text-sm font-bold text-gray-800 truncate">${lifeEscape(type.Name)}</span>
