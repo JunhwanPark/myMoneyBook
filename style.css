@@ -711,6 +711,17 @@ html.dark-mode .ticker-exchange-rate strong {
     color: #d1d5db;
 }
 
+html.dark-mode .spending-ticker-label,
+html.dark-mode .spending-ticker[data-context='assets'] .spending-ticker-label,
+html.dark-mode .spending-ticker[data-context='life'] .spending-ticker-label {
+    color: #b4bac5;
+}
+
+html.dark-mode .spending-ticker[data-context='assets'] .spending-ticker-track,
+html.dark-mode .spending-ticker[data-context='life'] .spending-ticker-track {
+    color: #d1d5db;
+}
+
 html.dark-mode .spending-ticker[data-trend='less'] .spending-ticker-track {
     color: #86efac;
 }
