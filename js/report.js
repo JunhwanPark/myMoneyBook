@@ -90,6 +90,10 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
     const exchangeRate = country === 'CN' ? reportCnyKrwRate() : null;
     const showKrw = country === 'CN' && Boolean(exchangeRate) && window.familyReportCnShowKrw;
     const currency = country === 'CN' && !showKrw ? 'CN' : 'KR';
+    const displayMoney = (value) => reportMoney(
+        showKrw ? (Number(value) || 0) * exchangeRate : value,
+        currency,
+    );
     const incomeDifference = data.income - data.previousTotals.income;
     const expenseDifference = data.expense - data.previousTotals.expense;
     const net = data.income - data.expense;
@@ -103,7 +107,7 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
             <div class="${index ? 'mt-2.5' : ''}">
                 <div class="flex items-start justify-between gap-2 text-[10px]">
                     <span class="text-gray-600 min-w-0">${index + 1}. ${reportEscape(item.label)}</span>
-                    <span class="font-bold text-gray-700 min-w-0 text-right">${reportMoney(item.amount, currency)}</span>
+                    <span class="font-bold text-gray-700 min-w-0 text-right">${displayMoney(item.amount)}</span>
                 </div>
                 <div class="h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden" role="img" aria-label="${reportEscape(item.label)} 지출 비중">
                     <div class="h-full rounded-full ${categoryBarColor}" style="width:${maxCategoryAmount ? Math.max(3, (item.amount / maxCategoryAmount) * 100) : 0}%"></div>
@@ -111,7 +115,7 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
             </div>`).join('')
         : '<p class="text-[10px] text-gray-400">지출 기록이 없습니다.</p>';
     const peakDayContent = data.topDay
-        ? `${Number(data.topDay[0].slice(8, 10))}일 · ${reportMoney(data.topDay[1], currency)}`
+        ? `${Number(data.topDay[0].slice(8, 10))}일 · ${displayMoney(data.topDay[1])}`
         : '없음';
 
     return `
@@ -121,8 +125,8 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
                 <div class="flex items-center gap-1.5 shrink-0">
                     ${country === 'CN' ? `
                         <span class="text-[9px] text-gray-500 whitespace-nowrap">${exchangeRate ? `1¥ ≈ ${exchangeRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원` : '환율 없음'}</span>
-                        <button type="button" onclick="toggleFamilyReportCnCurrency()" ${exchangeRate ? '' : 'disabled'} class="w-7 h-7 rounded-md border border-gray-200 bg-white/70 text-gray-600 flex items-center justify-center disabled:opacity-40" aria-label="${showKrw ? '위안화로 보기' : '원화로 보기'}" title="${showKrw ? '위안화로 보기' : '원화로 보기'}">
-                            <span class="material-symbols-outlined text-[17px]">currency_exchange</span>
+                        <button type="button" onclick="toggleFamilyReportCnCurrency()" ${exchangeRate ? '' : 'disabled'} class="min-w-7 h-7 px-1.5 rounded-md border ${showKrw ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-200 bg-white/70 text-gray-600'} flex items-center justify-center text-xs font-black disabled:opacity-40" aria-label="${showKrw ? '위안화로 보기' : '원화로 보기'}" title="${showKrw ? '위안화로 보기' : '원화로 보기'}">
+                            ${showKrw ? '₩' : '¥'}
                         </button>` : ''}
                     <span class="text-[9px] text-gray-500 whitespace-nowrap">${data.count}건</span>
                 </div>
@@ -130,18 +134,18 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
             <div class="grid grid-cols-2 gap-2">
                 <div class="rounded-lg border border-blue-200 bg-white px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-blue-600">수입</p>
-                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.income, currency)}</p>
-                    <p class="text-[9px] font-semibold ${incomeDifference >= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${incomeDifference > 0 ? '+' : incomeDifference < 0 ? '−' : ''}${reportMoney(Math.abs(incomeDifference), currency)}</p>
+                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${displayMoney(data.income)}</p>
+                    <p class="text-[9px] font-semibold ${incomeDifference >= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${incomeDifference > 0 ? '+' : incomeDifference < 0 ? '−' : ''}${displayMoney(Math.abs(incomeDifference))}</p>
                 </div>
                 <div class="rounded-lg border border-red-200 bg-white px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-red-500">지출</p>
-                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.expense, currency)}</p>
-                    <p class="text-[9px] font-semibold ${expenseDifference <= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${expenseDifference > 0 ? '+' : expenseDifference < 0 ? '−' : ''}${reportMoney(Math.abs(expenseDifference), currency)}</p>
+                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${displayMoney(data.expense)}</p>
+                    <p class="text-[9px] font-semibold ${expenseDifference <= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${expenseDifference > 0 ? '+' : expenseDifference < 0 ? '−' : ''}${displayMoney(Math.abs(expenseDifference))}</p>
                 </div>
             </div>
             <div class="flex items-center justify-between gap-2 border-t border-gray-100 mt-2.5 pt-2 text-[10px]">
                 <span class="text-gray-500">수입 − 지출</span>
-                <strong class="${netColor} text-right">${reportMoney(net, currency)}</strong>
+                <strong class="${netColor} text-right">${displayMoney(net)}</strong>
             </div>
             <div class="border-t border-gray-100 mt-2.5 pt-2">
                 <div class="flex justify-between gap-2 text-[9px] mb-1.5"><span class="text-gray-400">지출 많은 날</span><span class="font-bold text-gray-600 text-right">${peakDayContent}</span></div>
