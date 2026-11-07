@@ -8,6 +8,59 @@ window.markCountryDataChanged = (country) => {
     window.countryDataVersions[country] = (window.countryDataVersions[country] || 0) + 1;
 };
 
+window.updateCachedCountryData = (country, records) => {
+    window.allCountryData[country] = [...records];
+    try {
+        const allCacheKey = 'ledgerCache_ALL';
+        const allCache = JSON.parse(localStorage.getItem(allCacheKey) || '{}');
+        allCache.dataByCountry = allCache.dataByCountry || {
+            KR: [...(window.allCountryData.KR || [])],
+            CN: [...(window.allCountryData.CN || [])],
+        };
+        allCache.dataByCountry[country] = [...records];
+        localStorage.setItem(allCacheKey, JSON.stringify(allCache));
+
+        const countryCacheKey = `ledgerCache_${country}`;
+        const countryCache = JSON.parse(localStorage.getItem(countryCacheKey) || '{}');
+        countryCache.data = [...records];
+        localStorage.setItem(countryCacheKey, JSON.stringify(countryCache));
+    } catch (error) {
+        console.warn('저장된 거래 캐시를 갱신하지 못했습니다.', error);
+    }
+};
+
+window.updateCachedLifeRecords = () => {
+    try {
+        const key = 'ledgerCache_ALL';
+        const cache = JSON.parse(localStorage.getItem(key) || '{}');
+        cache.dataByCountry = cache.dataByCountry || {
+            KR: [...(window.allCountryData.KR || [])],
+            CN: [...(window.allCountryData.CN || [])],
+        };
+        cache.lifeTypes = [...window.lifeTypes];
+        cache.lifeRecords = [...window.lifeRecords];
+        localStorage.setItem(key, JSON.stringify(cache));
+    } catch (error) {
+        console.warn('저장된 생활기록 캐시를 갱신하지 못했습니다.', error);
+    }
+};
+
+window.updateCachedAssetData = () => {
+    try {
+        const key = 'ledgerCache_ALL';
+        const cache = JSON.parse(localStorage.getItem(key) || '{}');
+        cache.dataByCountry = cache.dataByCountry || {
+            KR: [...(window.allCountryData.KR || [])],
+            CN: [...(window.allCountryData.CN || [])],
+        };
+        cache.deposits = [...(window.globalDeposits || [])];
+        cache.dividends = [...(window.globalDividends || [])];
+        localStorage.setItem(key, JSON.stringify(cache));
+    } catch (error) {
+        console.warn('저장된 자산 기록 캐시를 갱신하지 못했습니다.', error);
+    }
+};
+
 window.selectCountryData = (preferredCountry = currentCountry) => {
     globalData = [...(window.allCountryData[preferredCountry] || [])];
     globalCards = window.allCategories
@@ -473,17 +526,12 @@ window.saveRecord = async (e) => {
             throw new Error(`서버 저장 실패: ${responseText.slice(0, 500)}`);
         }
 
-        window.markCountryDataChanged(saveCountry);
-        const syncSuccess = await loadDailyRecords(true);
-
-        if (!syncSuccess) {
-            console.error('저장 후 데이터 동기화 실패');
-            window.showToast(
-                '거래는 저장되었지만 최신 데이터 동기화에 실패했습니다. 새로고침 후 확인해주세요.'
-            );
-        } else {
-            window.showToast('저장이 완료되었습니다', 'success');
+        if (action === 'create') {
+            optimisticData.ID = data.id;
         }
+        window.updateCachedCountryData(saveCountry, globalData);
+        window.setSyncStatus('synced');
+        window.showToast('저장이 완료되었습니다', 'success');
     } catch (e) {
         console.error('Data sync failed:', e);
         window.markCountryDataChanged(saveCountry);

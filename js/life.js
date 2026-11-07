@@ -541,12 +541,11 @@ window.saveLifeRecord = () => {
             if (!response.ok || result.status !== 'success') {
                 throw new Error(result.message || '저장에 실패했습니다.');
             }
-            const synced = await window.loadDailyRecords(true);
-            if (synced) {
-                window.showToast('생활기록을 저장했습니다.', 'success');
-            } else {
-                window.showToast('저장은 완료되었지만 최신 기록을 불러오지 못했습니다. 새로고침 후 확인해 주세요.');
-            }
+            if (result.id) optimisticRecord.ID = result.id;
+            delete optimisticRecord._pendingSaveId;
+            window.updateCachedLifeRecords?.();
+            window.setSyncStatus('synced');
+            window.showToast('생활기록을 저장했습니다.', 'success');
         } catch (error) {
             console.error('생활기록 저장 실패:', error);
             const currentIndex = window.lifeRecords.findIndex(

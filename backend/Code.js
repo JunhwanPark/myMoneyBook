@@ -417,7 +417,7 @@ function doPost(e) {
                     payload.status || '', // L: 상태
                 ]);
                 return ContentService.createTextOutput(
-                    JSON.stringify({ status: 'success' })
+                    JSON.stringify({ status: 'success', id })
                 ).setMimeType(ContentService.MimeType.JSON);
             }
 
@@ -543,7 +543,7 @@ function doPost(e) {
                 new Date(),
             ]);
             return ContentService.createTextOutput(
-                JSON.stringify({ status: 'success' })
+                JSON.stringify({ status: 'success', id })
             ).setMimeType(ContentService.MimeType.JSON);
         }
 

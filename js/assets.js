@@ -558,9 +558,18 @@ window.saveDeposit = () => {
     fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
         .then((res) => res.json())
         .then((data) => {
-            if (data.status === 'success') loadDailyRecords(true);
+            if (data.status !== 'success') throw new Error(data.message || '저장에 실패했습니다.');
+            if (payload.action === 'create_deposit') optimisticData.ID = data.id;
+            window.updateCachedAssetData?.();
+            window.setSyncStatus('synced');
+            window.showToast('예적금을 저장했습니다.', 'success');
         })
-        .catch(() => loadDailyRecords(true));
+        .catch((error) => {
+            console.error('예적금 저장 실패:', error);
+            window.setSyncStatus('error');
+            window.showToast('저장 결과를 확인할 수 없습니다. 데이터를 다시 동기화합니다.');
+            loadDailyRecords(true);
+        });
 };
 
 window.deleteDeposit = () => {
@@ -794,9 +803,20 @@ window.saveDividend = () => {
 
     renderDividendsList();
 
-    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) }).then(() =>
-        loadDailyRecords(true)
-    );
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.status !== 'success') throw new Error(data.message || '저장에 실패했습니다.');
+            window.updateCachedAssetData?.();
+            window.setSyncStatus('synced');
+            window.showToast('배당 기록을 저장했습니다.', 'success');
+        })
+        .catch((error) => {
+            console.error('배당 기록 저장 실패:', error);
+            window.setSyncStatus('error');
+            window.showToast('저장 결과를 확인할 수 없습니다. 데이터를 다시 동기화합니다.');
+            loadDailyRecords(true);
+        });
 };
 
 window.deleteDividend = () => {
