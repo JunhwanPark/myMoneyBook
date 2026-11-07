@@ -419,7 +419,30 @@ window.renderChart = function () {
                         grid: { display: false },
                         ticks: { maxTicksLimit: 7, font: { size: 9 }, color: '#9ca3af' },
                     },
-                    y: { display: false, min: 0 },
+                    y: {
+                        display: true,
+                        min: 0,
+                        grid: { color: 'rgba(156, 163, 175, 0.15)' },
+                        ticks: {
+                            maxTicksLimit: 5,
+                            font: { size: 8 },
+                            color: '#9ca3af',
+                            callback: (value) => {
+                                const amount = Number(value) || 0;
+                                if (currentCountry === 'KR' && Math.abs(amount) >= 10000) {
+                                    const compact = amount / 10000;
+                                    return `${compact.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}만`;
+                                }
+                                if (currentCountry === 'CN' && Math.abs(amount) >= 10000) {
+                                    const compact = amount / 10000;
+                                    return `¥${compact.toLocaleString('en-US', { maximumFractionDigits: 1 })}万`;
+                                }
+                                return currentCountry === 'CN'
+                                    ? `¥${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                                    : amount.toLocaleString('ko-KR');
+                            },
+                        },
+                    },
                 },
             },
         });
