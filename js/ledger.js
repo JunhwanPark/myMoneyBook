@@ -297,6 +297,11 @@ window.updateSpendingTicker = () => {
     const mainApp = document.getElementById('main-app');
     const activeView = document.querySelector('.tab-content.active');
     const labelEl = document.getElementById('spending-ticker-label');
+    const setTickerLabel = (label) => {
+        const textEl = labelEl?.querySelector('[data-ticker-label-text]');
+        if (textEl) textEl.textContent = label;
+        else if (labelEl) labelEl.textContent = label;
+    };
     const exchangeRate = document.getElementById('ticker-exchange-rate');
     const isSettingsView = ['view-settings', 'view-assets-settings'].includes(activeView?.id);
     const tickerTrack = ticker.querySelector('.spending-ticker-track');
@@ -327,7 +332,7 @@ window.updateSpendingTicker = () => {
     if (isSettingsView) {
         ticker.dataset.context = 'account';
         ticker.dataset.trend = 'same';
-        if (labelEl) labelEl.textContent = '로그인 계정';
+        setTickerLabel('월간 리포트');
         exchangeRate?.classList.add('hidden');
         messageEl.textContent = currentUserEmail || '계정 정보 없음';
         copyEl.textContent = currentUserEmail || '계정 정보 없음';
@@ -339,7 +344,7 @@ window.updateSpendingTicker = () => {
     if (window.currentAppMode === 'LIFE') {
         ticker.dataset.context = 'life';
         ticker.dataset.trend = 'same';
-        if (labelEl) labelEl.textContent = '생활 리포트';
+        setTickerLabel('월간 리포트');
         exchangeRate?.classList.add('hidden');
         const lifeMessage = typeof window.getLifeTickerInsights === 'function'
             ? window.getLifeTickerInsights()
@@ -355,7 +360,7 @@ window.updateSpendingTicker = () => {
     if (window.currentAppMode === 'ASSETS') {
         ticker.dataset.context = 'assets';
         ticker.dataset.trend = 'same';
-        if (labelEl) labelEl.textContent = '자산 리포트';
+        setTickerLabel('월간 리포트');
         exchangeRate?.classList.add('hidden');
         const assetMessage = typeof window.getAssetsTickerInsights === 'function'
             ? window.getAssetsTickerInsights()
@@ -369,7 +374,7 @@ window.updateSpendingTicker = () => {
     }
 
     ticker.dataset.context = 'spending';
-    if (labelEl) labelEl.textContent = '이번 달 소비 리포트';
+    setTickerLabel('월간 리포트');
     exchangeRate?.classList.toggle(
         'hidden',
         !(currentCountry === 'CN' && window.currentAppMode === 'LEDGER')

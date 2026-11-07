@@ -301,11 +301,24 @@ nav {
 }
 
 .spending-ticker-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: #6b7280;
     font-size: 9px;
     font-weight: 900;
     letter-spacing: -0.03em;
+    cursor: pointer;
+}
+
+.spending-ticker-label:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 3px;
 }
 
 .app-mode-switcher {
@@ -466,6 +479,10 @@ textarea:focus {
 
 form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
     display: none !important;
+}
+
+body.report-modal-open {
+    overflow: hidden;
 }
 
 /* 기기별 다크 모드: 저장값은 localStorage에만 두고 공유 데이터에는 포함하지 않습니다. */
