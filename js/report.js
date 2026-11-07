@@ -16,6 +16,22 @@ const reportMoney = (value, country) => {
         : `${Math.round(amount).toLocaleString('ko-KR')}원`;
 };
 
+const reportCnyKrwRate = () => {
+    const tickerRate = document.getElementById('ticker-exchange-value')?.innerText || '';
+    const cachedRate = localStorage.getItem('cachedCnyRate') || '';
+    const rawRate = tickerRate.replace(/[^\d.,]/g, '') || cachedRate;
+    const rate = Number(rawRate.replace(/,/g, ''));
+    return Number.isFinite(rate) && rate > 0 ? rate : null;
+};
+
+const reportKrwHint = (value, country) => {
+    if (country !== 'CN') return '';
+    const rate = reportCnyKrwRate();
+    if (!rate) return '';
+    const won = Math.round((Number(value) || 0) * rate).toLocaleString('ko-KR');
+    return `<span class="block text-[9px] font-medium text-gray-400">약 ${won}원</span>`;
+};
+
 const reportNumber = (value) => (Number(value) || 0).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
 
 const reportPeriod = (monthDate) => {
@@ -88,11 +104,11 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
         ? data.topCategories.map((item, index) => `
             <div class="flex items-center justify-between gap-2 text-[10px] ${index ? 'mt-1.5' : ''}">
                 <span class="text-gray-500 truncate">${index + 1}. ${reportEscape(item.label)}</span>
-                <span class="font-bold text-gray-700 shrink-0">${reportMoney(item.amount, currency)}</span>
+                <span class="font-bold text-gray-700 min-w-0 text-right">${reportMoney(item.amount, currency)}${reportKrwHint(item.amount, currency)}</span>
             </div>`).join('')
         : '<p class="text-[10px] text-gray-400">지출 기록이 없습니다.</p>';
     const peakDayContent = data.topDay
-        ? `${Number(data.topDay[0].slice(8, 10))}일 · ${reportMoney(data.topDay[1], currency)}`
+        ? `${Number(data.topDay[0].slice(8, 10))}일 · ${reportMoney(data.topDay[1], currency)}${reportKrwHint(data.topDay[1], currency)}`
         : '없음';
 
     return `
@@ -104,18 +120,18 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
             <div class="grid grid-cols-2 gap-2">
                 <div class="rounded-lg bg-blue-50 px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-blue-600">수입</p>
-                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.income, currency)}</p>
+                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.income, currency)}</p>${reportKrwHint(data.income, currency)}
                     <p class="text-[9px] font-semibold ${incomeDifference >= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${incomeDifference > 0 ? '+' : incomeDifference < 0 ? '−' : ''}${reportMoney(Math.abs(incomeDifference), currency)}</p>
                 </div>
                 <div class="rounded-lg bg-red-50 px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-red-500">지출</p>
-                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.expense, currency)}</p>
+                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.expense, currency)}</p>${reportKrwHint(data.expense, currency)}
                     <p class="text-[9px] font-semibold ${expenseDifference <= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${expenseDifference > 0 ? '+' : expenseDifference < 0 ? '−' : ''}${reportMoney(Math.abs(expenseDifference), currency)}</p>
                 </div>
             </div>
             <div class="flex items-center justify-between gap-2 border-t border-gray-100 mt-2.5 pt-2 text-[10px]">
                 <span class="text-gray-500">수입 − 지출</span>
-                <strong class="${netColor}">${reportMoney(net, currency)}</strong>
+                <strong class="${netColor} text-right">${reportMoney(net, currency)}${reportKrwHint(net, currency)}</strong>
             </div>
             <div class="border-t border-gray-100 mt-2.5 pt-2">
                 <div class="flex justify-between gap-2 text-[9px] mb-1.5"><span class="text-gray-400">지출 많은 날</span><span class="font-bold text-gray-600">${peakDayContent}</span></div>

@@ -485,6 +485,19 @@ body.report-modal-open {
     overflow: hidden;
 }
 
+/* 월간 리포트의 글씨는 읽기 편하게 키우되, 카드 안에서 자연스럽게 줄바꿈합니다. */
+#family-report-content [class*="text-[8px]"] { font-size: 0.625rem !important; line-height: 1rem !important; }
+#family-report-content [class*="text-[9px]"] { font-size: 0.6875rem !important; line-height: 1.05rem !important; }
+#family-report-content [class*="text-[10px]"] { font-size: 0.75rem !important; line-height: 1.15rem !important; }
+#family-report-content [class*="text-xs"] { font-size: 0.84375rem !important; line-height: 1.25rem !important; }
+#family-report-content [class*="text-sm"] { font-size: 0.9375rem !important; line-height: 1.4rem !important; }
+#family-report-content .truncate {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
 /* 기기별 다크 모드: 저장값은 localStorage에만 두고 공유 데이터에는 포함하지 않습니다. */
 html.dark-mode {
     color-scheme: dark;
