@@ -116,15 +116,17 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
 
     return `
         <article class="min-w-0 rounded-xl border ${cardTone} p-3 shadow-sm">
-            <div class="flex items-center justify-between gap-2 mb-2.5">
-                <h4 class="text-xs font-black text-gray-800">${country === 'CN' ? '🇨🇳' : '🇰🇷'} ${label} 가계부</h4>
-                <span class="text-[9px] text-gray-400">${data.count}건</span>
+            <div class="flex items-center justify-between gap-1.5 mb-2.5 min-w-0 min-h-7">
+                <h4 class="text-xs font-black text-gray-800 min-w-0">${country === 'CN' ? '🇨🇳' : '🇰🇷'} ${label} 가계부</h4>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    ${country === 'CN' ? `
+                        <span class="text-[9px] text-gray-500 whitespace-nowrap">${exchangeRate ? `1¥ ≈ ${exchangeRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원` : '환율 없음'}</span>
+                        <button type="button" onclick="toggleFamilyReportCnCurrency()" ${exchangeRate ? '' : 'disabled'} class="w-7 h-7 rounded-md border border-gray-200 bg-white/70 text-gray-600 flex items-center justify-center disabled:opacity-40" aria-label="${showKrw ? '위안화로 보기' : '원화로 보기'}" title="${showKrw ? '위안화로 보기' : '원화로 보기'}">
+                            <span class="material-symbols-outlined text-[17px]">currency_exchange</span>
+                        </button>` : ''}
+                    <span class="text-[9px] text-gray-500 whitespace-nowrap">${data.count}건</span>
+                </div>
             </div>
-            ${country === 'CN' ? `
-                <div class="flex items-center justify-between gap-2 mb-2.5 text-[9px]">
-                    <span class="text-gray-400">${exchangeRate ? `참고 환율 · 1위안 ≈ ${exchangeRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원` : '환율 정보를 불러올 수 없습니다'}</span>
-                    <button type="button" onclick="toggleFamilyReportCnCurrency()" ${exchangeRate ? '' : 'disabled'} class="shrink-0 rounded-md border border-gray-200 px-2 py-1 font-bold text-gray-600 disabled:opacity-40">${showKrw ? '위안화 보기' : '원화 보기'}</button>
-                </div>` : ''}
             <div class="grid grid-cols-2 gap-2">
                 <div class="rounded-lg border border-blue-200 bg-white px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-blue-600">수입</p>
