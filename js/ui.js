@@ -3,6 +3,34 @@
 // ==========================================
 window.currentAppMode = 'LEDGER';
 
+window.isDarkModeEnabled = () => document.documentElement.classList.contains('dark-mode');
+
+window.syncDarkModeControls = () => {
+    const enabled = window.isDarkModeEnabled();
+    document.querySelectorAll('[data-dark-mode-toggle]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(enabled));
+        const icon = button.querySelector('[data-dark-mode-icon]');
+        const state = button.querySelector('[data-dark-mode-state]');
+        if (icon) icon.textContent = enabled ? 'light_mode' : 'dark_mode';
+        if (state) state.textContent = enabled ? '다크모드 켜짐' : '다크모드 꺼짐';
+        button.title = enabled ? '밝은 화면으로 전환' : '다크모드 켜기';
+    });
+};
+
+window.toggleDarkMode = () => {
+    const enabled = !window.isDarkModeEnabled();
+    document.documentElement.classList.toggle('dark-mode', enabled);
+    try {
+        localStorage.setItem('myMoneyBookDarkMode', String(enabled));
+    } catch (error) {
+        console.warn('이 기기에 화면 모드를 저장하지 못했습니다.', error);
+    }
+    window.syncDarkModeControls();
+};
+
+window.syncDarkModeControls();
+document.addEventListener('DOMContentLoaded', window.syncDarkModeControls);
+
 window.handleMainPlusClick = () => {
     if (window.currentAppMode === 'LIFE') {
         if (typeof window.openLifeRecordModal === 'function') window.openLifeRecordModal();

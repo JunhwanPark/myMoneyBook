@@ -13,6 +13,13 @@
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="theme-color" content="#4f46e5" />
+        <script>
+            try {
+                if (localStorage.getItem('myMoneyBookDarkMode') === 'true') {
+                    document.documentElement.classList.add('dark-mode');
+                }
+            } catch (error) {}
+        </script>
 
         <link
             rel="icon"
@@ -505,10 +512,16 @@
                 <section id="view-settings" class="tab-content">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-md font-semibold text-gray-700">설정</h2>
-                        <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="bg-white border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-1.5 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
-                            <span data-sync-icon class="material-symbols-outlined text-primary text-lg">sync</span>
-                            <span data-sync-label class="text-xs font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
-                        </button>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" data-dark-mode-toggle onclick="toggleDarkMode()" aria-pressed="false" class="h-9 bg-white border border-gray-100 rounded-lg px-2.5 flex items-center gap-1 shadow-sm transition">
+                                <span data-dark-mode-icon class="material-symbols-outlined text-[17px] text-gray-500">dark_mode</span>
+                                <span data-dark-mode-state class="text-[10px] font-bold text-gray-600 whitespace-nowrap">다크모드 꺼짐</span>
+                            </button>
+                            <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="h-9 bg-white border border-gray-100 rounded-lg px-2.5 flex items-center gap-1 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
+                                <span data-sync-icon class="material-symbols-outlined text-primary text-[17px]">sync</span>
+                                <span data-sync-label class="text-[10px] font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
+                            </button>
+                        </div>
                     </div>
 
                     <ul class="divide-y divide-gray-100">
@@ -557,10 +570,16 @@
                 <section id="view-assets-settings" class="tab-content">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-md font-semibold text-gray-700">자산 설정</h2>
-                        <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="bg-white border border-gray-100 rounded-lg px-3 py-2 flex items-center gap-1.5 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
-                            <span data-sync-icon class="material-symbols-outlined text-primary text-lg">sync</span>
-                            <span data-sync-label class="text-xs font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
-                        </button>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" data-dark-mode-toggle onclick="toggleDarkMode()" aria-pressed="false" class="h-9 bg-white border border-gray-100 rounded-lg px-2.5 flex items-center gap-1 shadow-sm transition">
+                                <span data-dark-mode-icon class="material-symbols-outlined text-[17px] text-gray-500">dark_mode</span>
+                                <span data-dark-mode-state class="text-[10px] font-bold text-gray-600 whitespace-nowrap">다크모드 꺼짐</span>
+                            </button>
+                            <button type="button" data-force-sync onclick="forceSyncAllData()" title="모든 모드 자료 강제 동기화" class="h-9 bg-white border border-gray-100 rounded-lg px-2.5 flex items-center gap-1 shadow-sm hover:border-primary/30 transition disabled:opacity-60">
+                                <span data-sync-icon class="material-symbols-outlined text-primary text-[17px]">sync</span>
+                                <span data-sync-label class="text-[10px] font-bold text-gray-700 whitespace-nowrap">강제 동기화</span>
+                            </button>
+                        </div>
                     </div>
                     <ul
                         class="divide-y divide-gray-100 bg-white border border-gray-100 rounded-xl px-2 shadow-sm"

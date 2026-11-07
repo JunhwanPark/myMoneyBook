@@ -468,6 +468,311 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
     display: none !important;
 }
 
+/* 기기별 다크 모드: 저장값은 localStorage에만 두고 공유 데이터에는 포함하지 않습니다. */
+html.dark-mode {
+    color-scheme: dark;
+}
+
+html.dark-mode body {
+    --bg-gray: #111318;
+    --text-main: #f3f4f6;
+    --text-muted: #a1a1aa;
+    --theme-light: color-mix(in srgb, var(--theme-color) 24%, #1c222c);
+    background-color: var(--bg-gray);
+    color: var(--text-main);
+}
+
+html.dark-mode #main-app,
+html.dark-mode main {
+    background-color: #111318 !important;
+}
+
+html.dark-mode .bg-white {
+    background-color: #1c222c !important;
+}
+
+html.dark-mode .bg-gray-50 {
+    background-color: #202630 !important;
+}
+
+html.dark-mode .bg-gray-100 {
+    background-color: #29313d !important;
+}
+
+html.dark-mode .bg-gray-200 {
+    background-color: #343d49 !important;
+}
+
+html.dark-mode .bg-gray-300 {
+    background-color: #46515f !important;
+}
+
+html.dark-mode .bg-primary-light {
+    background-color: color-mix(in srgb, var(--theme-color) 24%, #1c222c) !important;
+}
+
+html.dark-mode .text-primary {
+    color: color-mix(in srgb, var(--theme-color) 62%, white) !important;
+}
+
+html.dark-mode .text-gray-900,
+html.dark-mode .text-gray-800 {
+    color: #f3f4f6 !important;
+}
+
+html.dark-mode .text-gray-700 {
+    color: #e5e7eb !important;
+}
+
+html.dark-mode .text-gray-600,
+html.dark-mode .text-gray-500 {
+    color: #b4bac5 !important;
+}
+
+html.dark-mode .text-gray-400 {
+    color: #929aa7 !important;
+}
+
+html.dark-mode .border-gray-50,
+html.dark-mode .border-gray-100,
+html.dark-mode .divide-gray-100 > :not(:first-child) {
+    border-color: #303744 !important;
+}
+
+html.dark-mode .border-gray-200 {
+    border-color: #3d4653 !important;
+}
+
+html.dark-mode .border-gray-300 {
+    border-color: #515b69 !important;
+}
+
+html.dark-mode .bg-red-50,
+html.dark-mode .bg-rose-50 {
+    background-color: #38232b !important;
+}
+
+html.dark-mode .bg-red-100,
+html.dark-mode .bg-rose-100 {
+    background-color: #482731 !important;
+}
+
+html.dark-mode .bg-blue-50,
+html.dark-mode .bg-indigo-50 {
+    background-color: #202c40 !important;
+}
+
+html.dark-mode .bg-blue-100,
+html.dark-mode .bg-indigo-100 {
+    background-color: #293851 !important;
+}
+
+html.dark-mode .bg-emerald-50,
+html.dark-mode .bg-green-50,
+html.dark-mode .bg-teal-50 {
+    background-color: #1d332f !important;
+}
+
+html.dark-mode .bg-emerald-100,
+html.dark-mode .bg-green-100,
+html.dark-mode .bg-teal-100 {
+    background-color: #25433c !important;
+}
+
+html.dark-mode .bg-amber-50,
+html.dark-mode .bg-yellow-50 {
+    background-color: #382f20 !important;
+}
+
+html.dark-mode .bg-amber-100,
+html.dark-mode .bg-yellow-100 {
+    background-color: #493a22 !important;
+}
+
+html.dark-mode .bg-purple-50,
+html.dark-mode .bg-pink-50 {
+    background-color: #33283d !important;
+}
+
+html.dark-mode .bg-purple-100,
+html.dark-mode .bg-pink-100 {
+    background-color: #40314c !important;
+}
+
+html.dark-mode .text-red-500,
+html.dark-mode .text-red-600,
+html.dark-mode .text-red-700,
+html.dark-mode .text-rose-500,
+html.dark-mode .text-rose-600 {
+    color: #fb7185 !important;
+}
+
+html.dark-mode .text-blue-500,
+html.dark-mode .text-blue-600,
+html.dark-mode .text-blue-700,
+html.dark-mode .text-indigo-500,
+html.dark-mode .text-indigo-600,
+html.dark-mode .text-indigo-700 {
+    color: #93c5fd !important;
+}
+
+html.dark-mode .text-emerald-500,
+html.dark-mode .text-emerald-600,
+html.dark-mode .text-emerald-700,
+html.dark-mode .text-emerald-800,
+html.dark-mode .text-green-500,
+html.dark-mode .text-green-600,
+html.dark-mode .text-green-700,
+html.dark-mode .text-teal-500,
+html.dark-mode .text-teal-600,
+html.dark-mode .text-teal-700,
+html.dark-mode .text-teal-800 {
+    color: #6ee7b7 !important;
+}
+
+html.dark-mode .text-amber-500,
+html.dark-mode .text-amber-600,
+html.dark-mode .text-amber-700,
+html.dark-mode .text-yellow-500,
+html.dark-mode .text-yellow-600 {
+    color: #fcd34d !important;
+}
+
+html.dark-mode .text-purple-500,
+html.dark-mode .text-purple-600,
+html.dark-mode .text-pink-500,
+html.dark-mode .text-pink-600 {
+    color: #d8b4fe !important;
+}
+
+html.dark-mode .border-red-100,
+html.dark-mode .border-red-200,
+html.dark-mode .border-rose-100,
+html.dark-mode .border-rose-200 {
+    border-color: #62333d !important;
+}
+
+html.dark-mode .border-blue-100,
+html.dark-mode .border-blue-200,
+html.dark-mode .border-indigo-100,
+html.dark-mode .border-indigo-200 {
+    border-color: #354b69 !important;
+}
+
+html.dark-mode .border-emerald-100,
+html.dark-mode .border-green-100,
+html.dark-mode .border-teal-100 {
+    border-color: #31594d !important;
+}
+
+html.dark-mode .border-amber-100,
+html.dark-mode .border-amber-200,
+html.dark-mode .border-yellow-100 {
+    border-color: #66502c !important;
+}
+
+html.dark-mode input:not([type='checkbox']):not([type='radio']),
+html.dark-mode select,
+html.dark-mode textarea {
+    background-color: #202630;
+    color: #f3f4f6;
+    border-color: #46515f;
+}
+
+html.dark-mode input::placeholder,
+html.dark-mode textarea::placeholder {
+    color: #929aa7;
+}
+
+html.dark-mode .spending-ticker {
+    border-color: #3d4653;
+    background: rgba(28, 34, 44, 0.97);
+}
+
+html.dark-mode .spending-ticker[data-trend='more'] {
+    border-color: #66502c;
+    background: rgba(56, 47, 32, 0.97);
+}
+
+html.dark-mode .spending-ticker[data-trend='less'],
+html.dark-mode .spending-ticker[data-context='assets'] {
+    border-color: #31594d;
+    background: rgba(29, 51, 47, 0.97);
+}
+
+html.dark-mode .spending-ticker[data-context='life'] {
+    border-color: #31594d;
+    background: rgba(29, 51, 47, 0.97);
+}
+
+html.dark-mode .spending-ticker-track,
+html.dark-mode .ticker-exchange-rate,
+html.dark-mode .ticker-exchange-rate strong {
+    color: #d1d5db;
+}
+
+html.dark-mode .spending-ticker[data-trend='less'] .spending-ticker-track {
+    color: #86efac;
+}
+
+html.dark-mode .spending-ticker[data-trend='more'] .spending-ticker-track {
+    color: #fcd34d;
+}
+
+html.dark-mode .spending-ticker-delta--less {
+    color: #86efac;
+    background: #1d332f;
+}
+
+html.dark-mode .spending-ticker-delta--more {
+    color: #fca5a5;
+    background: #38232b;
+}
+
+html.dark-mode .fc-col-header-cell,
+html.dark-mode .fc-daygrid-day-frame {
+    background-color: #202630;
+}
+
+html.dark-mode .fc-scrollgrid-section-header,
+html.dark-mode .fc-scrollgrid-section-header > *,
+html.dark-mode .fc-scrollgrid-section-header table,
+html.dark-mode .fc-scrollgrid-section-header tr,
+html.dark-mode .fc-scrollgrid-section-header th {
+    background-color: #202630 !important;
+}
+
+html.dark-mode .fc-daygrid-day-frame {
+    border-color: #3d4653 !important;
+}
+
+html.dark-mode .fc-day-today .fc-daygrid-day-frame {
+    background-color: color-mix(in srgb, var(--theme-color) 22%, #202630) !important;
+    border-color: color-mix(in srgb, var(--theme-color) 55%, #3d4653) !important;
+}
+
+html.dark-mode .fc-daygrid-day-number,
+html.dark-mode .fc-col-header-cell-cushion {
+    color: #c4cbd5 !important;
+}
+
+html.dark-mode .hover\:bg-gray-50:hover,
+html.dark-mode .active\:bg-gray-50:active,
+html.dark-mode .hover\:bg-gray-100:hover,
+html.dark-mode .active\:bg-gray-100:active {
+    background-color: #303744 !important;
+}
+
+html.dark-mode .hover\:bg-emerald-100:hover,
+html.dark-mode .active\:bg-emerald-100:active {
+    background-color: #2a4b42 !important;
+}
+
+html.dark-mode .hover\:bg-red-100:hover,
+html.dark-mode .active\:bg-red-100:active {
+    background-color: #59313b !important;
+}
+
 /* ==========================================
    7. 💡 탭 전환 스와이프 슬라이드 애니메이션 (HTML에서 이동됨)
    ========================================== */
@@ -799,4 +1104,54 @@ form:has(input[name='type'][value='income']:checked) #btn-minus-toggle {
         line-height: 1.3;
     }
 
+}
+
+html.dark-mode #chart-income-toggle {
+    background-color: rgba(28, 34, 44, 0.92);
+    border-color: #3d4653;
+}
+
+html.dark-mode .calendar-payday-badge {
+    background-color: #493a22;
+}
+
+html.dark-mode .calendar-birthday-badge {
+    background-color: #38232b;
+}
+
+html.dark-mode .fc-daygrid-event.calendar-expense-event {
+    background-color: #38232b !important;
+}
+
+html.dark-mode .fc-daygrid-event.calendar-expense-event .fc-event-title,
+html.dark-mode .fc-day-sun:not(.fc-day-today) .fc-daygrid-day-number {
+    color: #fb7185 !important;
+}
+
+html.dark-mode .fc-daygrid-event.calendar-income-event {
+    background-color: #202c40 !important;
+}
+
+html.dark-mode .fc-daygrid-event.calendar-income-event .fc-event-title,
+html.dark-mode .fc-day-sat:not(.fc-day-today) .fc-daygrid-day-number {
+    color: #93c5fd !important;
+}
+
+html.dark-mode .fc-col-header-cell-cushion {
+    background-color: #29313d;
+    color: #d1d5db !important;
+}
+
+html.dark-mode .fc-day-sun .fc-col-header-cell-cushion {
+    background-color: #38232b;
+    color: #fb7185 !important;
+}
+
+html.dark-mode .fc-day-sat .fc-col-header-cell-cushion {
+    background-color: #202c40;
+    color: #93c5fd !important;
+}
+
+html.dark-mode #main-app > nav {
+    border-color: #303744;
 }
