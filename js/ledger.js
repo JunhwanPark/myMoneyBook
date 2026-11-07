@@ -299,6 +299,30 @@ window.updateSpendingTicker = () => {
     const labelEl = document.getElementById('spending-ticker-label');
     const exchangeRate = document.getElementById('ticker-exchange-rate');
     const isSettingsView = ['view-settings', 'view-assets-settings'].includes(activeView?.id);
+    const tickerTrack = ticker.querySelector('.spending-ticker-track');
+    const updateTickerSpeed = (isAssetReference = false) => {
+        if (!tickerTrack) return;
+        if (isAssetReference) tickerTrack.style.animationDuration = '36s';
+
+        const messageWidth = messageEl.getBoundingClientRect().width;
+        if (!messageWidth) return;
+
+        let referenceSpeed = 40;
+        try {
+            if (isAssetReference) {
+                referenceSpeed = messageWidth / 36;
+                localStorage.setItem('myMoneyBookAssetTickerSpeed', String(referenceSpeed));
+            } else {
+                referenceSpeed = Number(localStorage.getItem('myMoneyBookAssetTickerSpeed')) || referenceSpeed;
+            }
+        } catch (error) {
+            if (!isAssetReference) referenceSpeed = 40;
+        }
+
+        if (!isAssetReference && referenceSpeed > 0) {
+            tickerTrack.style.animationDuration = `${Math.max(1, messageWidth / referenceSpeed)}s`;
+        }
+    };
 
     if (isSettingsView) {
         ticker.dataset.context = 'account';
@@ -324,6 +348,7 @@ window.updateSpendingTicker = () => {
         copyEl.innerHTML = lifeMessage;
         ticker.classList.remove('hidden');
         mainApp?.classList.add('spending-ticker-visible');
+        updateTickerSpeed();
         return;
     }
 
@@ -339,6 +364,7 @@ window.updateSpendingTicker = () => {
         copyEl.innerHTML = assetMessage;
         ticker.classList.remove('hidden');
         mainApp?.classList.add('spending-ticker-visible');
+        updateTickerSpeed(true);
         return;
     }
 
@@ -636,6 +662,7 @@ window.updateSpendingTicker = () => {
     copyEl.innerHTML = message;
     ticker.classList.remove('hidden');
     mainApp?.classList.add('spending-ticker-visible');
+    updateTickerSpeed();
 };
 
 // 💡 이번 달 총 수입/지출 및 증감 계산
