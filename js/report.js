@@ -1,5 +1,6 @@
 // 월별 가계부·자산·생활 데이터를 한 화면에서 읽는 가족 리포트입니다.
 window.familyReportMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+window.familyReportCnShowKrw = false;
 
 const reportEscape = (value) =>
     typeof window.escapeHTML === 'function' ? window.escapeHTML(value ?? '') : String(value ?? '');
@@ -22,14 +23,6 @@ const reportCnyKrwRate = () => {
     const rawRate = tickerRate.replace(/[^\d.,]/g, '') || cachedRate;
     const rate = Number(rawRate.replace(/,/g, ''));
     return Number.isFinite(rate) && rate > 0 ? rate : null;
-};
-
-const reportKrwHint = (value, country) => {
-    if (country !== 'CN') return '';
-    const rate = reportCnyKrwRate();
-    if (!rate) return '';
-    const won = Math.round((Number(value) || 0) * rate).toLocaleString('ko-KR');
-    return `<span class="block text-[9px] font-medium text-gray-400">약 ${won}원</span>`;
 };
 
 const reportNumber = (value) => (Number(value) || 0).toLocaleString('ko-KR', { maximumFractionDigits: 2 });
@@ -94,21 +87,30 @@ const getLedgerReport = (country, start, end, previousStart, previousEnd) => {
 
 const renderLedgerReportCard = (country, data, isComparablePeriod) => {
     const label = country === 'CN' ? '중국' : '한국';
-    const currency = country === 'CN' ? 'CN' : 'KR';
+    const exchangeRate = country === 'CN' ? reportCnyKrwRate() : null;
+    const showKrw = country === 'CN' && Boolean(exchangeRate) && window.familyReportCnShowKrw;
+    const currency = country === 'CN' && !showKrw ? 'CN' : 'KR';
     const incomeDifference = data.income - data.previousTotals.income;
     const expenseDifference = data.expense - data.previousTotals.expense;
     const net = data.income - data.expense;
     const netColor = net >= 0 ? 'text-blue-600' : 'text-red-500';
     const comparison = isComparablePeriod ? '전월 같은 기간 대비' : '전월 전체 대비';
+    const maxCategoryAmount = Math.max(...data.topCategories.map((item) => item.amount), 0);
+    const categoryBarColor = country === 'CN' ? 'bg-rose-400' : 'bg-indigo-400';
     const categoryContent = data.topCategories.length
         ? data.topCategories.map((item, index) => `
-            <div class="flex items-center justify-between gap-2 text-[10px] ${index ? 'mt-1.5' : ''}">
-                <span class="text-gray-500 truncate">${index + 1}. ${reportEscape(item.label)}</span>
-                <span class="font-bold text-gray-700 min-w-0 text-right">${reportMoney(item.amount, currency)}${reportKrwHint(item.amount, currency)}</span>
+            <div class="${index ? 'mt-2.5' : ''}">
+                <div class="flex items-start justify-between gap-2 text-[10px]">
+                    <span class="text-gray-600 min-w-0">${index + 1}. ${reportEscape(item.label)}</span>
+                    <span class="font-bold text-gray-700 min-w-0 text-right">${reportMoney(item.amount, currency)}</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-gray-100 mt-1 overflow-hidden" role="img" aria-label="${reportEscape(item.label)} 지출 비중">
+                    <div class="h-full rounded-full ${categoryBarColor}" style="width:${maxCategoryAmount ? Math.max(3, (item.amount / maxCategoryAmount) * 100) : 0}%"></div>
+                </div>
             </div>`).join('')
         : '<p class="text-[10px] text-gray-400">지출 기록이 없습니다.</p>';
     const peakDayContent = data.topDay
-        ? `${Number(data.topDay[0].slice(8, 10))}일 · ${reportMoney(data.topDay[1], currency)}${reportKrwHint(data.topDay[1], currency)}`
+        ? `${Number(data.topDay[0].slice(8, 10))}일 · ${reportMoney(data.topDay[1], currency)}`
         : '없음';
 
     return `
@@ -117,24 +119,30 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
                 <h4 class="text-xs font-black text-gray-800">${country === 'CN' ? '🇨🇳' : '🇰🇷'} ${label} 가계부</h4>
                 <span class="text-[9px] text-gray-400">${data.count}건</span>
             </div>
+            ${country === 'CN' ? `
+                <div class="flex items-center justify-between gap-2 mb-2.5 text-[9px]">
+                    <span class="text-gray-400">${exchangeRate ? `참고 환율 · 1위안 ≈ ${exchangeRate.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}원` : '환율 정보를 불러올 수 없습니다'}</span>
+                    <button type="button" onclick="toggleFamilyReportCnCurrency()" ${exchangeRate ? '' : 'disabled'} class="shrink-0 rounded-md border border-gray-200 px-2 py-1 font-bold text-gray-600 disabled:opacity-40">${showKrw ? '위안화 보기' : '원화 보기'}</button>
+                </div>` : ''}
             <div class="grid grid-cols-2 gap-2">
                 <div class="rounded-lg bg-blue-50 px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-blue-600">수입</p>
-                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.income, currency)}</p>${reportKrwHint(data.income, currency)}
+                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.income, currency)}</p>
                     <p class="text-[9px] font-semibold ${incomeDifference >= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${incomeDifference > 0 ? '+' : incomeDifference < 0 ? '−' : ''}${reportMoney(Math.abs(incomeDifference), currency)}</p>
                 </div>
                 <div class="rounded-lg bg-red-50 px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-red-500">지출</p>
-                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.expense, currency)}</p>${reportKrwHint(data.expense, currency)}
+                    <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.expense, currency)}</p>
                     <p class="text-[9px] font-semibold ${expenseDifference <= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${expenseDifference > 0 ? '+' : expenseDifference < 0 ? '−' : ''}${reportMoney(Math.abs(expenseDifference), currency)}</p>
                 </div>
             </div>
             <div class="flex items-center justify-between gap-2 border-t border-gray-100 mt-2.5 pt-2 text-[10px]">
                 <span class="text-gray-500">수입 − 지출</span>
-                <strong class="${netColor} text-right">${reportMoney(net, currency)}${reportKrwHint(net, currency)}</strong>
+                <strong class="${netColor} text-right">${reportMoney(net, currency)}</strong>
             </div>
             <div class="border-t border-gray-100 mt-2.5 pt-2">
                 <div class="flex justify-between gap-2 text-[9px] mb-1.5"><span class="text-gray-400">지출 많은 날</span><span class="font-bold text-gray-600 text-right">${peakDayContent}</span></div>
+                <p class="text-[10px] font-bold text-gray-500 mb-1.5">지출 상위 항목</p>
                 ${categoryContent}
             </div>
         </article>`;
@@ -312,6 +320,11 @@ window.changeFamilyReportMonth = (offset) => {
     const now = new Date();
     if (next > new Date(now.getFullYear(), now.getMonth(), 1)) return;
     window.familyReportMonth = next;
+    window.renderMonthlyFamilyReport();
+};
+
+window.toggleFamilyReportCnCurrency = () => {
+    window.familyReportCnShowKrw = !window.familyReportCnShowKrw;
     window.renderMonthlyFamilyReport();
 };
 
