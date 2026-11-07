@@ -134,7 +134,7 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
                 <strong class="${netColor} text-right">${reportMoney(net, currency)}${reportKrwHint(net, currency)}</strong>
             </div>
             <div class="border-t border-gray-100 mt-2.5 pt-2">
-                <div class="flex justify-between gap-2 text-[9px] mb-1.5"><span class="text-gray-400">지출 많은 날</span><span class="font-bold text-gray-600">${peakDayContent}</span></div>
+                <div class="flex justify-between gap-2 text-[9px] mb-1.5"><span class="text-gray-400">지출 많은 날</span><span class="font-bold text-gray-600 text-right">${peakDayContent}</span></div>
                 ${categoryContent}
             </div>
         </article>`;
