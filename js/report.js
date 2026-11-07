@@ -97,6 +97,7 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
     const comparison = isComparablePeriod ? '전월 같은 기간 대비' : '전월 전체 대비';
     const maxCategoryAmount = Math.max(...data.topCategories.map((item) => item.amount), 0);
     const categoryBarColor = country === 'CN' ? 'bg-rose-400' : 'bg-indigo-400';
+    const cardTone = country === 'CN' ? 'border-rose-100 bg-rose-50' : 'border-indigo-100 bg-indigo-50';
     const categoryContent = data.topCategories.length
         ? data.topCategories.map((item, index) => `
             <div class="${index ? 'mt-2.5' : ''}">
@@ -114,7 +115,7 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
         : '없음';
 
     return `
-        <article class="min-w-0 rounded-xl border border-gray-100 bg-white p-3 shadow-sm">
+        <article class="min-w-0 rounded-xl border ${cardTone} p-3 shadow-sm">
             <div class="flex items-center justify-between gap-2 mb-2.5">
                 <h4 class="text-xs font-black text-gray-800">${country === 'CN' ? '🇨🇳' : '🇰🇷'} ${label} 가계부</h4>
                 <span class="text-[9px] text-gray-400">${data.count}건</span>
@@ -125,12 +126,12 @@ const renderLedgerReportCard = (country, data, isComparablePeriod) => {
                     <button type="button" onclick="toggleFamilyReportCnCurrency()" ${exchangeRate ? '' : 'disabled'} class="shrink-0 rounded-md border border-gray-200 px-2 py-1 font-bold text-gray-600 disabled:opacity-40">${showKrw ? '위안화 보기' : '원화 보기'}</button>
                 </div>` : ''}
             <div class="grid grid-cols-2 gap-2">
-                <div class="rounded-lg bg-blue-50 px-2 py-2 min-w-0">
+                <div class="rounded-lg border border-blue-200 bg-white px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-blue-600">수입</p>
                     <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.income, currency)}</p>
                     <p class="text-[9px] font-semibold ${incomeDifference >= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${incomeDifference > 0 ? '+' : incomeDifference < 0 ? '−' : ''}${reportMoney(Math.abs(incomeDifference), currency)}</p>
                 </div>
-                <div class="rounded-lg bg-red-50 px-2 py-2 min-w-0">
+                <div class="rounded-lg border border-red-200 bg-white px-2 py-2 min-w-0">
                     <p class="text-[9px] font-bold text-red-500">지출</p>
                     <p class="text-xs font-black text-gray-800 truncate mt-0.5">${reportMoney(data.expense, currency)}</p>
                     <p class="text-[9px] font-semibold ${expenseDifference <= 0 ? 'text-blue-600' : 'text-red-500'} truncate mt-0.5">${comparison} ${expenseDifference > 0 ? '+' : expenseDifference < 0 ? '−' : ''}${reportMoney(Math.abs(expenseDifference), currency)}</p>
@@ -184,7 +185,7 @@ const renderAssetsReport = (period) => {
             ${reportSectionTitle('savings', '자산 기록', '예적금·배당 시트에 등록된 내용 기준 · 원화')}
             <div class="grid grid-cols-2 gap-2">
                 ${metrics.map((metric) => `
-                    <div class="rounded-xl border border-gray-100 bg-white p-3 shadow-sm min-w-0">
+                    <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3 shadow-sm min-w-0">
                         <p class="text-[9px] font-bold text-gray-500">${metric.label}</p>
                         <p class="text-sm font-black text-emerald-700 truncate mt-1">${reportMoney(metric.amount, 'KR')}</p>
                         <p class="text-[9px] text-gray-400 mt-0.5">${metric.detail}</p>
@@ -243,7 +244,7 @@ const renderLifeReport = (period) => {
         }
 
         return `
-            <article class="rounded-xl border border-gray-100 bg-white p-3 shadow-sm min-w-0">
+            <article class="rounded-xl border border-teal-100 bg-teal-50 p-3 shadow-sm min-w-0">
                 <div class="flex items-center justify-between gap-2">
                     <h4 class="text-xs font-black text-gray-800 truncate">${reportEscape(type.Name)}</h4>
                     <span class="text-[9px] text-gray-400 shrink-0">이달 ${monthRecords.length}건</span>
@@ -264,21 +265,38 @@ const renderLifeReport = (period) => {
 window.renderMonthlyFamilyReport = () => {
     const content = document.getElementById('family-report-content');
     const periodLabel = document.getElementById('family-report-period');
+    const monthLabelElement = document.getElementById('family-report-month');
+    const monthStatusElement = document.getElementById('family-report-month-status');
     if (!content || !periodLabel) return;
 
     const month = window.familyReportMonth || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const period = reportPeriod(month);
+    const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const monthLabel = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
     const comparisonLabel = period.isCurrentMonth
         ? `1~${period.throughDay}일 · 전월 1~${period.previousThroughDay}일과 비교`
         : '한 달 전체 · 전월 전체와 비교';
-    periodLabel.textContent = `${monthLabel} · ${comparisonLabel}`;
-
-    const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    if (monthLabelElement) monthLabelElement.textContent = monthLabel;
+    periodLabel.textContent = comparisonLabel;
+    if (monthStatusElement) {
+        const previousMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+        const status = reportMonthKey(month) === reportMonthKey(currentMonth)
+            ? '이번 달'
+            : reportMonthKey(month) === reportMonthKey(previousMonth)
+                ? '지난 달'
+                : '';
+        monthStatusElement.textContent = status;
+        monthStatusElement.classList.toggle('hidden', !status);
+    }
     const nextButton = document.querySelector('#monthly-family-report button[aria-label="다음 달"]');
     if (nextButton) {
         nextButton.disabled = reportMonthKey(month) >= reportMonthKey(currentMonth);
         nextButton.classList.toggle('opacity-40', nextButton.disabled);
+    }
+    const currentMonthButton = document.getElementById('family-report-current-month-btn');
+    if (currentMonthButton) {
+        currentMonthButton.disabled = reportMonthKey(month) === reportMonthKey(currentMonth);
+        currentMonthButton.classList.toggle('opacity-40', currentMonthButton.disabled);
     }
 
     const kr = getLedgerReport('KR', period.start, period.end, period.previousStart, period.previousEnd);
@@ -320,6 +338,11 @@ window.changeFamilyReportMonth = (offset) => {
     const now = new Date();
     if (next > new Date(now.getFullYear(), now.getMonth(), 1)) return;
     window.familyReportMonth = next;
+    window.renderMonthlyFamilyReport();
+};
+
+window.goToCurrentFamilyReportMonth = () => {
+    window.familyReportMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     window.renderMonthlyFamilyReport();
 };
 

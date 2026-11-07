@@ -742,11 +742,18 @@
                 <header class="shrink-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <h2 id="family-report-title" class="text-base font-black text-gray-800">월간 가족 리포트</h2>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <p id="family-report-month" class="text-sm font-black text-primary"></p>
+                            <span id="family-report-month-status" class="hidden rounded-full bg-primary-light px-2 py-0.5 text-[10px] font-bold text-primary"></span>
+                        </div>
                         <p id="family-report-period" class="text-[10px] text-gray-500 mt-0.5"></p>
                     </div>
                     <div class="flex items-center gap-1 shrink-0">
                         <button type="button" onclick="changeFamilyReportMonth(-1)" class="w-9 h-9 rounded-lg bg-gray-50 text-gray-600 flex items-center justify-center" aria-label="이전 달">
                             <span class="material-symbols-outlined">chevron_left</span>
+                        </button>
+                        <button id="family-report-current-month-btn" type="button" onclick="goToCurrentFamilyReportMonth()" class="w-9 h-9 rounded-lg bg-gray-50 text-gray-600 flex items-center justify-center" aria-label="이번 달로 이동" title="이번 달로 이동">
+                            <span class="material-symbols-outlined">today</span>
                         </button>
                         <button type="button" onclick="changeFamilyReportMonth(1)" class="w-9 h-9 rounded-lg bg-gray-50 text-gray-600 flex items-center justify-center" aria-label="다음 달">
                             <span class="material-symbols-outlined">chevron_right</span>
