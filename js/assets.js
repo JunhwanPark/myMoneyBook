@@ -17,6 +17,88 @@ window.getDepositCalc = (d) => {
     return { months, preTax, postTax, principal, rate, start, end, year: end.getFullYear() };
 };
 
+window.estimateDepositGrossInterest = ({ principal, rate, startDate, endDate }) => {
+    const validDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+    if (!validDate(startDate) || !validDate(endDate)) return 0;
+    const start = new Date(`${startDate}T00:00:00Z`);
+    const end = new Date(`${endDate}T00:00:00Z`);
+    const days = Math.round((end - start) / 86400000);
+    const amount = Number(principal) || 0;
+    const annualRate = Number(rate) || 0;
+    if (days <= 0 || amount <= 0 || annualRate <= 0) return 0;
+    return Math.round((amount * annualRate * days) / 36500);
+};
+
+window.updateDepositIncomeGuide = () => {
+    const guide = document.getElementById('deposit-income-guide');
+    if (!guide) return;
+
+    const valueOf = (id) => document.getElementById(id)?.value || '';
+    const rawPrincipal = valueOf('dep-input-principal').replace(/,/g, '');
+    const preTaxInput = document.getElementById('dep-input-pretax');
+    const estimatedInterest = window.estimateDepositGrossInterest({
+        principal: rawPrincipal,
+        rate: valueOf('dep-input-rate'),
+        startDate: valueOf('dep-input-start'),
+        endDate: valueOf('dep-input-end'),
+    });
+    const manuallyEdited = preTaxInput?.dataset.manuallyEdited === 'true';
+    if (preTaxInput && !manuallyEdited) {
+        preTaxInput.value = estimatedInterest ? estimatedInterest.toLocaleString('ko-KR') : '';
+    }
+
+    const enteredInterest = Number((preTaxInput?.value || '').replace(/,/g, '')) || 0;
+    const productInterest = manuallyEdited ? enteredInterest : estimatedInterest;
+    const owner = valueOf('dep-input-owner');
+    const endDate = valueOf('dep-input-end');
+    const year = Number(endDate.slice(0, 4));
+    const formatKrw = (amount) => `${Math.round(amount).toLocaleString('ko-KR')}원`;
+
+    if (!owner || !year || !productInterest) {
+        guide.innerHTML = `
+            <p class="text-[11px] font-bold text-indigo-800">명의자·만기일·원금·금리를 입력하면 해당 연도의 금융소득 기준을 함께 보여드려요.</p>
+            ${estimatedInterest ? `<p class="mt-1 text-[10px] text-indigo-700">이율과 가입 기간으로 계산한 세전 이자 예상: ${formatKrw(estimatedInterest)}</p>` : ''}
+            <p class="mt-1 text-[9px] leading-relaxed text-gray-500">이자는 단리·365일 기준의 간편 예상값입니다. 실제 상품의 계산과 다를 수 있어요.</p>`;
+        return;
+    }
+
+    const currentId = valueOf('dep-input-id');
+    const existingDepositInterest = (window.globalDeposits || [])
+        .filter((deposit) =>
+            deposit.ID !== currentId &&
+            String(deposit.명의자 || '미상') === owner &&
+            String(deposit.만기일 || '').slice(0, 4) === String(year)
+        )
+        .reduce((sum, deposit) => sum + (Number(deposit.세전이자) || 0), 0);
+    const existingDividendIncome = (window.globalDividends || [])
+        .filter((dividend) =>
+            String(dividend.Owner || '미상') === owner &&
+            String(dividend.Date || '').slice(0, 4) === String(year)
+        )
+        .reduce((sum, dividend) => sum + (Number(dividend.Gross) || 0), 0);
+    const existingIncome = existingDepositInterest + existingDividendIncome;
+    const projectedIncome = existingIncome + productInterest;
+    const taxLimit = 20000000;
+    const percent = (projectedIncome / taxLimit) * 100;
+    const progress = Math.max(0, Math.min(percent, 100));
+    const difference = Math.abs(taxLimit - projectedIncome);
+    const atOrAboveLimit = projectedIncome >= taxLimit;
+    const source = manuallyEdited && enteredInterest > 0
+        ? '입력한 세전 이자'
+        : '단리 예상 이자';
+
+    guide.innerHTML = `
+        <div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] font-black text-indigo-900">${window.escapeHTML(owner)}님 · ${year}년 만기 기준</p>
+            <span class="text-[11px] font-black ${atOrAboveLimit ? 'text-red-600' : 'text-indigo-700'}">${percent.toFixed(1)}%</span>
+        </div>
+        <p class="mt-1 text-[10px] leading-relaxed text-indigo-800">기존 등록액 ${formatKrw(existingIncome)} + 이번 상품 ${formatKrw(productInterest)} (${source}) = <b>${formatKrw(projectedIncome)}</b></p>
+        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/80"><div class="h-full rounded-full ${atOrAboveLimit ? 'bg-red-500' : 'bg-indigo-500'}" style="width:${progress}%"></div></div>
+        <p class="mt-1 text-[10px] font-bold ${atOrAboveLimit ? 'text-red-600' : 'text-indigo-800'}">${atOrAboveLimit ? `2천만원 기준을 ${formatKrw(difference)} 초과하는 예상입니다.` : `2천만원 기준까지 ${formatKrw(difference)} 남는 예상입니다.`}</p>
+        <p class="mt-1 text-[9px] leading-relaxed text-gray-500">은행에서 안내한 세전 이자를 입력하면 단리 예상값 대신 해당 금액을 반영합니다.</p>
+        <p class="mt-1 text-[9px] leading-relaxed text-gray-500">등록된 예적금 세전이자와 배당 기준 참고치입니다. 비과세·분리과세 여부와 실제 지급 연도는 금융기관 내역으로 확인해 주세요.</p>`;
+};
+
 window.getAssetsTickerInsights = () => {
     const deposits = window.globalDeposits || [];
     const dividends = window.globalDividends || [];
@@ -391,6 +473,8 @@ window.openDepositModal = (id = null) => {
     if (!modal || !form) return;
 
     form.reset();
+    const preTaxInput = document.getElementById('dep-input-pretax');
+    if (preTaxInput) preTaxInput.dataset.manuallyEdited = 'false';
     document.getElementById('dep-input-id').value = '';
     document.getElementById('dep-delete-btn').classList.add('hidden');
     document.getElementById('deposit-modal-title').innerText = '예적금 추가';
@@ -474,6 +558,8 @@ window.openDepositModal = (id = null) => {
             document.getElementById('dep-input-pretax').value = Number(
                 d.세전이자 || 0
             ).toLocaleString('ko-KR');
+            // Existing records retain their saved value (including 0) until the user edits it.
+            if (preTaxInput) preTaxInput.dataset.manuallyEdited = 'true';
             document.getElementById('dep-input-posttax').value = Number(
                 d.세후이자 || 0
             ).toLocaleString('ko-KR');
@@ -481,6 +567,18 @@ window.openDepositModal = (id = null) => {
             document.getElementById('dep-delete-btn').classList.remove('hidden');
         }
     }
+
+    if (!form.dataset.incomeGuideBound) {
+        form.addEventListener('input', (event) => {
+            if (event.target?.id === 'dep-input-pretax') {
+                event.target.dataset.manuallyEdited = event.target.value.replace(/,/g, '') ? 'true' : 'false';
+            }
+            window.updateDepositIncomeGuide();
+        });
+        form.addEventListener('change', window.updateDepositIncomeGuide);
+        form.dataset.incomeGuideBound = 'true';
+    }
+    window.updateDepositIncomeGuide();
 
     modal.classList.remove('hidden');
     setTimeout(() => {
@@ -504,17 +602,27 @@ window.closeDepositModal = () => {
 // ==========================================
 window.saveDeposit = () => {
     const id = document.getElementById('dep-input-id').value;
+    const startDate = document.getElementById('dep-input-start').value;
+    const endDate = document.getElementById('dep-input-end').value;
+    const principal = document.getElementById('dep-input-principal').value.replace(/,/g, '');
+    const rate = document.getElementById('dep-input-rate').value;
+    const preTaxInput = document.getElementById('dep-input-pretax');
+    const typedPreTax = preTaxInput.value.replace(/,/g, '');
+    const estimatedPreTax = window.estimateDepositGrossInterest({ principal, rate, startDate, endDate });
+    const preTax = preTaxInput.dataset.manuallyEdited === 'true'
+        ? typedPreTax
+        : String(estimatedPreTax || typedPreTax || '');
     const payload = {
         action: id ? 'update_deposit' : 'create_deposit',
         token: window.googleAuthToken, // 👈 🛡️ 보안 마패 추가
         id: id || 'dep_' + Date.now(),
-        startDate: document.getElementById('dep-input-start').value,
-        endDate: document.getElementById('dep-input-end').value,
+        startDate,
+        endDate,
         depType: document.getElementById('dep-input-type').value,
-        principal: document.getElementById('dep-input-principal').value.replace(/,/g, ''),
-        rate: document.getElementById('dep-input-rate').value,
+        principal,
+        rate,
         taxType: document.getElementById('dep-input-tax').value,
-        preTax: document.getElementById('dep-input-pretax').value.replace(/,/g, ''),
+        preTax,
         postTax: document.getElementById('dep-input-posttax').value.replace(/,/g, ''),
         owner: document.getElementById('dep-input-owner').value,
         bank: document.getElementById('dep-input-bank').value,
