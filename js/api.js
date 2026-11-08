@@ -255,7 +255,14 @@ window.loadDailyRecords = async (isSilent = false) => {
     try {
         fetchExchangeRate().catch((e) => console.log('환율 로드 무시됨', e));
 
-        const res = await fetch(`${GAS_URL}?country=ALL&token=${window.googleAuthToken}`);
+        const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'sync',
+                country: 'ALL',
+                token: window.googleAuthToken,
+            }),
+        });
 
         if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
@@ -752,6 +759,18 @@ window.deleteCategory = async (catValue) => {
 // ==========================================
 // 💡 카테고리 & 카드 수정(Edit) 로직
 // ==========================================
+async function sendCategoryAction(payload) {
+    const response = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ ...payload, token: window.googleAuthToken }),
+    });
+    const result = await response.json();
+    if (!response.ok || result.status !== 'success') {
+        throw new Error(result.message || '카테고리 저장에 실패했습니다.');
+    }
+    return result;
+}
+
 window.submitEditCategory = async (oldValue) => {
     const type = document.getElementById('new-cat-type').value;
     const label = document.getElementById('new-cat-label').value.trim();
@@ -760,25 +779,9 @@ window.submitEditCategory = async (oldValue) => {
     window.setSyncStatus('syncing');
     showLoader();
     try {
-        // 1. 기존 데이터 삭제
-        await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'delete_category',
-                token: window.googleAuthToken,
-                catValue: oldValue,
-            }),
-        });
-        // 2. 수정된 데이터 추가
-        await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'add_category',
-                token: window.googleAuthToken,
-                catType: type,
-                catLabel: label,
-            }),
-        });
+        // 새 항목 저장에 실패해도 기존 항목을 잃지 않도록 추가 후 기존 항목을 지웁니다.
+        await sendCategoryAction({ action: 'add_category', catType: type, catLabel: label });
+        await sendCategoryAction({ action: 'delete_category', catValue: oldValue });
 
         await loadDailyRecords();
         openCategoryModal(); // 화면을 초기화하고 수정된 리스트를 다시 보여줌
@@ -797,20 +800,12 @@ window.submitEditCard = async (oldValue) => {
     window.setSyncStatus('syncing');
     showLoader();
     try {
-        await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'delete_category', catValue: oldValue }),
+        await sendCategoryAction({
+            action: 'add_category',
+            catType: `card_${currentCountry}`,
+            catLabel: `${label}|${day}`,
         });
-
-        // 👇 수정 시에도 현재 국가 코드를 붙여서 새 데이터로 갈아끼웁니다.
-        await fetch(GAS_URL, {
-            method: 'POST',
-            body: JSON.stringify({
-                action: 'delete_category',
-                token: window.googleAuthToken,
-                catValue: oldValue,
-            }),
-        });
+        await sendCategoryAction({ action: 'delete_category', catValue: oldValue });
 
         await loadDailyRecords();
         openCardModal();
