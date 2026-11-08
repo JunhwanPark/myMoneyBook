@@ -1,27 +1,58 @@
 // 허용된 이메일 목록 (프론트엔드와 동일하게 설정)
 const ALLOWED_EMAILS = ['semoking@gmail.com', 'minxuan85@gmail.com'];
+const GOOGLE_OAUTH_CLIENT_ID = '423926198751-jor3vh0h0rn1d4l8jg2astfp253ktfqu.apps.googleusercontent.com';
 
-// 💡 [신규] 프론트엔드에서 넘어온 구글 인증 마패(JWT)를 해독하여 이메일을 확인하는 함수
+// Google에서 ID 토큰을 검증한 뒤, 허용 계정의 이메일만 반환합니다.
 function verifyGoogleToken(token) {
-    if (!token) return false;
+    if (typeof token !== 'string' || !token || token.length > 10000) return false;
+
+    const cache = CacheService.getScriptCache();
+    const cacheKey = `google_id_${Utilities.base64EncodeWebSafe(
+        Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, token)
+    ).replace(/=+$/, '')}`;
+    const cachedEmail = cache.get(cacheKey);
+    if (cachedEmail) return cachedEmail;
+
     try {
-        // JWT는 3부분으로 나뉘며, 두 번째 부분이 데이터(Payload)입니다.
-        const parts = token.split('.');
-        if (parts.length !== 3) return false;
+        const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo', {
+            method: 'post',
+            payload: { id_token: token },
+            muteHttpExceptions: true,
+        });
+        if (response.getResponseCode() !== 200) return false;
 
-        // Base64 디코딩 후 JSON 파싱
-        const payloadBlob = Utilities.base64DecodeWebSafe(parts[1]);
-        const payloadString = Utilities.newBlob(payloadBlob).getDataAsString();
-        const payload = JSON.parse(payloadString);
+        const claims = JSON.parse(response.getContentText());
+        const now = Math.floor(Date.now() / 1000);
+        const expiresAt = Number(claims.exp);
+        const issuedAt = Number(claims.iat);
+        const email = String(claims.email || '').trim().toLowerCase();
+        const isVerifiedEmail = claims.email_verified === true || claims.email_verified === 'true';
+        const validIssuer = ['accounts.google.com', 'https://accounts.google.com'].includes(claims.iss);
 
-        // 해독된 이메일이 허용 목록에 있는지 검사
-        if (payload.email && ALLOWED_EMAILS.includes(payload.email)) {
-            return payload.email; // 검증 통과!
-        }
-        return false;
+        if (
+            claims.aud !== GOOGLE_OAUTH_CLIENT_ID ||
+            !validIssuer ||
+            !Number.isFinite(expiresAt) || expiresAt <= now ||
+            !Number.isFinite(issuedAt) || issuedAt > now + 300 ||
+            !isVerifiedEmail ||
+            !ALLOWED_EMAILS.includes(email)
+        ) return false;
+
+        cache.put(cacheKey, email, Math.min(3600, expiresAt - now));
+        return email;
     } catch (e) {
         return false;
     }
+}
+
+// Apps Script 편집기에서 한 번 실행해 외부 요청 권한을 승인합니다.
+function authorizeGoogleTokenVerification() {
+    const response = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo', {
+        method: 'post',
+        payload: { id_token: 'scope-authorization-check' },
+        muteHttpExceptions: true,
+    });
+    Logger.log(`외부 요청 권한 확인 완료 (HTTP ${response.getResponseCode()}; 예시 토큰은 의도적으로 거부됩니다).`);
 }
 
 function readLifeSheet(sheet) {
@@ -234,6 +265,9 @@ function doGet(e) {
         }
 
         const country = e.parameter.country || 'KR';
+        if (!['KR', 'CN', 'ALL'].includes(country)) {
+            throw new Error('지원하지 않는 가계부 국가입니다.');
+        }
         const ss = SpreadsheetApp.getActiveSpreadsheet();
 
         // 초기 동기화에서는 한국·중국 내역을 함께 읽고, 기존 호출은 요청 국가만 읽습니다.
@@ -372,12 +406,23 @@ function doPost(e) {
             );
         }
 
+        // 새 클라이언트는 토큰을 URL에 노출하지 않도록 POST 본문으로 전체 데이터를 요청합니다.
+        if (action === 'sync') {
+            return doGet({ parameter: { token, country: country || 'ALL' } });
+        }
+
         // 1. 카테고리 추가/삭제 (항상 공통 Category 시트)
         if (action === 'add_category' || action === 'delete_category') {
             const catSheet = ss.getSheetByName('Category');
             if (action === 'add_category') {
+                const allowedTypes = ['income', 'expense', 'card', 'card_KR', 'card_CN'];
+                const catType = String(payload.catType || '').trim();
+                const catLabel = String(payload.catLabel || '').trim();
+                if (!allowedTypes.includes(catType) || !catLabel || catLabel.length > 100) {
+                    throw new Error('카테고리 정보를 확인해 주세요.');
+                }
                 const value = 'cat_' + new Date().getTime();
-                catSheet.appendRow([payload.catType, value, payload.catLabel]);
+                catSheet.appendRow([catType, value, catLabel]);
             } else {
                 const data = catSheet.getDataRange().getValues();
                 for (let i = 1; i < data.length; i++) {
@@ -455,8 +500,7 @@ function doPost(e) {
                     rowValues[10] = payload.bank;
                     rowValues[11] = payload.status;
 
-                    depSheet.deleteRow(rowIndex);
-                    depSheet.appendRow(rowValues);
+                    depSheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]);
                 }
             }
             return ContentService.createTextOutput(
@@ -518,8 +562,7 @@ function doPost(e) {
                     rowValues[5] = payload.gross;
                     rowValues[6] = payload.net;
 
-                    divSheet.deleteRow(rowIndex);
-                    divSheet.appendRow(rowValues);
+                    divSheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]);
                 }
             }
             return ContentService.createTextOutput(
@@ -528,7 +571,11 @@ function doPost(e) {
         }
 
         // 3. 기존 가계부 내역 CRUD (국가별 시트 타겟팅) - 절대 건드리지 않음
+        if (!['KR', 'CN'].includes(country)) {
+            throw new Error('가계부 국가 또는 시트를 확인해 주세요.');
+        }
         const sheet = ss.getSheetByName('Data_' + country);
+        if (!sheet) throw new Error('가계부 시트를 찾을 수 없습니다.');
 
         if (action === 'create') {
             const id = Utilities.getUuid();
@@ -557,6 +604,7 @@ function doPost(e) {
         }
 
         if (action === 'delete') {
+            if (rowIndex < 1) throw new Error('삭제할 내역을 찾을 수 없습니다.');
             sheet.deleteRow(rowIndex);
             return ContentService.createTextOutput(
                 JSON.stringify({ status: 'success' })
@@ -564,6 +612,7 @@ function doPost(e) {
         }
 
         if (action === 'update') {
+            if (rowIndex < 1) throw new Error('수정할 내역을 찾을 수 없습니다.');
             var rowValues = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
             rowValues[1] = payload.date;
             rowValues[3] = payload.type;
@@ -572,8 +621,7 @@ function doPost(e) {
             rowValues[6] = payload.memo;
             rowValues[7] = new Date();
 
-            sheet.deleteRow(rowIndex);
-            sheet.appendRow(rowValues);
+            sheet.getRange(rowIndex, 1, 1, rowValues.length).setValues([rowValues]);
 
             return ContentService.createTextOutput(
                 JSON.stringify({ status: 'success' })

@@ -66,6 +66,7 @@ Google 스프레드시트에 데이터를 저장하고 GitHub Pages에서 실행
 3. [`backend/.clasp.json`](backend/.clasp.json)의 `scriptId`를 본인 Apps Script 프로젝트 ID로 바꿉니다.
 4. 워크플로 파일의 배포 ID와 [`js/config.js`](js/config.js)의 `GAS_URL`이 본인의 Apps Script 배포를 가리키는지 확인합니다.
 5. `backend/`를 수정해 `main`에 푸시한 뒤 GitHub Actions 실행 결과를 확인합니다.
+6. Google ID 토큰 검증 코드를 처음 배포한 뒤 Apps Script 편집기에서 `authorizeGoogleTokenVerification`을 한 번 실행해 외부 요청 권한을 승인합니다. 이 함수는 권한만 확인하며 예시 토큰은 인증에 사용되지 않습니다.
 
 ## 휴대폰 홈 화면에 추가
 
