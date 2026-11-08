@@ -897,8 +897,12 @@ window.renderCombinedAssetsStats = () => {
         sortedOwners.forEach((owner) => {
             const stat = combinedStats[owner];
             const total = stat.deposit + stat.dividend;
-            const percent = Math.min((total / TAX_LIMIT) * 100, 100).toFixed(1);
-            const isWarning = percent >= 80;
+            const actualPercent = (total / TAX_LIMIT) * 100;
+            const progressPercent = Math.min(actualPercent, 100).toFixed(1);
+            const isWarning = actualPercent >= 80;
+            const reachesLimit = total >= TAX_LIMIT;
+            const exceedsLimit = total > TAX_LIMIT;
+            const thresholdDifference = Math.abs(TAX_LIMIT - total).toLocaleString('ko-KR');
 
             limitContainer.insertAdjacentHTML(
                 'beforeend',
@@ -917,10 +921,11 @@ window.renderCombinedAssetsStats = () => {
                         </p>
                     </div>
                     <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                        <div class="${isWarning ? 'bg-red-500' : 'bg-emerald-500'} h-full transition-all duration-700" style="width: ${percent}%"></div>
+                        <div class="${isWarning ? 'bg-red-500' : 'bg-emerald-500'} h-full transition-all duration-700" style="width: ${progressPercent}%"></div>
                     </div>
                     <div class="flex justify-between text-[8.5px] font-bold text-gray-400 mb-2.5">
-                        <span>${percent}%</span><span>2천만</span>
+                        <span class="${reachesLimit ? 'text-red-600' : isWarning ? 'text-amber-600' : ''}">${actualPercent.toFixed(1)}%</span>
+                        <span class="text-right ${reachesLimit ? 'text-red-600' : ''}">${exceedsLimit ? `초과 ${thresholdDifference}원` : reachesLimit ? '기준 도달' : `기준까지 ${thresholdDifference}원`}</span>
                     </div>
                     <div class="space-y-1">
                         <div class="flex justify-between items-center bg-gray-50 px-1.5 py-1 rounded-md">
@@ -1116,6 +1121,18 @@ window.updateCombinedAssetChart = () => {
         backgroundColor: colorPalette[idx % colorPalette.length],
         borderRadius: 4,
     }));
+    datasets.push({
+        type: 'line',
+        label: '2천만원 기준',
+        data: years.map(() => 20000000),
+        borderColor: '#ef4444',
+        borderWidth: 2,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        pointHitRadius: 8,
+        fill: false,
+        order: -1,
+    });
 
     if (window.combinedChartInstance) window.combinedChartInstance.destroy();
 
@@ -1126,9 +1143,9 @@ window.updateCombinedAssetChart = () => {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { stacked: true, grid: { display: false } },
+                x: { stacked: false, grid: { display: false } },
                 y: {
-                    stacked: true,
+                    stacked: false,
                     border: { display: false },
                     ticks: { callback: (v) => (v / 10000).toLocaleString() + '만' },
                 },
@@ -1139,6 +1156,11 @@ window.updateCombinedAssetChart = () => {
                     labels: {
                         boxWidth: 12,
                         font: { size: 10, family: "'Pretendard', sans-serif" },
+                    },
+                },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => ` ${context.dataset.label}: ${Number(context.parsed.y).toLocaleString('ko-KR')}원`,
                     },
                 },
             },
