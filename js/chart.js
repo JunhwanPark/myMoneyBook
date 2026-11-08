@@ -321,6 +321,17 @@ window.renderChart = function () {
             }
         }
 
+        // 현재 달만 오늘까지의 일평균 지출로 월말 누적 지출을 추정합니다.
+        // 과거 달에는 예측선을 표시하지 않습니다.
+        const hasMonthEndForecast = isActualCurrentMonth && todayDate < daysInMonth && currentSum > 0;
+        const forecastCum = hasMonthEndForecast ? new Array(daysInMonth).fill(null) : null;
+        if (forecastCum) {
+            const averageDailyExpense = currentSum / todayDate;
+            for (let day = todayDate; day <= daysInMonth; day++) {
+                forecastCum[day - 1] = currentSum + averageDailyExpense * (day - todayDate);
+            }
+        }
+
         if (chartWrapper) chartWrapper.style.display = 'flex';
         if (noDataEl) noDataEl.classList.add('hidden');
 
@@ -376,6 +387,20 @@ window.renderChart = function () {
             fill: true,
             tension: 0.3,
         });
+        if (forecastCum) {
+            chartDatasets.push({
+                label: '월말 예상 지출',
+                data: forecastCum,
+                borderColor: '#f97316',
+                backgroundColor: 'transparent',
+                borderWidth: 2,
+                borderDash: [6, 4],
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                tension: 0.3,
+                fill: false,
+            });
+        }
 
         new Chart(chartEl.getContext('2d'), {
             type: 'line',
