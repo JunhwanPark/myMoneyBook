@@ -93,6 +93,7 @@ window.renderTransactionRow = (container, item, options = {}) => {
                     <div class="flex items-center">
                         <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
                         ${item.rankBadge || ''}
+                        ${item.unusualExpenseBadge || ''}
                     </div>
                     <p class="text-[10px] text-gray-400 mt-0.5 truncate">${detailLabel}</p>
                 </div>

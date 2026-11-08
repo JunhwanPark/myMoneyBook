@@ -158,8 +158,29 @@ window.escapeHTML = function (str) {
         .replace(/'/g, '&#039;');
 };
 
-window.applyTopRanks = (list) => {
-    list.forEach((item) => (item.rankBadge = ''));
+const UNUSUAL_EXPENSE_RULES = {
+    lookbackMonths: 6,
+    minimumHistory: 5,
+    minimumMultiple: 2,
+    minimumDifference: { KR: 20000, CN: 100 },
+};
+
+window.applyTransactionBadges = (list) => {
+    const expenseHistoryByCategory = new Map();
+    (globalData || []).forEach((item) => {
+        const amount = Number(item.Amount);
+        if (item.Type !== 'expense' || !item.Category || !item.Date || !Number.isFinite(amount) || amount <= 0) return;
+        if (!expenseHistoryByCategory.has(item.Category)) expenseHistoryByCategory.set(item.Category, []);
+        expenseHistoryByCategory.get(item.Category).push({
+            date: String(item.Date).slice(0, 10),
+            amount,
+        });
+    });
+
+    list.forEach((item) => {
+        item.rankBadge = '';
+        item.unusualExpenseBadge = '';
+    });
 
     const expenses = list
         .filter((d) => d.Type === 'expense' && Number(d.Amount) > 0)
@@ -176,6 +197,43 @@ window.applyTopRanks = (list) => {
     incomes.slice(0, 3).forEach((item, index) => {
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
         item.rankBadge = `<span class="shrink-0 ml-1.5 inline-flex items-center gap-0.5 text-[9px] font-black text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 leading-none shadow-sm">${medal} ${index + 1}위</span>`;
+    });
+
+    list.forEach((item) => {
+        const amount = Number(item.Amount);
+        const date = String(item.Date || '').slice(0, 10);
+        if (item.Type !== 'expense' || !Number.isFinite(amount) || amount <= 0 || !item.Category || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+
+        const [year, month, day] = date.split('-').map(Number);
+        const cutoffDate = new Date(Date.UTC(year, month - 1, 1));
+        cutoffDate.setUTCMonth(cutoffDate.getUTCMonth() - UNUSUAL_EXPENSE_RULES.lookbackMonths);
+        const lastDayOfCutoffMonth = new Date(
+            Date.UTC(cutoffDate.getUTCFullYear(), cutoffDate.getUTCMonth() + 1, 0)
+        ).getUTCDate();
+        cutoffDate.setUTCDate(Math.min(day, lastDayOfCutoffMonth));
+        const cutoff = cutoffDate.toISOString().slice(0, 10);
+        const history = (expenseHistoryByCategory.get(item.Category) || [])
+            .filter((record) => record.date >= cutoff && record.date < date)
+            .map((record) => record.amount)
+            .sort((a, b) => a - b);
+        if (history.length < UNUSUAL_EXPENSE_RULES.minimumHistory) return;
+
+        const middle = Math.floor(history.length / 2);
+        const median = history.length % 2
+            ? history[middle]
+            : (history[middle - 1] + history[middle]) / 2;
+        const difference = amount - median;
+        const minimumDifference = UNUSUAL_EXPENSE_RULES.minimumDifference[currentCountry] || 20000;
+        if (
+            median <= 0 ||
+            amount / median < UNUSUAL_EXPENSE_RULES.minimumMultiple ||
+            difference < minimumDifference
+        ) return;
+
+        const comparison = typeof formatMoney === 'function' ? formatMoney(median) : median.toLocaleString();
+        const multiple = (amount / median).toFixed(1);
+        const explanation = `이전 6개월 같은 카테고리 ${history.length}건의 중앙값 ${comparison}보다 ${multiple}배 큰 지출`;
+        item.unusualExpenseBadge = `<span class="shrink-0 ml-1 inline-flex items-center gap-0.5 text-[9px] font-black text-amber-800 bg-amber-100 px-1 py-0.5 rounded border border-amber-200 leading-none shadow-sm" title="${escapeHTML(explanation)}" aria-label="${escapeHTML(explanation)}"><span class="material-symbols-outlined text-[12px] leading-none">trending_up</span>평소보다 큼</span>`;
     });
 };
 

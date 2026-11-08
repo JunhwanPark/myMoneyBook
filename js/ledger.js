@@ -170,7 +170,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
         return;
     }
 
-    if (typeof applyTopRanks === 'function') applyTopRanks(filtered);
+    if (typeof applyTransactionBadges === 'function') applyTransactionBadges(filtered);
 
     let total = 0;
     const groupedByDate = {};
@@ -241,49 +241,7 @@ window.renderDailyList = (data, searchKeyword = '') => {
             orderedItemsForDate = [...itemsForDate].reverse();
         }
 
-        orderedItemsForDate.forEach((item) => {
-            const parsed =
-                typeof parseMemo === 'function'
-                    ? parseMemo(item.Memo)
-                    : { itemName: item.Memo, payMethod: '', discount: 0 };
-            const isExp = item.Type === 'expense';
-            const catLabel =
-                globalCategories.find((c) => c.Value === item.Category)?.Label || '미분류';
-            const amountNum = Number(item.Amount);
-            const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
-            const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
-            const displaySign = amountNum < 0 ? '-' : '';
-            const iconName =
-                typeof getCategoryIcon === 'function' ? getCategoryIcon(catLabel) : 'payments';
-
-            let krwValue = '';
-            if (typeof getKrwEquivalent === 'function') {
-                krwValue = getKrwEquivalent(Math.abs(amountNum));
-            }
-
-            dateContent.insertAdjacentHTML(
-                'beforeend',
-                `<div onclick="if(typeof openEditModal === 'function') openEditModal('${item.ID}')" class="bg-gray-50 px-2.5 py-1.5 rounded-xl mb-1.5 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="${iconBg} w-7 h-7 rounded-full flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-sm">${iconName}</span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center">
-                                <p class="text-sm font-bold text-gray-800 truncate">${typeof escapeHTML === 'function' ? escapeHTML(parsed.itemName) : parsed.itemName}</p>
-                                ${item.rankBadge || ''}
-                            </div>
-                            <p class="text-[10px] text-gray-400 mt-0.5 truncate">${typeof escapeHTML === 'function' ? escapeHTML(catLabel) : catLabel} • ${typeof escapeHTML === 'function' ? escapeHTML(parsed.payMethod) : parsed.payMethod}</p>
-                        </div>
-                    </div>
-                    <div class="text-right shrink-0 ml-2">
-                        <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${typeof formatMoney === 'function' ? formatMoney(Math.abs(amountNum)) : Math.abs(amountNum)}</p>
-                        ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
-                        ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-0.5 font-semibold">할인 ${typeof formatMoney === 'function' ? formatMoney(parsed.discount) : parsed.discount}</p>` : ''}
-                    </div>
-                </div>`
-            );
-        });
+        orderedItemsForDate.forEach((item) => window.renderTransactionRow(dateContent, item));
     });
 };
 

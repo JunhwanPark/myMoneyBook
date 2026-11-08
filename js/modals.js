@@ -349,7 +349,7 @@ window.openWeeklyModal = function (clickedDateStr) {
                 <p class="text-center text-gray-400 text-sm font-medium">이 날은 내역이 없습니다.</p>
             </div>`;
     } else {
-        if (typeof applyTopRanks === 'function') applyTopRanks(dailyData);
+        if (typeof applyTransactionBadges === 'function') applyTransactionBadges(dailyData);
 
         let itemsToRender = dailyData;
         if (window.listSortOrder === 'desc') {
@@ -357,49 +357,10 @@ window.openWeeklyModal = function (clickedDateStr) {
         }
 
         itemsToRender.forEach((item) => {
-            const isExp = item.Type === 'expense';
-            let catLabel = '미분류';
-            if (item.Category) {
-                const foundCat = globalCategories.find((c) => c.Value === item.Category);
-                catLabel = foundCat ? foundCat.Label : item.Category;
-            }
-            const parsed =
-                typeof parseMemo === 'function'
-                    ? parseMemo(item.Memo)
-                    : { itemName: item.Memo, payMethod: '', discount: 0 };
-            const iconName =
-                typeof getCategoryIcon === 'function' ? getCategoryIcon(catLabel) : 'payments';
-            const amountNum = Number(item.Amount);
-            const displayColor = isExp ? 'text-red-500' : 'text-blue-500';
-            const iconBg = isExp ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600';
-            const displaySign = amountNum < 0 ? '-' : '';
-
-            let krwValue = '';
-            if (typeof getKrwEquivalent === 'function')
-                krwValue = getKrwEquivalent(Math.abs(amountNum));
-
-            container.insertAdjacentHTML(
-                'beforeend',
-                `<div onclick="openEditModal('${item.ID}')" class="bg-gray-50 px-2.5 py-1.5 rounded-xl mb-1.5 flex justify-between items-center border border-gray-100 cursor-pointer hover:bg-gray-100 transition shadow-sm">
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="${iconBg} w-7 h-7 rounded-full flex items-center justify-center shrink-0">
-                            <span class="material-symbols-outlined text-sm">${iconName}</span>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center">
-                                <p class="text-sm font-bold text-gray-800 truncate">${escapeHTML(parsed.itemName)}</p>
-                                ${item.rankBadge || ''}
-                            </div>
-                            <p class="text-[10px] text-gray-400 mt-0.5 truncate">${escapeHTML(catLabel)} • ${escapeHTML(parsed.payMethod)}</p>
-                        </div>
-                    </div>
-                    <div class="text-right shrink-0 ml-2">
-                        <p class="${displayColor} font-bold text-sm leading-none">${displaySign}${typeof formatMoney === 'function' ? formatMoney(Math.abs(amountNum)) : Math.abs(amountNum)}</p>
-                        ${krwValue ? `<p class="text-[9px] text-gray-400 mt-0.5 font-medium">(약 ${krwValue})</p>` : ''}
-                        ${parsed.discount > 0 ? `<p class="text-[9px] text-blue-500 mt-1 font-semibold">할인 ${typeof formatMoney === 'function' ? formatMoney(parsed.discount) : parsed.discount}</p>` : ''}
-                    </div>
-                </div>`
-            );
+            const categoryLabel = item.Category
+                ? globalCategories.find((category) => category.Value === item.Category)?.Label || item.Category
+                : '미분류';
+            renderTransactionRow(container, item, { categoryLabel });
         });
     }
 
@@ -481,7 +442,7 @@ window.openCardDetailModal = function (cardName, prefix, mode = 'calendar') {
         container.innerHTML =
             '<p class="text-center text-gray-500 py-10 text-sm">결제 내역이 없습니다.</p>';
     } else {
-        if (typeof applyTopRanks === 'function') applyTopRanks(filteredData);
+        if (typeof applyTransactionBadges === 'function') applyTransactionBadges(filteredData);
 
         const dateGroups = groupTransactionsByDate(filteredData);
 
@@ -580,7 +541,7 @@ window.openMonthlyModal = function (type) {
                 <p class="text-center text-gray-400 text-sm font-medium">이번달 ${typeName} 내역이 없습니다.</p>
             </div>`;
     } else {
-        if (typeof applyTopRanks === 'function') applyTopRanks(monthlyData);
+        if (typeof applyTransactionBadges === 'function') applyTransactionBadges(monthlyData);
 
         const dateGroups = groupTransactionsByDate(monthlyData);
 
@@ -670,7 +631,7 @@ window.openCategoryDetailModal = function (categoryLabel, type, prefix) {
                 <p class="text-center text-gray-400 text-sm font-medium">내역이 없습니다.</p>
             </div>`;
     } else {
-        if (typeof applyTopRanks === 'function') applyTopRanks(catData);
+        if (typeof applyTransactionBadges === 'function') applyTransactionBadges(catData);
 
         const dateGroups = groupTransactionsByDate(catData);
 
