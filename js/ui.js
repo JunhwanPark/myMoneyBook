@@ -582,6 +582,7 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
         'asset-config-modal',
         'asset-owner-detail-modal',
         'combined-owner-detail-modal',
+        'monthly-family-report',
     ];
 
     const observer = new MutationObserver((mutations) => {
@@ -654,6 +655,11 @@ document.addEventListener('DOMContentLoaded', window.initCountryByTimezone);
                 typeof closeCombinedOwnerDetail === 'function'
             )
                 closeCombinedOwnerDetail();
+            else if (
+                topModalId === 'monthly-family-report' &&
+                typeof closeMonthlyFamilyReport === 'function'
+            )
+                closeMonthlyFamilyReport();
         }
     });
 })();
