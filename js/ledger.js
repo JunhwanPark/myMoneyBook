@@ -849,8 +849,19 @@ window.showSuggestions = (text) => {
     }
 
     const matched = [...nameCategories.entries()]
-        .filter(([name]) => name.toLowerCase().startsWith(keyword))
-        .slice(0, 5);
+        .map((entry, order) => ({
+            entry,
+            order,
+            name: entry[0].toLowerCase(),
+        }))
+        .filter(({ name }) => name.includes(keyword))
+        .sort((a, b) => {
+            const aStartsWith = a.name.startsWith(keyword);
+            const bStartsWith = b.name.startsWith(keyword);
+            return Number(bStartsWith) - Number(aStartsWith) || a.order - b.order;
+        })
+        .slice(0, 5)
+        .map(({ entry }) => entry);
 
     if (matched.length === 0) {
         box.innerHTML = '';
