@@ -233,7 +233,7 @@ window.applyTransactionBadges = (list) => {
         const comparison = typeof formatMoney === 'function' ? formatMoney(median) : median.toLocaleString();
         const multiple = (amount / median).toFixed(1);
         const explanation = `이전 6개월 같은 카테고리 ${history.length}건의 중앙값 ${comparison}보다 ${multiple}배 큰 지출`;
-        item.unusualExpenseBadge = `<span class="shrink-0 ml-1 inline-flex items-center gap-0.5 text-[9px] font-black text-amber-800 bg-amber-100 px-1 py-0.5 rounded border border-amber-200 leading-none shadow-sm" title="${escapeHTML(explanation)}" aria-label="${escapeHTML(explanation)}"><span class="material-symbols-outlined text-[12px] leading-none">trending_up</span>평소보다 큼</span>`;
+        item.unusualExpenseBadge = `<span class="unusual-expense-badge shrink-0 ml-1 inline-flex items-center gap-0.5 text-[9px] font-black text-amber-800 bg-amber-100 px-1 py-0.5 rounded border border-amber-200 leading-none shadow-sm" title="${escapeHTML(explanation)}" aria-label="${escapeHTML(explanation)}"><span class="material-symbols-outlined text-[12px] leading-none">trending_up</span>평소보다 큼</span>`;
     });
 };
 
