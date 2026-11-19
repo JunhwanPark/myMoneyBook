@@ -1,6 +1,14 @@
 /* ==========================================
    1. 글로벌 변수 및 테마 설정
    ========================================== */
+@font-face {
+    font-family: 'SUIT';
+    src: url('./assets/fonts/SUIT-Variable.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+}
+
 :root {
     --theme-color: #4f46e5; /* 기본 테마: Indigo (한국) */
     --theme-light: #e0e7ff;
@@ -30,9 +38,11 @@ body.theme-life {
 /* ==========================================
    2. 기본 레이아웃 및 유틸리티
    ========================================== */
-body {
+body,
+body.font-sans {
     background-color: var(--bg-gray);
     color: var(--text-main);
+    font-family: 'SUIT', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
     -webkit-tap-highlight-color: transparent; /* 모바일 터치 하이라이트 제거 */
 }
 
