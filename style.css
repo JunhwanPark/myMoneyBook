@@ -855,10 +855,10 @@ html.dark-mode .active\:bg-red-100:active {
    1024px 이상에서만 적용
    ========================================== */
 @media (min-width: 1024px) {
-    /* PC에서는 앱을 넓게 표시하고 좌측 메뉴 영역 확보 */
+    /* PC에서는 앱을 넓게 표시하고 우측 메뉴 영역 확보 */
     #main-app:not(.hidden) {
         display: grid;
-        grid-template-columns: 220px minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 220px;
         grid-template-rows: auto minmax(0, 1fr);
         width: min(100%, 1600px);
         max-width: none;
@@ -876,7 +876,7 @@ html.dark-mode .active\:bg-red-100:active {
 
     /* 콘텐츠 영역 */
     #main-app > main {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
         min-width: 0;
         min-height: 0;
@@ -885,7 +885,7 @@ html.dark-mode .active\:bg-red-100:active {
     }
 
     #main-app > #spending-ticker {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
         align-self: end;
         margin: 0 32px 12px;
@@ -895,9 +895,9 @@ html.dark-mode .active\:bg-red-100:active {
         padding-bottom: 96px;
     }
 
-    /* 하단 메뉴를 좌측 사이드바로 전환 */
+    /* 하단 메뉴를 우측 사이드바로 전환 */
     #main-app > nav {
-        grid-column: 1;
+        grid-column: 2;
         grid-row: 2;
         min-height: 0;
         flex-direction: column;
@@ -906,7 +906,8 @@ html.dark-mode .active\:bg-red-100:active {
         gap: 8px;
         padding: 24px 12px;
         border-top: none;
-        border-right: 1px solid #e5e7eb;
+        border-right: none;
+        border-left: 1px solid #e5e7eb;
         box-shadow: none;
     }
 
@@ -985,7 +986,7 @@ html.dark-mode .active\:bg-red-100:active {
 @media (orientation: landscape) and (min-width: 740px) and (max-width: 1023px) and (min-height: 500px) {
     #main-app:not(.hidden) {
         display: grid;
-        grid-template-columns: 164px minmax(0, 1fr);
+        grid-template-columns: minmax(0, 1fr) 164px;
         grid-template-rows: auto minmax(0, 1fr);
         width: 100%;
         max-width: none;
@@ -1002,7 +1003,7 @@ html.dark-mode .active\:bg-red-100:active {
     }
 
     #main-app > main {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
         min-width: 0;
         min-height: 0;
@@ -1011,7 +1012,7 @@ html.dark-mode .active\:bg-red-100:active {
     }
 
     #main-app > #spending-ticker {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
         align-self: end;
         margin: 0 20px 10px;
@@ -1022,7 +1023,7 @@ html.dark-mode .active\:bg-red-100:active {
     }
 
     #main-app > nav {
-        grid-column: 1;
+        grid-column: 2;
         grid-row: 2;
         min-height: 0;
         flex-direction: column;
@@ -1031,7 +1032,8 @@ html.dark-mode .active\:bg-red-100:active {
         gap: 6px;
         padding: 16px 10px;
         border-top: none;
-        border-right: 1px solid #e5e7eb;
+        border-right: none;
+        border-left: 1px solid #e5e7eb;
         box-shadow: none;
     }
 
