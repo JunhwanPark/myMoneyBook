@@ -1096,7 +1096,7 @@ html.dark-mode .active\:bg-red-100:active {
 }
 
 .fc-daygrid-event.calendar-expense-event {
-    background-color: #fef2f2 !important;
+    background-color: transparent !important;
 }
 
 .fc-daygrid-event.calendar-expense-event .fc-event-title {
@@ -1104,7 +1104,7 @@ html.dark-mode .active\:bg-red-100:active {
 }
 
 .fc-daygrid-event.calendar-income-event {
-    background-color: #eff6ff !important;
+    background-color: transparent !important;
 }
 
 .fc-daygrid-event.calendar-income-event .fc-event-title {
@@ -1179,7 +1179,7 @@ html.dark-mode .calendar-birthday-badge {
 }
 
 html.dark-mode .fc-daygrid-event.calendar-expense-event {
-    background-color: #38232b !important;
+    background-color: transparent !important;
 }
 
 html.dark-mode .fc-daygrid-event.calendar-expense-event .fc-event-title,
@@ -1188,7 +1188,7 @@ html.dark-mode .fc-day-sun:not(.fc-day-today) .fc-daygrid-day-number {
 }
 
 html.dark-mode .fc-daygrid-event.calendar-income-event {
-    background-color: #202c40 !important;
+    background-color: transparent !important;
 }
 
 html.dark-mode .fc-daygrid-event.calendar-income-event .fc-event-title,
