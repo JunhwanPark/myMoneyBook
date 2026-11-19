@@ -416,7 +416,7 @@ window.updateSpendingTicker = () => {
     const difference = currentExpense - previousExpense;
     window.spendingTickerRotationIndex = (window.spendingTickerRotationIndex || 0) + 1;
     const rotationSeed = Date.now() + window.spendingTickerRotationIndex + (currentCountry === 'CN' ? 2 : 0);
-    const phraseVariant = rotationSeed % 3;
+    const phraseVariant = Math.floor(Math.random() * 3);
     const formattedDifference = escapeHTML(formatMoney(Math.abs(difference)));
     let headline;
     if (difference < 0) {
@@ -616,10 +616,24 @@ window.updateSpendingTicker = () => {
     }
     else if (currentExpense > 0) insights.push('🔎 카테고리별 큰 증감은 아직 없어요.');
 
-    const insightOffset = insights.length ? rotationSeed % insights.length : 0;
-    const rotatedInsights = [...insights.slice(insightOffset), ...insights.slice(0, insightOffset)];
-    const selectedInsights = rotatedInsights.slice(0, Math.min(2, rotatedInsights.length));
-    const message = [headline, comparisonPhrases[phraseVariant], ...selectedInsights].join(' ');
+    const shuffledInsights = [...insights];
+    for (let index = shuffledInsights.length - 1; index > 0; index--) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [shuffledInsights[index], shuffledInsights[randomIndex]] = [
+            shuffledInsights[randomIndex],
+            shuffledInsights[index],
+        ];
+    }
+    const selectedInsights = shuffledInsights.slice(0, Math.min(2, shuffledInsights.length));
+    let message = [headline, comparisonPhrases[phraseVariant], ...selectedInsights].join(' ');
+    if (message === window.lastSpendingTickerMessage && insights.length > 2) {
+        const alternateInsight = shuffledInsights[2];
+        if (alternateInsight && !selectedInsights.includes(alternateInsight)) {
+            selectedInsights[selectedInsights.length - 1] = alternateInsight;
+            message = [headline, comparisonPhrases[phraseVariant], ...selectedInsights].join(' ');
+        }
+    }
+    window.lastSpendingTickerMessage = message;
 
     messageEl.innerHTML = message;
     copyEl.innerHTML = message;
