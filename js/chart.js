@@ -319,14 +319,34 @@ window.renderChart = function () {
             }
         }
 
-        // 현재 달만 오늘까지의 일평균 지출로 월말 누적 지출을 추정합니다.
-        // 과거 달에는 예측선을 표시하지 않습니다.
-        const hasMonthEndForecast = isActualCurrentMonth && todayDate < daysInMonth && currentSum > 0;
+        // 오늘 이후 미리 입력한 지출은 예정 지출로 예측선에 반영합니다.
+        // 예상선은 오늘까지의 실제 누적액에 남은 기간의 일평균과 예정 지출을 더합니다.
+        const plannedExpensesByDay = new Map();
+        if (isActualCurrentMonth) {
+            currentExpenses.forEach((item) => {
+                const itemDate = String(item.Date || '').slice(0, 10);
+                const day = Number(itemDate.slice(8, 10));
+                if (itemDate > dateKey(today) && day > todayDate && day <= daysInMonth) {
+                    plannedExpensesByDay.set(
+                        day,
+                        (plannedExpensesByDay.get(day) || 0) + (Number(item.Amount) || 0)
+                    );
+                }
+            });
+        }
+        const plannedExpenseTotal = [...plannedExpensesByDay.values()].reduce((sum, amount) => sum + amount, 0);
+        const hasMonthEndForecast =
+            isActualCurrentMonth &&
+            todayDate < daysInMonth &&
+            (currentSum > 0 || plannedExpenseTotal > 0);
         const forecastCum = hasMonthEndForecast ? new Array(daysInMonth).fill(null) : null;
         if (forecastCum) {
             const averageDailyExpense = currentSum / todayDate;
+            let plannedExpenseToDate = 0;
             for (let day = todayDate; day <= daysInMonth; day++) {
-                forecastCum[day - 1] = currentSum + averageDailyExpense * (day - todayDate);
+                plannedExpenseToDate += plannedExpensesByDay.get(day) || 0;
+                forecastCum[day - 1] =
+                    currentSum + averageDailyExpense * (day - todayDate) + plannedExpenseToDate;
             }
         }
 
