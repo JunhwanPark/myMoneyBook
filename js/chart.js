@@ -231,9 +231,7 @@ window.renderChart = function () {
     } else if (mode === 'cumulative') {
         if (comparisonToggle) comparisonToggle.classList.add('hidden');
         if (totalAmountEl) {
-            const titleText = window.showCumulativeIncome
-                ? '지난달 vs 이번달 (수입/지출)'
-                : '지난달 vs 이번달 (지출)';
+            const titleText = '지난달 vs 이번달';
             const titleColor = window.showCumulativeIncome ? 'text-gray-600' : 'text-red-500';
             totalAmountEl.innerHTML = `<span class="text-sm font-bold ${titleColor} truncate">${titleText}</span>`;
             totalAmountEl.className = 'flex-1 mb-1 flex justify-end items-center min-w-0 pl-2';
