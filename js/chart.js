@@ -324,9 +324,8 @@ window.renderChart = function () {
         const plannedExpensesByDay = new Map();
         if (isActualCurrentMonth) {
             currentExpenses.forEach((item) => {
-                const itemDate = String(item.Date || '').slice(0, 10);
-                const day = Number(itemDate.slice(8, 10));
-                if (itemDate > dateKey(today) && day > todayDate && day <= daysInMonth) {
+                const day = Number(String(item.Date || '').slice(8, 10));
+                if (day > todayDate && day <= daysInMonth) {
                     plannedExpensesByDay.set(
                         day,
                         (plannedExpensesByDay.get(day) || 0) + (Number(item.Amount) || 0)
